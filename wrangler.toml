@@ -1,0 +1,30 @@
+name = "wackometer"
+main = "src/worker.js"
+compatibility_date = "2026-09-01"
+
+# The front end lives in /public. The worker answers /api/* and Cloudflare serves everything else.
+[assets]
+directory = "./public"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "wackometer"
+# Replace with the id that `npx wrangler d1 create wackometer` prints.
+database_id = "00000000-0000-0000-0000-000000000000"
+
+[vars]
+APP_URL = "http://localhost:8787"
+WINGMAN_MODEL = "claude-sonnet-5-5"
+FREE_DAILY = "5"
+PRO_PRICE_MONTHLY = ""   # Stripe price id, e.g. price_123
+PRO_PRICE_YEARLY = ""
+CREDITS_PRICE = ""
+
+# Secrets (set with `npx wrangler secret put NAME`, never put them here):
+#   SESSION_SECRET         any long random string
+#   ANTHROPIC_API_KEY      from console.anthropic.com
+#   STRIPE_SECRET_KEY      sk_live_... or sk_test_...
+#   STRIPE_WEBHOOK_SECRET  whsec_...
