@@ -1,7 +1,7 @@
 // Wackometer service worker: makes the app installable and keeps the shell working offline.
 // Pages: network first, fall back to the cached shell. Static files: cache first (they're content-hashed).
 // The API is never cached.
-const CACHE = "wk-v1";
+const CACHE = "wk-v2";
 const SHELL = ["/", "/manifest.webmanifest", "/favicon.svg", "/fonts/fredoka.woff2", "/data/words.json"];
 self.addEventListener("install", (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim())); });
