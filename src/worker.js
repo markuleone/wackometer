@@ -76,7 +76,7 @@ function liveStreak(u) {
 const adminEmails = (env) => String(env.ADMIN_EMAILS || "").toLowerCase().split(",").map((s) => s.trim()).filter(Boolean);
 const isAdmin = (u, env) => !!(u.email && adminEmails(env).includes(u.email.toLowerCase()));
 function me(u, used, env) {
-  return { id: u.id, email: u.email || null, admin: isAdmin(u, env), canEmail: !!env.RESEND_API_KEY, pro: !!isPro(u), proUntil: u.pro_until || null, credits: u.credits, usedToday: used,
+  return { id: u.id, email: u.email || null, admin: isAdmin(u, env), canEmail: !!env.SENDGRID_API_KEY, pro: !!isPro(u), proUntil: u.pro_until || null, credits: u.credits, usedToday: used,
     freeDaily: +env.FREE_DAILY || 5, handle: u.handle || null, streak: liveStreak(u), lastDaily: u.last_daily || null,
     billing: !!u.stripe_customer, checkout: !!env.STRIPE_SECRET_KEY };
 }
@@ -422,7 +422,7 @@ async function route(path, method, url, body, u, env) {
 
   /* ----- Sign in by email ----- */
   if (path === "/api/login" && method === "POST") {
-    if (!env.RESEND_API_KEY) return bad("Email sign-in isn't set up yet.", 503);
+    if (!env.SENDGRID_API_KEY) return bad("Email sign-in isn't set up yet.", 503);
     const email = String(body.email || "").trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 200) return bad("That doesn't look like an email address.");
     const sent = await DB.prepare("SELECT COUNT(*) c FROM login_tokens WHERE (email=? OR user_id=?) AND expires_at>?").bind(email, u.id, now()).first();
@@ -430,13 +430,19 @@ async function route(path, method, url, body, u, env) {
     const token = crypto.randomUUID().replace(/-/g, "") + rid();
     await DB.prepare("INSERT INTO login_tokens (token,email,user_id,expires_at) VALUES (?,?,?,?)").bind(token, email, u.id, now() + 20 * 60000).run();
     const link = `${env.APP_URL || url.origin}/api/login/verify?t=${token}`;
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST", headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, "content-type": "application/json" },
-      body: JSON.stringify({ from: env.EMAIL_FROM || "Wackometer <hello@wackometer.com>", to: [email], subject: "Your Wackometer sign-in link",
-        html: `<div style="font-family:Arial,sans-serif;font-size:16px;color:#1F2340"><p>Tap to sign in to Wackometer. The link works for 20 minutes.</p><p><a href="${link}" style="display:inline-block;background:#A8C42E;color:#1F2340;padding:12px 20px;border-radius:999px;font-weight:bold;text-decoration:none">Sign in to Wackometer</a></p><p style="color:#646A8C;font-size:13px">Didn't ask for this? Ignore it and nothing happens.</p></div>`,
-        text: `Sign in to Wackometer (link works for 20 minutes): ${link}` }),
-    });
-    if (!res.ok) { console.error("resend", res.status, await res.text()); return bad("The email didn't send. Try again in a minute.", 502); }
+    const fromRaw = env.EMAIL_FROM || "Wackometer <hello@wackometer.com>";
+    const fm = fromRaw.match(/^\s*(.*?)\s*<([^>]+)>\s*$/), from = fm ? { name: fm[1] || "Wackometer", email: fm[2] } : { email: fromRaw.trim() };
+    const html = `<div style="font-family:Arial,sans-serif;font-size:16px;color:#1F2340"><p>Tap to sign in to Wackometer. The link works for 20 minutes.</p><p><a href="${link}" style="display:inline-block;background:#A8C42E;color:#1F2340;padding:12px 20px;border-radius:999px;font-weight:bold;text-decoration:none">Sign in to Wackometer</a></p><p style="color:#646A8C;font-size:13px">Didn't ask for this? Ignore it and nothing happens.</p></div>`;
+    let res;
+    try { res = await fetch("https://api.sendgrid.com/v3/mail/send", {
+      method: "POST", headers: { authorization: `Bearer ${env.SENDGRID_API_KEY}`, "content-type": "application/json" },
+      body: JSON.stringify({
+        personalizations: [{ to: [{ email }] }], from, subject: "Your Wackometer sign-in link",
+        content: [{ type: "text/plain", value: `Sign in to Wackometer (link works for 20 minutes): ${link}` }, { type: "text/html", value: html }],
+        tracking_settings: { click_tracking: { enable: false, enable_text: false } },
+      }),
+    }); } catch (e) { console.error("sendgrid fetch", e); return bad("The email didn't send. Try again in a minute.", 502); }
+    if (!res.ok) { console.error("sendgrid", res.status, await res.text()); return bad("The email didn't send. Try again in a minute.", 502); }
     return json({ ok: true });
   }
   if (path === "/api/logout" && method === "POST") {

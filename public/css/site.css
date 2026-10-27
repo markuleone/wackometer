@@ -403,3 +403,13 @@ a.penitem{text-decoration:none;color:inherit;grid-template-columns:28px minmax(0
 .mbox h3{margin:0;font-size:22px}
 .mbox .mch{width:80px;height:80px}
 #loginForm{display:flex;flex-direction:column;gap:10px}
+
+/* donebyverde credit: just the spinning asterisk */
+footer{display:flex;flex-direction:column;align-items:center;gap:10px}
+.dbv{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;color:var(--muted);opacity:.7;border-radius:50%}
+.dbv svg{width:16px;height:16px;display:block;fill:currentColor;animation:dbv-spin 9s linear infinite;transition:fill .2s}
+.dbv:hover,.dbv:focus-visible{opacity:1}
+.dbv:hover svg,.dbv:focus-visible svg{fill:#A3E635;animation-duration:1.6s}
+@keyframes dbv-spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.dbv svg{animation:none}}
+.flinks{margin:0;text-align:center}

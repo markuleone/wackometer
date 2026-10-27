@@ -67,9 +67,10 @@ You need Node 18+ and a Cloudflare account.
 
 ## Turn on email sign-in (optional but recommended)
 
-1. Make a free account at resend.com, add wackometer.com as a sending domain, and add the DNS records it shows you in Cloudflare.
-2. `npx wrangler secret put RESEND_API_KEY`
-3. Sign-in links come from `EMAIL_FROM` in `wrangler.toml`. The admin screen at `/admin` opens for the emails in `ADMIN_EMAILS`.
+1. In SendGrid: Settings → Sender Authentication → **Authenticate your domain** for wackometer.com, and add the DNS records it shows you in Cloudflare (DNS → Records). Turn off the Cloudflare proxy (grey cloud) on those CNAMEs.
+2. Settings → API Keys → Create API Key with **Restricted Access → Mail Send: Full Access**. Copy the key (starts with `SG.`). SendGrid shows it once.
+3. Add it in Cloudflare as a secret named `SENDGRID_API_KEY` (Workers & Pages → wackometer → Settings → Variables and Secrets), or `npx wrangler secret put SENDGRID_API_KEY`.
+4. Sign-in emails come from `EMAIL_FROM` in `wrangler.toml` (default `hello@wackometer.com`). It must be on the domain you authenticated. The admin screen at `/admin` opens for the emails in `ADMIN_EMAILS`.
 
 ## Run it on your computer
 
@@ -103,6 +104,6 @@ Open http://localhost:8787.
 
 ## Known gaps before a big launch
 
-- **Email sign-in needs Resend.** Until `RESEND_API_KEY` is set, accounts live in one browser's cookie.
+- **Email sign-in needs SendGrid.** Until `SENDGRID_API_KEY` is set, accounts live in one browser's cookie.
 - **Famous-lyric filter.** The checkbox and reports are the only guard against people posting copyrighted songs on the Wall. Watch reports closely at launch.
 - **The link preview image** (`og.png`) was rendered without the Fredoka font. Retake it from the live site for a sharper version.

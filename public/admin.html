@@ -29,4 +29,4 @@ async function load(){
   $("events").innerHTML=types.length?`<tr><th style="text-align:left;padding:4px 10px">Event</th>${days.map(x=>`<th style="padding:4px 10px">${x.slice(5)}</th>`).join("")}</tr>`+types.map(t=>`<tr><td style="padding:4px 10px">${t}</td>${days.map(x=>`<td style="padding:4px 10px;text-align:right">${cell(x,t)}</td>`).join("")}</tr>`).join(""):`<tr><td class="hint">No events yet.</td></tr>`;
 }
 load();
-</script></div></body></html>
+</script><footer><a class="dbv" href="https://donebyverde.com" target="_blank" rel="noopener noreferrer" aria-label="Website by donebyverde (opens in a new tab)" title="Website by donebyverde"><svg viewBox="0 0 200 200" aria-hidden="true"><path d="M75 0H125L123 61L174 28L200 72L146 100L200 128L174 172L123 139L125 200H75L77 139L26 172L0 128L54 100L0 72L26 28L77 61Z"/></svg></a></footer></div></body></html>
