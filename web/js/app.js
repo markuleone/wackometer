@@ -512,6 +512,17 @@ $("tourSkip").onclick = () => { tourI = TOUR.length; tourStep(); };
 let installEvt = null;
 window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installEvt = e; $("installBtn").hidden = false; });
 $("installBtn").onclick = async () => { if (!installEvt) return; installEvt.prompt(); await installEvt.userChoice.catch(() => {}); installEvt = null; $("installBtn").hidden = true; track("install"); };
+// iPhone/iPad Safari has no install prompt: show the same button with Add to Home Screen steps instead.
+const iOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+if (iOS && !standalone && ls("wk-ios-hint") !== "1") {
+  $("installBtn").hidden = false;
+  $("installBtn").onclick = () => {
+    $("quip").textContent = "Wendy: Tap the Share button (□↑) in Safari, then “Add to Home Screen”. Wackometer opens like an app.";
+    $("mchar").innerHTML = charSVG(1); show("weigh"); $("meter").scrollIntoView({ behavior: "smooth", block: "center" });
+    ls("wk-ios-hint", "1"); $("installBtn").hidden = true; track("install");
+  };
+}
 if ("serviceWorker" in navigator && location.hostname !== "localhost") window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
 
 /* ---------- boot ---------- */
