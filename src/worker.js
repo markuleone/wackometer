@@ -1,6 +1,7 @@
 // Wackometer API — Cloudflare Worker.
 // Everything under /api/* lands here; Cloudflare serves the front end from /public.
 import { SCHEMA, MIGRATIONS } from "./schema.js";
+import { handleSocial, profileMeta } from "./social.js";
 import { analyze, tierOf, clamp, MID, TIERS, METRICS, words, dailyKey, dailyPrompt } from "../public/js/score.js";
 
 const json = (data, status = 200, headers = {}) =>
@@ -76,7 +77,7 @@ function liveStreak(u) {
 const adminEmails = (env) => String(env.ADMIN_EMAILS || "").toLowerCase().split(",").map((s) => s.trim()).filter(Boolean);
 const isAdmin = (u, env) => !!(u.email && adminEmails(env).includes(u.email.toLowerCase()));
 function me(u, used, env) {
-  return { id: u.id, email: u.email || null, admin: isAdmin(u, env), canEmail: !!env.SENDGRID_API_KEY, pro: !!isPro(u), proUntil: u.pro_until || null, credits: u.credits, usedToday: used,
+  return { id: u.id, email: u.email || null, username: u.username || null, admin: isAdmin(u, env), canEmail: !!env.SENDGRID_API_KEY, pro: !!isPro(u), proUntil: u.pro_until || null, credits: u.credits, usedToday: used,
     freeDaily: +env.FREE_DAILY || 5, handle: u.handle || null, streak: liveStreak(u), lastDaily: u.last_daily || null,
     billing: !!u.stripe_customer, checkout: !!env.STRIPE_SECRET_KEY };
 }
@@ -133,6 +134,7 @@ export default {
 
     // Stripe calls this directly; no session cookie.
     if (path === "/api/stripe/webhook" && method === "POST") { await ensureSchema(env); return stripeWebhook(req, env); }
+    if (path.startsWith("/u/")) return profilePage(req, env, decodeURIComponent(path.slice(3)).toLowerCase());
     if (!path.startsWith("/api/")) return env.ASSETS.fetch(req);
     if (method !== "GET" && req.headers.get("origin") && new URL(req.headers.get("origin")).host !== url.host) return bad("Wrong origin", 403);
 
@@ -510,7 +512,26 @@ async function route(path, method, url, body, u, env) {
     return json({ url: p.url });
   }
 
+  const social = await handleSocial(path, method, url, body, u, env);
+  if (social) return social;
+
   return bad("Not found", 404);
+}
+
+// Profile links get their own title and description in link previews (iMessage, Instagram, X).
+async function profilePage(req, env, username) {
+  const page = await env.ASSETS.fetch(new Request(new URL("/", req.url), req));
+  let meta = null;
+  try { await ensureSchema(env); meta = await profileMeta(env, username.replace(/[^a-z0-9_.]/g, "")); } catch (e) {}
+  if (!meta) return page;
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  return new HTMLRewriter()
+    .on("title", { element(e) { e.setInnerContent(meta.title); } })
+    .on('meta[property="og:title"]', { element(e) { e.setAttribute("content", meta.title); } })
+    .on('meta[property="og:description"]', { element(e) { e.setAttribute("content", meta.description); } })
+    .on('meta[name="description"]', { element(e) { e.setAttribute("content", meta.description); } })
+    .transform(page);
+  void esc;
 }
 
 async function stripeWebhook(req, env) {

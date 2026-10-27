@@ -10,7 +10,15 @@ CREATE TABLE IF NOT EXISTS users (
   handle        TEXT,                            -- public display name for leaderboards
   streak        INTEGER NOT NULL DEFAULT 0,
   last_daily    TEXT,                            -- YYYY-MM-DD of last Daily W entry
-  email         TEXT                             -- set once they sign in by email
+  email         TEXT,                            -- set once they sign in by email
+  username      TEXT,                            -- public @handle, unique
+  display_name  TEXT,
+  bio           TEXT,
+  avatar        INTEGER,                         -- crew member 0-5
+  color         TEXT,                            -- profile banner color
+  genre         TEXT,
+  links         TEXT,                            -- JSON of music/social links
+  pinned        TEXT                             -- signature line
 );
 
 CREATE TABLE IF NOT EXISTS readings (
@@ -117,3 +125,32 @@ CREATE TABLE IF NOT EXISTS events (
   count  INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (day, type)
 );
+
+-- friends: one row per pair, a < b alphabetically
+CREATE TABLE IF NOT EXISTS friends (
+  a             TEXT NOT NULL,
+  b             TEXT NOT NULL,
+  requested_by  TEXT NOT NULL,
+  status        TEXT NOT NULL DEFAULT 'pending',   -- pending | accepted
+  created_at    INTEGER NOT NULL,
+  PRIMARY KEY (a, b)
+);
+CREATE INDEX IF NOT EXISTS friends_b ON friends(b);
+
+-- head-to-head battles between friends
+CREATE TABLE IF NOT EXISTS battles (
+  id          TEXT PRIMARY KEY,
+  emoji       TEXT,
+  prompt      TEXT NOT NULL,
+  challenger  TEXT NOT NULL,
+  opponent    TEXT NOT NULL,
+  c_lines     TEXT,
+  o_lines     TEXT,
+  c_score     INTEGER,
+  o_score     INTEGER,
+  status      TEXT NOT NULL DEFAULT 'open',   -- open | done | declined
+  created_at  INTEGER NOT NULL,
+  done_at     INTEGER
+);
+CREATE INDEX IF NOT EXISTS battles_c ON battles(challenger);
+CREATE INDEX IF NOT EXISTS battles_o ON battles(opponent);

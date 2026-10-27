@@ -1,6 +1,6 @@
 // Generated from schema.sql. The worker runs these once per instance, so a fresh database sets itself up.
 export const SCHEMA = [
-  "CREATE TABLE IF NOT EXISTS users ( id TEXT PRIMARY KEY, created_at INTEGER NOT NULL, plan TEXT NOT NULL DEFAULT 'free', pro_until INTEGER, credits INTEGER NOT NULL DEFAULT 0, stripe_customer TEXT, handle TEXT, streak INTEGER NOT NULL DEFAULT 0, last_daily TEXT, email TEXT )",
+  "CREATE TABLE IF NOT EXISTS users ( id TEXT PRIMARY KEY, created_at INTEGER NOT NULL, plan TEXT NOT NULL DEFAULT 'free', pro_until INTEGER, credits INTEGER NOT NULL DEFAULT 0, stripe_customer TEXT, handle TEXT, streak INTEGER NOT NULL DEFAULT 0, last_daily TEXT, email TEXT, username TEXT, display_name TEXT, bio TEXT, avatar INTEGER, color TEXT, genre TEXT, links TEXT, pinned TEXT )",
   "CREATE TABLE IF NOT EXISTS readings ( id TEXT PRIMARY KEY, user_id TEXT NOT NULL, title TEXT, excerpt TEXT NOT NULL, raw INTEGER NOT NULL, score INTEGER NOT NULL, tier INTEGER NOT NULL, metrics TEXT NOT NULL, vote_count INTEGER NOT NULL DEFAULT 0, reports INTEGER NOT NULL DEFAULT 0, hidden INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL )",
   "CREATE INDEX IF NOT EXISTS readings_new ON readings(hidden, created_at DESC)",
   "CREATE INDEX IF NOT EXISTS readings_top ON readings(hidden, vote_count DESC)",
@@ -16,10 +16,24 @@ export const SCHEMA = [
   "CREATE TABLE IF NOT EXISTS pen_lines ( pen_id TEXT NOT NULL, idx INTEGER NOT NULL, user_id TEXT NOT NULL, handle TEXT, text TEXT NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY (pen_id, idx) )",
   "CREATE INDEX IF NOT EXISTS pen_lines_user ON pen_lines(user_id)",
   "CREATE TABLE IF NOT EXISTS login_tokens ( token TEXT PRIMARY KEY, email TEXT NOT NULL, user_id TEXT NOT NULL, expires_at INTEGER NOT NULL )",
-  "CREATE TABLE IF NOT EXISTS events ( day TEXT NOT NULL, type TEXT NOT NULL, count INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, type) )"
+  "CREATE TABLE IF NOT EXISTS events ( day TEXT NOT NULL, type TEXT NOT NULL, count INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, type) )",
+  "CREATE TABLE IF NOT EXISTS friends ( a TEXT NOT NULL, b TEXT NOT NULL, requested_by TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', created_at INTEGER NOT NULL, PRIMARY KEY (a, b) )",
+  "CREATE INDEX IF NOT EXISTS friends_b ON friends(b)",
+  "CREATE TABLE IF NOT EXISTS battles ( id TEXT PRIMARY KEY, emoji TEXT, prompt TEXT NOT NULL, challenger TEXT NOT NULL, opponent TEXT NOT NULL, c_lines TEXT, o_lines TEXT, c_score INTEGER, o_score INTEGER, status TEXT NOT NULL DEFAULT 'open', created_at INTEGER NOT NULL, done_at INTEGER )",
+  "CREATE INDEX IF NOT EXISTS battles_c ON battles(challenger)",
+  "CREATE INDEX IF NOT EXISTS battles_o ON battles(opponent)"
 ];
 
-// Column additions for databases created before these existed. Each runs on its own; 'duplicate column' errors are expected and ignored.
+// Changes for databases created before these existed. Each runs on its own; 'duplicate column' errors are expected and ignored.
 export const MIGRATIONS = [
   "ALTER TABLE users ADD COLUMN email TEXT",
+  "ALTER TABLE users ADD COLUMN username TEXT",
+  "ALTER TABLE users ADD COLUMN display_name TEXT",
+  "ALTER TABLE users ADD COLUMN bio TEXT",
+  "ALTER TABLE users ADD COLUMN avatar INTEGER",
+  "ALTER TABLE users ADD COLUMN color TEXT",
+  "ALTER TABLE users ADD COLUMN genre TEXT",
+  "ALTER TABLE users ADD COLUMN links TEXT",
+  "ALTER TABLE users ADD COLUMN pinned TEXT",
+  "CREATE UNIQUE INDEX IF NOT EXISTS users_username ON users(username)"
 ];

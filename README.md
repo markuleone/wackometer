@@ -100,6 +100,8 @@ Open http://localhost:8787.
 - **Pass the Pen**: `/pen/<id>` songs written one line at a time by different people (16 lines max, nobody twice in a row).
 - **Wall** with tier votes, 🔥😭💀🤢 reactions, Featured, reports.
 - **Wingman** chat, emoji starters, Pro and credits.
+- **Squad**: customizable profiles at `/u/<username>` (crew avatar, color, bio, genre, signature line, music links, stats, unlocks), friend requests and search, W Points leaderboards (squad or everyone, week or today) and blind head-to-head battles between friends.
+- **Light and dark mode**: follows the device by default, with a toggle in the header.
 - **Admin** at `/admin`: totals, share/save counts by day, reported posts to hide, restore or delete.
 
 ## Known gaps before a big launch
