@@ -25,16 +25,23 @@
   <header>
     <div class="brand">
       <h1 class="logo"><span class="w">W</span>ackometer</h1>
-      <p class="tag">Measures wacktility. Type in your lyrics, see how wack they are.</p>
+      <p class="tag">Write it. Weigh it. Share the W. Songwriting with a crew that has your back.</p>
+    </div>
+    <div class="hright">
+    <div class="util">
+      <button class="ubtn" id="soundBtn" aria-pressed="false" title="Sound effects">🔈 Sound off</button>
+      <button class="ubtn" id="acctBtn">Sign in</button>
     </div>
     <nav id="mainNav" role="tablist" aria-label="Sections">
       <button role="tab" id="tab-weigh" aria-selected="true" data-v="weigh">Weigh</button>
       <button role="tab" id="tab-daily" aria-selected="false" data-v="daily">Daily W</button>
+      <button role="tab" id="tab-pen" aria-selected="false" data-v="pen">Pass the Pen</button>
       <button role="tab" id="tab-wall" aria-selected="false" data-v="wall">Wall</button>
       <button role="tab" id="tab-wingman" aria-selected="false" data-v="wingman">Wingman</button>
       <button role="tab" id="tab-why" aria-selected="false" data-v="why">Why</button>
       <button role="tab" id="tab-pro" aria-selected="false" data-v="pro" class="pro">Wingman Pro</button>
     </nav>
+    </div>
   </header>
 
   <!-- WEIGH -->
@@ -50,6 +57,7 @@
     <div class="pad">
       <label for="lyrics">Your words</label>
       <textarea id="lyrics" spellcheck="false" placeholder="Paste a verse, a hook, a poem…"></textarea>
+      <div class="buddy" id="buddy" hidden><span class="bch" id="buddyChar"></span><span class="btxt" id="buddyText"></span></div>
       <div class="row">
         <button class="btn go" id="weighBtn">Weigh it</button>
         <button class="btn" id="wipeBtn">Wipe</button>
@@ -81,6 +89,7 @@
         <div class="mhead"><div class="mchar" id="mchar"></div><div class="mtext"><div class="score" id="score">–</div>
         <div class="verdict bg-t2 t2" id="verdict">Waiting</div></div></div>
         <div class="quip" id="quip">The crew is ready. Paste something.</div>
+        <div class="bestpick" id="bestPick" hidden><span class="bpch" id="bestChar"></span><div><b>⭐ Wiz's pick</b><p id="bestText"></p><span class="hint">The line only you would write. Keep it.</span></div></div>
         <p class="blurb" id="blurb">Paste some lines and hit Weigh it.</p>
         <div class="tune" id="tune"></div>
       </div>
@@ -102,7 +111,7 @@
           <div class="side">
             <label for="cardLines" class="hint">Lines on the card (keep it to two or three)</label>
             <textarea id="cardLines" maxlength="180"></textarea>
-            <div class="row"><button class="btn bile" id="saveCard">Save image</button><button class="btn" id="shareCard">Share</button><button class="btn" id="copyCap">Copy caption</button></div>
+            <div class="row"><button class="btn bile" id="saveCard">Save image</button><button class="btn" id="saveVideo">🎬 Save video</button><button class="btn" id="shareCard">Share</button><button class="btn" id="copyCap">Copy caption</button></div>
             <div class="cap" id="cap"></div>
             <span class="hint" id="cardNote">Sized 1080×1920 for TikTok, Reels and Stories.</span>
           </div>
@@ -116,11 +125,15 @@
     <div class="dhead">
       <div class="dtitle">
         <span class="eyebrow" id="dNum">Daily W</span>
+        <div class="demoji" id="dEmoji" aria-hidden="true"></div>
         <h2 id="dPrompt">Loading today's prompt…</h2>
         <p class="tag">Same prompt for everyone. One shot a day. The lowest wack score tops the Crew board. The crowd's 🔥 picks run the other one.</p>
         <p class="hint" id="dCount"></p>
       </div>
-      <div class="streak"><span class="flame">🔥</span><b id="dStreak">0</b><span>day streak</span></div>
+      <div class="dside">
+        <div class="streak"><span class="flame">🔥</span><b id="dStreak">0</b><span>day streak</span></div>
+        <div class="unlocks" id="unlocks"></div>
+      </div>
     </div>
     <div class="dgrid">
       <div class="dleft">
@@ -145,6 +158,59 @@
         <div id="dBoard" class="board"></div>
       </div>
     </div>
+  </section>
+
+  <!-- PASS THE PEN -->
+  <section id="v-pen" class="penv" hidden>
+    <div class="dhead">
+      <div class="dtitle">
+        <span class="eyebrow">Pass the Pen</span>
+        <h2>Write a song one line at a time, with your friends.</h2>
+        <p class="tag">Start it with one line. Send the link to the group chat. Everyone adds the next line, but nobody goes twice in a row. Up to 16 lines.</p>
+      </div>
+      <div class="penchars" id="penChars"></div>
+    </div>
+    <div class="dgrid">
+      <div class="dleft">
+        <div class="dcompose" id="penNew">
+          <label for="penTitle" class="hint">Song title (optional)</label>
+          <input type="text" id="penTitle" maxlength="60" placeholder="Untitled banger">
+          <label for="penFirst" class="hint">First line</label>
+          <input type="text" id="penFirst" maxlength="140" placeholder="The first line sets the vibe…">
+          <input type="text" id="penHandle" maxlength="20" placeholder="Your name (optional)">
+          <div class="row"><button class="btn bile" id="penStart">Start the song</button><span class="hint" id="penNote"></span></div>
+        </div>
+        <div class="pensong" id="penSong" hidden>
+          <div class="penhead"><h3 id="penSongTitle">Untitled</h3><span class="pill" id="penTier"></span></div>
+          <ol class="penlines" id="penLines"></ol>
+          <div class="penadd" id="penAdd">
+            <input type="text" id="penLine" maxlength="140" placeholder="Write the next line…">
+            <input type="text" id="penLineHandle" maxlength="20" placeholder="Your name (optional)">
+            <div class="row"><button class="btn bile" id="penAddBtn">Add my line</button><span class="hint" id="penAddNote"></span></div>
+          </div>
+          <div class="penwait" id="penWait" hidden></div>
+          <div class="row">
+            <button class="btn go" id="penShare">📨 Pass the pen</button>
+            <button class="btn" id="penWeigh">Weigh the whole song</button>
+            <button class="btn" id="penClose" hidden>Finish the song</button>
+            <button class="btn" id="penNewBtn">Start another</button>
+          </div>
+          <span class="hint" id="penShareNote"></span>
+        </div>
+      </div>
+      <div class="boards">
+        <h3 class="sideh">Your songs</h3>
+        <div id="penList" class="board"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 404 -->
+  <section id="v-lost" class="lostv" hidden>
+    <div class="lostch" id="lostChar"></div>
+    <h2>Wobbles got lost.</h2>
+    <p class="tag">This page doesn't exist. Maybe it was a deep cut.</p>
+    <a class="btn bile" href="/">Take me home</a>
   </section>
 
   <!-- WALL -->
@@ -179,6 +245,10 @@
     </div>
     <aside class="panel">
       <div class="wingbig" data-wingbig></div>
+      <h3>Emoji starter</h3>
+      <p class="ctx">Pick up to 3 emojis. Wingman turns them into the first two lines of a song.</p>
+      <div class="epick" id="epick"></div>
+      <div class="row"><span class="echosen" id="echosen">_ _ _</span><button class="btn bile" id="eGo" disabled>Write my starter</button></div>
       <h3>Quick asks</h3>
       <div class="chips" id="chips">
         <button>Make my lyrics less wack</button>
@@ -249,7 +319,25 @@
     </div>
   </section>
 
-  <footer>Wackometer · every word starts with W, or tries to · <a href="#why">How scoring works</a></footer>
+  <footer>Wackometer · every word starts with W, or tries to · <a href="/#why">How scoring works</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a></footer>
+
+<div class="swappop" id="swapPop" hidden role="dialog" aria-label="Swap this cliché">
+  <div class="swaph"><span id="swapFrom"></span><button class="x" id="swapX" aria-label="Close">×</button></div>
+  <div class="swapopts" id="swapOpts"></div>
+  <button class="swapmore" id="swapMore">✨ Ask Wingman for more</button>
+</div>
+
+<div class="modal" id="loginModal" hidden role="dialog" aria-labelledby="loginH">
+  <div class="mbox">
+    <div class="mch" id="loginChar"></div>
+    <h3 id="loginH">Save your streak and songs</h3>
+    <p class="tag" id="loginSub">Sign in with your email and we'll send you a link. No password. Your streak, Pro and songs follow you to any device.</p>
+    <div id="loginForm"><input type="text" id="loginEmail" inputmode="email" autocomplete="email" placeholder="you@email.com">
+    <div class="row"><button class="btn bile" id="loginGo">Email me a link</button><button class="btn" id="loginX">Not now</button></div></div>
+    <div id="loginOut" hidden><div class="row"><button class="btn" id="logoutBtn">Sign out</button><a class="btn" id="adminLink" href="/admin" hidden>Admin</a><button class="btn" id="loginX2">Close</button></div></div>
+    <span class="hint" id="loginNote"></span>
+  </div>
+</div>
 </div>
 
 

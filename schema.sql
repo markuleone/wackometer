@@ -9,7 +9,8 @@ CREATE TABLE IF NOT EXISTS users (
   stripe_customer TEXT,
   handle        TEXT,                            -- public display name for leaderboards
   streak        INTEGER NOT NULL DEFAULT 0,
-  last_daily    TEXT                             -- YYYY-MM-DD of last Daily W entry
+  last_daily    TEXT,                            -- YYYY-MM-DD of last Daily W entry
+  email         TEXT                             -- set once they sign in by email
 );
 
 CREATE TABLE IF NOT EXISTS readings (
@@ -70,4 +71,49 @@ CREATE TABLE IF NOT EXISTS daily_likes (
   entry_user  TEXT NOT NULL,
   user_id     TEXT NOT NULL,
   PRIMARY KEY (day, entry_user, user_id)
+);
+
+-- emoji reactions on Wall posts
+CREATE TABLE IF NOT EXISTS reactions (
+  reading_id  TEXT NOT NULL,
+  user_id     TEXT NOT NULL,
+  emoji       TEXT NOT NULL,
+  PRIMARY KEY (reading_id, user_id, emoji)
+);
+
+-- Pass the Pen: songs written one line at a time by different people
+CREATE TABLE IF NOT EXISTS pens (
+  id          TEXT PRIMARY KEY,
+  title       TEXT,
+  created_by  TEXT NOT NULL,
+  line_count  INTEGER NOT NULL DEFAULT 0,
+  closed      INTEGER NOT NULL DEFAULT 0,
+  created_at  INTEGER NOT NULL,
+  updated_at  INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS pen_lines (
+  pen_id      TEXT NOT NULL,
+  idx         INTEGER NOT NULL,
+  user_id     TEXT NOT NULL,
+  handle      TEXT,
+  text        TEXT NOT NULL,
+  created_at  INTEGER NOT NULL,
+  PRIMARY KEY (pen_id, idx)
+);
+CREATE INDEX IF NOT EXISTS pen_lines_user ON pen_lines(user_id);
+
+-- email sign-in links
+CREATE TABLE IF NOT EXISTS login_tokens (
+  token       TEXT PRIMARY KEY,
+  email       TEXT NOT NULL,
+  user_id     TEXT NOT NULL,
+  expires_at  INTEGER NOT NULL
+);
+
+-- simple daily counters for what people do (shares, saves, swaps)
+CREATE TABLE IF NOT EXISTS events (
+  day    TEXT NOT NULL,
+  type   TEXT NOT NULL,
+  count  INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (day, type)
 );

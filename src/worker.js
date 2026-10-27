@@ -1,6 +1,6 @@
 // Wackometer API — Cloudflare Worker.
 // Everything under /api/* lands here; Cloudflare serves the front end from /public.
-import { SCHEMA } from "./schema.js";
+import { SCHEMA, MIGRATIONS } from "./schema.js";
 import { analyze, tierOf, clamp, MID, TIERS, METRICS, words, dailyKey, dailyPrompt } from "../public/js/score.js";
 
 const json = (data, status = 200, headers = {}) =>
@@ -13,7 +13,10 @@ const enc = new TextEncoder();
 /* ---------------- database setup ---------------- */
 let schemaReady = null;
 function ensureSchema(env) {
-  if (!schemaReady) schemaReady = env.DB.batch(SCHEMA.map((s) => env.DB.prepare(s))).catch((e) => { schemaReady = null; throw e; });
+  if (!schemaReady) schemaReady = (async () => {
+    await env.DB.batch(SCHEMA.map((s) => env.DB.prepare(s)));
+    for (const m of MIGRATIONS) { try { await env.DB.prepare(m).run(); } catch (e) { /* already applied */ } }
+  })().catch((e) => { schemaReady = null; throw e; });
   return schemaReady;
 }
 
@@ -38,9 +41,12 @@ async function session(req, env) {
   const id = "u" + rid();
   await env.DB.prepare("INSERT INTO users (id, created_at) VALUES (?, ?)").bind(id, now()).run();
   const user = await env.DB.prepare("SELECT * FROM users WHERE id=?").bind(id).first();
+  return { user, setCookie: await cookieFor(req, env, id) };
+}
+async function cookieFor(req, env, id) {
+  const secret = env.SESSION_SECRET || "dev-only-secret-change-me";
   const secure = new URL(req.url).protocol === "https:" ? "; Secure" : "";
-  const setCookie = `wk=${id}.${await hmac(secret, id)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=63072000${secure}`;
-  return { user, setCookie };
+  return `wk=${id}.${await hmac(secret, id)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=63072000${secure}`;
 }
 const isPro = (u) => u.pro_until && u.pro_until > now();
 
@@ -61,17 +67,30 @@ async function usedToday(env, uid) {
   const r = await env.DB.prepare("SELECT wingman FROM usage WHERE user_id=? AND day=?").bind(uid, dailyKey()).first();
   return r ? r.wingman : 0;
 }
+function liveStreak(u) {
+  if (!u.last_daily) return 0;
+  const today = dailyKey(), [y, m, d] = today.split("-").map(Number);
+  const yday = new Date(Date.UTC(y, m - 1, d - 1)).toISOString().slice(0, 10);
+  return u.last_daily === today || u.last_daily === yday ? u.streak || 0 : 0;
+}
+const adminEmails = (env) => String(env.ADMIN_EMAILS || "").toLowerCase().split(",").map((s) => s.trim()).filter(Boolean);
+const isAdmin = (u, env) => !!(u.email && adminEmails(env).includes(u.email.toLowerCase()));
 function me(u, used, env) {
-  return { id: u.id, pro: !!isPro(u), proUntil: u.pro_until || null, credits: u.credits, usedToday: used,
-    freeDaily: +env.FREE_DAILY || 5, handle: u.handle || null, streak: u.streak || 0, lastDaily: u.last_daily || null,
+  return { id: u.id, email: u.email || null, admin: isAdmin(u, env), canEmail: !!env.RESEND_API_KEY, pro: !!isPro(u), proUntil: u.pro_until || null, credits: u.credits, usedToday: used,
+    freeDaily: +env.FREE_DAILY || 5, handle: u.handle || null, streak: liveStreak(u), lastDaily: u.last_daily || null,
     billing: !!u.stripe_customer, checkout: !!env.STRIPE_SECRET_KEY };
 }
+const REACTIONS = ["🔥", "😭", "💀", "🤢"];
+const PEN_MAX = 16;
+const EVENT_TYPES = ["share_card", "save_card", "save_video", "copy_caption", "copy_daily", "copy_roast", "pen_share", "pen_start", "swap_used", "emoji_starter", "best_line"];
+const cleanLine = (s) => { const t = String(s || "").replace(/\s+/g, " ").trim().slice(0, 140); return words(t).length >= 2 ? t : ""; };
 const cleanHandle = (h) => String(h || "").replace(/[^A-Za-z0-9_.\- ]/g, "").trim().slice(0, 20);
 
 /* ---------------- Wingman (Claude API) ---------------- */
 const WINGMAN_SYSTEM = `You are Wingman, the songwriting assistant inside Wackometer, an app that grades how wack lyrics are: Wicked 0-19, Well put 20-39, Whatever 40-59, Weird 60-79, Wack 80-100. Wack means clichés, lazy rhymes (fire/desire), abstract filler words, padding syllables and needless repetition.
 Voice: a confident studio friend. Short, direct, warm, a little playful. Lean into words starting with W when it's natural, never forced.
 Rules: write only original lyrics. Never reproduce or closely imitate lines from existing copyrighted songs, even if asked. Favor concrete, sensory, specific images over abstractions. When rewriting, keep the writer's meaning and voice. Plain text only, no markdown. Keep replies under 220 words unless asked for a full song.`;
+const EMOJI_SYSTEM = `You are Wingman from Wackometer. The writer gives you three emojis. Turn them into a fresh, original two-line starter for a song: concrete images, a natural rhyme or near-rhyme, nothing cliché (no "fire/desire", no "end of time", no "set me free"). Then on a new line, one short sentence suggesting where the song could go next. Plain text, no markdown, no emojis in the lyric lines. Never imitate an existing song.`;
 const ROAST_SYSTEM = `You are Wretch, the queasy green blob from Wackometer, an app that grades how wack lyrics are. You roast the writer's lyrics in character: you're nauseous from clichés, you gag at lazy rhymes, you dramatically ask for a bucket. Be funny and specific: quote the exact phrases that made you sick and say why. Roast the writing, never the person: no insults about looks, identity, intelligence or anything personal, nothing cruel, no profanity. End with one genuinely useful fix, introduced with "Okay, real talk:". Plain text, under 120 words. If the lyrics are actually good, act shocked and disappointed you have nothing to roast.`;
 
 async function callClaude(env, system, messages, maxTokens = 700) {
@@ -124,13 +143,40 @@ export default {
     let res;
     try { res = await route(path, method, url, body, u, env); }
     catch (e) { console.error(e); res = bad("Something broke on our side. Try again in a moment.", 500); }
-    if (s.setCookie) res.headers.append("set-cookie", s.setCookie);
+    if (s.setCookie && !res.headers.has("set-cookie")) res.headers.append("set-cookie", s.setCookie);
     return res;
   },
 };
 
 async function route(path, method, url, body, u, env) {
   const DB = env.DB;
+
+  if (path === "/api/login/verify" && method === "GET") {
+    const t = url.searchParams.get("t") || "";
+    const row = await DB.prepare("SELECT * FROM login_tokens WHERE token=?").bind(t).first();
+    const go = (q) => new Response(null, { status: 302, headers: { location: `/?${q}#weigh` } });
+    if (!row || row.expires_at < now()) return go("signin=expired");
+    await DB.prepare("DELETE FROM login_tokens WHERE token=?").bind(t).run();
+    const existing = await DB.prepare("SELECT id FROM users WHERE lower(email)=?").bind(row.email).first();
+    let target = row.user_id;
+    if (existing) {
+      target = existing.id;
+      if (existing.id !== row.user_id) {
+        // Bring this device's posts, songs and Daily W into the account they signed in to.
+        await DB.batch([
+          DB.prepare("UPDATE readings SET user_id=? WHERE user_id=?").bind(target, row.user_id),
+          DB.prepare("UPDATE pens SET created_by=? WHERE created_by=?").bind(target, row.user_id),
+          DB.prepare("UPDATE pen_lines SET user_id=? WHERE user_id=?").bind(target, row.user_id),
+          DB.prepare("UPDATE OR IGNORE daily_entries SET user_id=? WHERE user_id=?").bind(target, row.user_id),
+        ]);
+      }
+    } else {
+      await DB.prepare("UPDATE users SET email=? WHERE id=?").bind(row.email, row.user_id).run();
+    }
+    const res = go("signin=ok");
+    res.headers.append("set-cookie", await cookieFor(new Request(url), env, target));
+    return res;
+  }
 
   if (path === "/api/me" && method === "GET") return json(me(u, await usedToday(env, u.id), env));
 
@@ -157,12 +203,19 @@ async function route(path, method, url, body, u, env) {
       const { results: my } = await DB.prepare(`SELECT reading_id, tier FROM votes WHERE user_id=? AND reading_id IN (${ph})`).bind(u.id, ...ids).all();
       my.forEach((v) => (mine[v.reading_id] = v.tier));
     }
+    const reacts = {}, myReacts = {};
+    if (ids.length) {
+      const ph = ids.map(() => "?").join(",");
+      const { results: rs } = await DB.prepare(`SELECT reading_id, emoji, COUNT(*) c, SUM(CASE WHEN user_id=? THEN 1 ELSE 0 END) mine FROM reactions WHERE reading_id IN (${ph}) GROUP BY reading_id, emoji`).bind(u.id, ...ids).all();
+      rs.forEach((r) => { (reacts[r.reading_id] ||= {})[r.emoji] = r.c; if (r.mine) (myReacts[r.reading_id] ||= []).push(r.emoji); });
+    }
     const agg = await DB.prepare(`SELECT COUNT(*) total, SUM(CASE WHEN v.tier=r.tier THEN 1 ELSE 0 END) agree FROM votes v JOIN readings r ON r.id=v.reading_id WHERE r.hidden=0`).first();
     const tune = await crowdTune(env);
     return json({
       feed,
       readings: rows.map((r) => ({ id: r.id, title: r.title, excerpt: r.excerpt, score: r.score, tier: r.tier, createdAt: r.created_at,
-        votes: counts[r.id] || [0, 0, 0, 0, 0], myVote: mine[r.id] ?? null, mine: r.user_id === u.id })),
+        votes: counts[r.id] || [0, 0, 0, 0, 0], myVote: mine[r.id] ?? null, mine: r.user_id === u.id,
+        reacts: reacts[r.id] || {}, myReacts: myReacts[r.id] || [] })),
       stats: { votes: agg.total || 0, wavelength: agg.total ? Math.round((agg.agree / agg.total) * 100) : null, tune: tune.tune, tuneN: tune.n },
     });
   }
@@ -216,15 +269,19 @@ async function route(path, method, url, body, u, env) {
       if (u.credits > 0) payWith = "credit";
       else return json({ error: "limit", message: `That's your ${free} free Wingman messages for today. They reset at midnight, or go Pro for unlimited.` }, 402);
     }
-    const mode = body.mode === "roast" ? "roast" : "chat";
+    const mode = ["roast", "emoji"].includes(body.mode) ? body.mode : "chat";
     const pad = String(body.pad || "").slice(0, 4000);
     const msg = String(body.message || "").slice(0, 1500);
     if (mode === "chat" && !msg.trim()) return bad("Ask Wingman something.");
     if (mode === "roast" && words(pad).length < 8) return bad("Give Wretch at least eight words to roast.");
+    const emojis = [...String(body.emojis || "")].filter((c) => /\p{Extended_Pictographic}/u.test(c)).slice(0, 3).join("");
+    if (mode === "emoji" && [...emojis].length < 1) return bad("Pick up to three emojis first.");
     const a = pad.trim() ? analyze(pad) : null;
     const reading = a ? `Wackometer reading: ${Math.round(a.raw)}/100 (${TIERS[tierOf(a.raw)].n}). ` + METRICS.map((mm) => `${mm.n} ${Math.round(a.vals[mm.k])}`).join(", ") + `. Clichés found: ${a.found.map((f) => f[0]).join(", ") || "none"}.` : "No lyrics in the pad.";
     let text;
-    if (mode === "roast") {
+    if (mode === "emoji") {
+      text = await callClaude(env, EMOJI_SYSTEM, [{ role: "user", content: `Emojis: ${emojis}` }], 250);
+    } else if (mode === "roast") {
       text = await callClaude(env, ROAST_SYSTEM, [{ role: "user", content: `Roast these lyrics.\n"""\n${pad}\n"""\n${reading}` }], 400);
     } else {
       const hist = (Array.isArray(body.history) ? body.history : []).slice(-10)
@@ -258,9 +315,9 @@ async function route(path, method, url, body, u, env) {
     const pub = (r) => ({ who: r.user_id === u.id ? "you" : r.handle || "Anonymous writer", entry: r.user_id, lines: r.lines, score: r.score, tier: r.tier, fires: r.fires, mine: r.user_id === u.id });
     let rank = null;
     if (mineRow) rank = (await DB.prepare("SELECT COUNT(*) c FROM daily_entries WHERE day=? AND score<?").bind(key, mineRow.score).first()).c + 1;
-    return json({ key, number: p.number, prompt: p.prompt, entries: total.c,
+    return json({ key, number: p.number, prompt: p.prompt, emoji: p.emoji, entries: total.c,
       mine: mineRow ? { lines: mineRow.lines, score: mineRow.score, tier: mineRow.tier, rank } : null,
-      crew: crew.map(pub), crowd: crowd.map(pub), liked: myLikes.map((l) => l.entry_user), streak: u.streak || 0, handle: u.handle || null });
+      crew: crew.map(pub), crowd: crowd.map(pub), liked: myLikes.map((l) => l.entry_user), streak: liveStreak(u), handle: u.handle || null });
   }
   if (path === "/api/daily" && method === "POST") {
     const key = dailyKey();
@@ -292,6 +349,135 @@ async function route(path, method, url, body, u, env) {
     if (body.off) await DB.prepare("DELETE FROM daily_likes WHERE day=? AND entry_user=? AND user_id=?").bind(key, entry, u.id).run();
     else await DB.prepare("INSERT OR IGNORE INTO daily_likes (day,entry_user,user_id) VALUES (?,?,?)").bind(key, entry, u.id).run();
     return json({ ok: true });
+  }
+
+  /* ----- Emoji reactions ----- */
+  if (path === "/api/react" && method === "POST") {
+    const emoji = String(body.emoji || "");
+    if (!REACTIONS.includes(emoji)) return bad("Pick one of the reactions.");
+    const r = await DB.prepare("SELECT id FROM readings WHERE id=? AND hidden=0").bind(String(body.id || "")).first();
+    if (!r) return bad("That post is gone.", 404);
+    if (body.off) await DB.prepare("DELETE FROM reactions WHERE reading_id=? AND user_id=? AND emoji=?").bind(r.id, u.id, emoji).run();
+    else await DB.prepare("INSERT OR IGNORE INTO reactions (reading_id,user_id,emoji) VALUES (?,?,?)").bind(r.id, u.id, emoji).run();
+    return json({ ok: true });
+  }
+
+  /* ----- Pass the Pen ----- */
+  if (path === "/api/pen" && method === "POST") {
+    const line = cleanLine(body.line), title = String(body.title || "").replace(/\s+/g, " ").trim().slice(0, 60);
+    if (!line) return bad("Write a first line with at least two words.");
+    const recent = await DB.prepare("SELECT COUNT(*) c FROM pens WHERE created_by=? AND created_at>?").bind(u.id, now() - 86400000).first();
+    if (recent.c >= 15) return bad("That's a lot of songs for one day. Finish one first.", 429);
+    if (body.handle) await DB.prepare("UPDATE users SET handle=? WHERE id=?").bind(cleanHandle(body.handle) || null, u.id).run();
+    const id = rid().slice(0, 10), t = now(), handle = cleanHandle(body.handle) || u.handle || null;
+    await DB.batch([
+      DB.prepare("INSERT INTO pens (id,title,created_by,line_count,created_at,updated_at) VALUES (?,?,?,1,?,?)").bind(id, title || null, u.id, t, t),
+      DB.prepare("INSERT INTO pen_lines (pen_id,idx,user_id,handle,text,created_at) VALUES (?,0,?,?,?,?)").bind(id, u.id, handle, line, t),
+    ]);
+    return json({ id });
+  }
+  if (path === "/api/pens" && method === "GET") {
+    const { results } = await DB.prepare(
+      `SELECT p.id, p.title, p.line_count, p.closed, p.updated_at, p.created_by=? AS mine,
+              (SELECT text FROM pen_lines WHERE pen_id=p.id AND idx=0) first
+       FROM pens p WHERE p.created_by=? OR p.id IN (SELECT pen_id FROM pen_lines WHERE user_id=?)
+       ORDER BY p.updated_at DESC LIMIT 30`).bind(u.id, u.id, u.id).all();
+    return json({ pens: results.map((p) => ({ id: p.id, title: p.title, lines: p.line_count, closed: !!p.closed, updatedAt: p.updated_at, mine: !!p.mine, first: p.first })) });
+  }
+  if ((m = path.match(/^\/api\/pen\/([a-z0-9]+)$/)) && method === "GET") {
+    const p = await DB.prepare("SELECT * FROM pens WHERE id=?").bind(m[1]).first();
+    if (!p) return bad("That song doesn't exist or was deleted.", 404);
+    const { results: lines } = await DB.prepare("SELECT idx, user_id, handle, text FROM pen_lines WHERE pen_id=? ORDER BY idx").bind(p.id).all();
+    const lastBy = lines.length ? lines[lines.length - 1].user_id : null;
+    const writers = [...new Set(lines.map((l) => l.user_id))];
+    return json({ id: p.id, title: p.title, closed: !!p.closed, mine: p.created_by === u.id, max: PEN_MAX,
+      canAdd: !p.closed && lines.length < PEN_MAX && lastBy !== u.id, yourTurnBlocked: lastBy === u.id,
+      writers: writers.length,
+      lines: lines.map((l) => ({ idx: l.idx, text: l.text, who: l.user_id === u.id ? "you" : l.handle || "Anonymous writer", writer: writers.indexOf(l.user_id), mine: l.user_id === u.id })) });
+  }
+  if ((m = path.match(/^\/api\/pen\/([a-z0-9]+)\/line$/)) && method === "POST") {
+    const p = await DB.prepare("SELECT * FROM pens WHERE id=?").bind(m[1]).first();
+    if (!p) return bad("That song doesn't exist.", 404);
+    if (p.closed) return bad("This song is finished. Start a new one.", 409);
+    if (p.line_count >= PEN_MAX) return bad(`This song hit ${PEN_MAX} lines. It's done!`, 409);
+    const lastLine = await DB.prepare("SELECT user_id FROM pen_lines WHERE pen_id=? ORDER BY idx DESC LIMIT 1").bind(p.id).first();
+    if (lastLine && lastLine.user_id === u.id) return bad("Pass the pen first. Someone else writes the next line.", 409);
+    const line = cleanLine(body.line);
+    if (!line) return bad("Write a line with at least two words.");
+    if (body.handle) await DB.prepare("UPDATE users SET handle=? WHERE id=?").bind(cleanHandle(body.handle) || null, u.id).run();
+    const handle = cleanHandle(body.handle) || u.handle || null;
+    try {
+      await DB.batch([
+        DB.prepare("INSERT INTO pen_lines (pen_id,idx,user_id,handle,text,created_at) VALUES (?,?,?,?,?,?)").bind(p.id, p.line_count, u.id, handle, line, now()),
+        DB.prepare("UPDATE pens SET line_count=line_count+1, updated_at=? WHERE id=?").bind(now(), p.id),
+      ]);
+    } catch (e) { return bad("Someone added a line at the same moment. Refresh and try again.", 409); }
+    return json({ ok: true });
+  }
+  if ((m = path.match(/^\/api\/pen\/([a-z0-9]+)\/close$/)) && method === "POST") {
+    const r = await DB.prepare("UPDATE pens SET closed=1, updated_at=? WHERE id=? AND created_by=?").bind(now(), m[1], u.id).run();
+    if (!r.meta.changes) return bad("Only the person who started this song can finish it.", 403);
+    return json({ ok: true });
+  }
+
+  /* ----- Sign in by email ----- */
+  if (path === "/api/login" && method === "POST") {
+    if (!env.RESEND_API_KEY) return bad("Email sign-in isn't set up yet.", 503);
+    const email = String(body.email || "").trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 200) return bad("That doesn't look like an email address.");
+    const sent = await DB.prepare("SELECT COUNT(*) c FROM login_tokens WHERE (email=? OR user_id=?) AND expires_at>?").bind(email, u.id, now()).first();
+    if (sent.c >= 5) return bad("We've sent a few links already. Check your inbox and spam folder.", 429);
+    const token = crypto.randomUUID().replace(/-/g, "") + rid();
+    await DB.prepare("INSERT INTO login_tokens (token,email,user_id,expires_at) VALUES (?,?,?,?)").bind(token, email, u.id, now() + 20 * 60000).run();
+    const link = `${env.APP_URL || url.origin}/api/login/verify?t=${token}`;
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST", headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, "content-type": "application/json" },
+      body: JSON.stringify({ from: env.EMAIL_FROM || "Wackometer <hello@wackometer.com>", to: [email], subject: "Your Wackometer sign-in link",
+        html: `<div style="font-family:Arial,sans-serif;font-size:16px;color:#1F2340"><p>Tap to sign in to Wackometer. The link works for 20 minutes.</p><p><a href="${link}" style="display:inline-block;background:#A8C42E;color:#1F2340;padding:12px 20px;border-radius:999px;font-weight:bold;text-decoration:none">Sign in to Wackometer</a></p><p style="color:#646A8C;font-size:13px">Didn't ask for this? Ignore it and nothing happens.</p></div>`,
+        text: `Sign in to Wackometer (link works for 20 minutes): ${link}` }),
+    });
+    if (!res.ok) { console.error("resend", res.status, await res.text()); return bad("The email didn't send. Try again in a minute.", 502); }
+    return json({ ok: true });
+  }
+  if (path === "/api/logout" && method === "POST") {
+    const res = json({ ok: true });
+    res.headers.append("set-cookie", "wk=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0");
+    return res;
+  }
+
+  /* ----- Analytics ----- */
+  if (path === "/api/event" && method === "POST") {
+    const type = String(body.type || "");
+    if (!EVENT_TYPES.includes(type)) return bad("Unknown event.");
+    await DB.prepare("INSERT INTO events (day,type,count) VALUES (?,?,1) ON CONFLICT(day,type) DO UPDATE SET count=count+1").bind(dailyKey(), type).run();
+    return json({ ok: true });
+  }
+
+  /* ----- Admin ----- */
+  if (path.startsWith("/api/admin/")) {
+    if (!isAdmin(u, env)) return bad("Admins only. Sign in with an admin email.", 403);
+    if (path === "/api/admin/overview" && method === "GET") {
+      const c = async (q, ...b) => (await DB.prepare(q).bind(...b).first()).c;
+      const day = dailyKey(), weekAgo = now() - 7 * 86400000;
+      const stats = {
+        users: await c("SELECT COUNT(*) c FROM users"), signedIn: await c("SELECT COUNT(*) c FROM users WHERE email IS NOT NULL"),
+        pro: await c("SELECT COUNT(*) c FROM users WHERE pro_until>?", now()), posts: await c("SELECT COUNT(*) c FROM readings"),
+        postsWeek: await c("SELECT COUNT(*) c FROM readings WHERE created_at>?", weekAgo), votes: await c("SELECT COUNT(*) c FROM votes"),
+        dailyToday: await c("SELECT COUNT(*) c FROM daily_entries WHERE day=?", day), pens: await c("SELECT COUNT(*) c FROM pens"),
+        penLines: await c("SELECT COUNT(*) c FROM pen_lines"), wingmanToday: (await DB.prepare("SELECT COALESCE(SUM(wingman),0) c FROM usage WHERE day=?").bind(day).first()).c,
+      };
+      const { results: events } = await DB.prepare("SELECT day, type, count FROM events ORDER BY day DESC LIMIT 200").all();
+      const { results: flagged } = await DB.prepare("SELECT id, title, excerpt, score, tier, reports, hidden, created_at FROM readings WHERE reports>0 OR hidden=1 ORDER BY hidden DESC, reports DESC, created_at DESC LIMIT 100").all();
+      return json({ stats, events, flagged });
+    }
+    if (path === "/api/admin/post" && method === "POST") {
+      const id = String(body.id || ""), action = body.action;
+      if (action === "hide") await DB.prepare("UPDATE readings SET hidden=1 WHERE id=?").bind(id).run();
+      else if (action === "unhide") await DB.prepare("UPDATE readings SET hidden=0, reports=0 WHERE id=?").bind(id).run();
+      else if (action === "delete") await DB.batch([DB.prepare("DELETE FROM readings WHERE id=?").bind(id), DB.prepare("DELETE FROM votes WHERE reading_id=?").bind(id), DB.prepare("DELETE FROM reactions WHERE reading_id=?").bind(id), DB.prepare("DELETE FROM reports WHERE reading_id=?").bind(id)]);
+      else return bad("Unknown action.");
+      return json({ ok: true });
+    }
   }
 
   /* ----- Payments ----- */

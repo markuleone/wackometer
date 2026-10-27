@@ -65,6 +65,12 @@ You need Node 18+ and a Cloudflare account.
 
 7. **Set your contact email** for the Classrooms plan: `CONTACT_EMAIL` at the top of `public/js/app.js`.
 
+## Turn on email sign-in (optional but recommended)
+
+1. Make a free account at resend.com, add wackometer.com as a sending domain, and add the DNS records it shows you in Cloudflare.
+2. `npx wrangler secret put RESEND_API_KEY`
+3. Sign-in links come from `EMAIL_FROM` in `wrangler.toml`. The admin screen at `/admin` opens for the emails in `ADMIN_EMAILS`.
+
 ## Run it on your computer
 
 ```
@@ -86,9 +92,17 @@ Open http://localhost:8787.
 - **Daily W.** One prompt per day for everyone (rolls over at midnight Eastern, list in `score.js`). One entry per person. Crew board ranks by lowest score; Crowd board ranks by 🔥.
 - **Safety.** Posting needs a "these are my own lyrics" checkbox. Three reports hide a post. Max 10 Wall posts per person per day. Daily W rejects keyboard-mash entries.
 
+## Features
+
+- **Weigh** with the crew, the Wack map, tap-to-swap clichés, Wiz's best-line pick, Wobbles' syllable check, live reactions while you type, Roast mode, share images and 6-second share videos.
+- **Daily W** with emoji prompts, streaks, unlockable crew outfits (3, 7 and 30 days), Crew and Crowd boards.
+- **Pass the Pen**: `/pen/<id>` songs written one line at a time by different people (16 lines max, nobody twice in a row).
+- **Wall** with tier votes, 🔥😭💀🤢 reactions, Featured, reports.
+- **Wingman** chat, emoji starters, Pro and credits.
+- **Admin** at `/admin`: totals, share/save counts by day, reported posts to hide, restore or delete.
+
 ## Known gaps before a big launch
 
-- **Logging in on a second device.** Accounts live in one browser's cookie. If someone clears cookies, they lose Pro until you restore it. Add email magic-link login before you spend on ads.
+- **Email sign-in needs Resend.** Until `RESEND_API_KEY` is set, accounts live in one browser's cookie.
 - **Famous-lyric filter.** The checkbox and reports are the only guard against people posting copyrighted songs on the Wall. Watch reports closely at launch.
-- **Moderation view.** Hidden posts stay in the database. There's no admin screen yet; use `npx wrangler d1 execute wackometer --remote --command "SELECT ..."`.
 - **The link preview image** (`og.png`) was rendered without the Fredoka font. Retake it from the live site for a sharper version.

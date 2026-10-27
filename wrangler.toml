@@ -21,9 +21,12 @@ FREE_DAILY = "5"
 PRO_PRICE_MONTHLY = ""   # Stripe price id, e.g. price_123
 PRO_PRICE_YEARLY = ""
 CREDITS_PRICE = ""
+ADMIN_EMAILS = "info@donebyverde.com"          # who can open /admin (comma-separated)
+EMAIL_FROM = "Wackometer <hello@wackometer.com>" # sender for sign-in emails
 
 # Secrets (set with `npx wrangler secret put NAME`, never put them here):
 #   SESSION_SECRET         any long random string
 #   ANTHROPIC_API_KEY      from console.anthropic.com
 #   STRIPE_SECRET_KEY      sk_live_... or sk_test_...
 #   STRIPE_WEBHOOK_SECRET  whsec_...
+#   RESEND_API_KEY         re_... (resend.com, for email sign-in links)
