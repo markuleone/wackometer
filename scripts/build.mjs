@@ -1,0 +1,27 @@
+// Builds web/ (source) into public/ (what Cloudflare serves):
+// bundles + minifies JS, minifies CSS, copies everything else, and stamps CSS/JS URLs with a content hash
+// so browsers can cache them for a year and still pick up every new deploy.
+import { build } from "esbuild";
+import { createHash } from "node:crypto";
+import { cpSync, rmSync, readFileSync, writeFileSync, readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
+
+const SRC = "web", OUT = "public";
+rmSync(OUT, { recursive: true, force: true });
+cpSync(SRC, OUT, { recursive: true });
+
+await build({ entryPoints: [`${SRC}/js/app.js`], bundle: true, minify: true, format: "esm", target: ["es2020", "safari15"], outfile: `${OUT}/js/app.js`, legalComments: "none" });
+rmSync(`${OUT}/js/score.js`, { force: true }); // bundled into app.js
+await build({ entryPoints: [`${SRC}/css/site.css`], minify: true, outfile: `${OUT}/css/site.css`, target: ["safari15", "chrome100", "firefox100"] });
+
+const hash = (f) => createHash("sha256").update(readFileSync(f)).digest("hex").slice(0, 10);
+const v = { css: hash(`${OUT}/css/site.css`), js: hash(`${OUT}/js/app.js`) };
+for (const f of readdirSync(OUT)) {
+  if (!f.endsWith(".html")) continue;
+  const p = join(OUT, f);
+  let h = readFileSync(p, "utf8").replaceAll('href="/css/site.css"', `href="/css/site.css?v=${v.css}"`).replaceAll('src="/js/app.js"', `src="/js/app.js?v=${v.js}"`);
+  h = h.replace(/\n\s+/g, "\n"); // trim indentation
+  writeFileSync(p, h);
+}
+const kb = (p) => (statSync(p).size / 1024).toFixed(1) + " KB";
+console.log("built:", { "app.js": kb(`${OUT}/js/app.js`), "site.css": kb(`${OUT}/css/site.css`), "index.html": kb(`${OUT}/index.html`), version: v });

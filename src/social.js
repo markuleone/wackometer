@@ -1,5 +1,5 @@
 // Profiles, friends, leaderboards and battles.
-import { analyze, tierOf, words, dailyKey, DAILY_PROMPTS, TIERS } from "../public/js/score.js";
+import { analyze, tierOf, words, dailyKey, DAILY_PROMPTS, TIERS } from "../web/js/score.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });

@@ -21,7 +21,8 @@ export const SCHEMA = [
   "CREATE INDEX IF NOT EXISTS friends_b ON friends(b)",
   "CREATE TABLE IF NOT EXISTS battles ( id TEXT PRIMARY KEY, emoji TEXT, prompt TEXT NOT NULL, challenger TEXT NOT NULL, opponent TEXT NOT NULL, c_lines TEXT, o_lines TEXT, c_score INTEGER, o_score INTEGER, status TEXT NOT NULL DEFAULT 'open', created_at INTEGER NOT NULL, done_at INTEGER )",
   "CREATE INDEX IF NOT EXISTS battles_c ON battles(challenger)",
-  "CREATE INDEX IF NOT EXISTS battles_o ON battles(opponent)"
+  "CREATE INDEX IF NOT EXISTS battles_o ON battles(opponent)",
+  "CREATE TABLE IF NOT EXISTS settings ( k TEXT PRIMARY KEY, v TEXT NOT NULL )"
 ];
 
 // Changes for databases created before these existed. Each runs on its own; 'duplicate column' errors are expected and ignored.

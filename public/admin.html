@@ -1,13 +1,14 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Admin · Wackometer</title><link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Work+Sans:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="/css/site.css">
+<title>Admin · Wackometer</title><meta name="robots" content="noindex,nofollow"><link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/site.css?v=dfb959edf5">
 <style>body{margin:0}[hidden]{display:none!important}.doc{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:14px}.doc h1{font-family:var(--display);font-size:40px;margin:0}.doc h2{font-family:var(--display);font-size:20px;margin:12px 0 0}.doc p,.doc li{max-width:65ch;line-height:1.65}.doc a{color:var(--bile-ink)}.back{font-family:var(--display);font-weight:600;text-decoration:none;color:var(--ink)}</style>
 </head><body><div class="wrap"><a class="back" href="/">← Wackometer</a><div class="doc" style="max-width:1000px">
 <h1>Admin</h1>
 <div id="err" class="hint"></div>
 <div class="stats" id="stats"></div>
+<h2>Clean up</h2>
+<div class="row"><button class="btn" id="cleanBtn">Remove empty visitor records</button><span class="hint" id="cleanNote">Deletes records older than an hour that never posted, voted, wrote or signed in.</span></div>
 <h2>Reset a profile</h2>
 <div class="row"><input type="text" id="resetUser" placeholder="username" style="max-width:240px"><button class="btn" id="resetBtn">Clear name, bio and links</button><span class="hint" id="resetNote"></span></div>
 <h2>Reported and hidden posts</h2>
@@ -18,18 +19,19 @@
 <script type="module">
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const LABELS={users:"Accounts",signedIn:"Signed in",pro:"Pro",posts:"Wall posts",postsWeek:"Posts this week",votes:"Votes",dailyToday:"Daily W today",pens:"Pass the Pen songs",penLines:"Pen lines",wingmanToday:"Wingman msgs today"};
+const LABELS={users:"Visitor records",active:"Active writers",signedIn:"Signed in",pro:"Pro",posts:"Wall posts",postsWeek:"Posts this week",votes:"Votes",dailyToday:"Daily W today",pens:"Pass the Pen songs",penLines:"Pen lines",wingmanToday:"Wingman msgs today"};
 async function load(){
-  const r=await fetch("/api/admin/overview");const d=await r.json();
-  if(!r.ok){$("err").textContent=d.error+" Sign in from the main site with an admin email.";return}
-  $("stats").innerHTML=Object.entries(d.stats).map(([k,v])=>`<div class="stat"><div class="n">${v}</div><div class="l">${LABELS[k]||k}</div></div>`).join("");
-  $("flagged").innerHTML=d.flagged.length?d.flagged.map(p=>`<article class="card"><div class="ch"><span class="ttl">${esc(p.title||"Untitled")}</span><span class="pill">${p.hidden?"Hidden":"Visible"} · ${p.reports} reports</span></div><pre>${esc(p.excerpt)}</pre><div class="row">${p.hidden?`<button class="btn" data-a="unhide" data-id="${p.id}">Restore</button>`:`<button class="btn" data-a="hide" data-id="${p.id}">Hide</button>`}<button class="btn" data-a="delete" data-id="${p.id}">Delete for good</button></div></article>`).join(""):`<p class="hint">Nothing reported. 🎉</p>`;
-  document.querySelectorAll("[data-a]").forEach(b=>b.onclick=async()=>{if(b.dataset.a==="delete"&&!b.dataset.sure){b.dataset.sure=1;b.textContent="Tap again to delete";return}
-    b.disabled=true;await fetch("/api/admin/post",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({id:b.dataset.id,action:b.dataset.a})});load()});
-  const days=[...new Set(d.events.map(e=>e.day))].slice(0,14),types=[...new Set(d.events.map(e=>e.type))].sort();
-  const cell=(day,t)=>(d.events.find(e=>e.day===day&&e.type===t)||{}).count||"";
-  $("events").innerHTML=types.length?`<tr><th style="text-align:left;padding:4px 10px">Event</th>${days.map(x=>`<th style="padding:4px 10px">${x.slice(5)}</th>`).join("")}</tr>`+types.map(t=>`<tr><td style="padding:4px 10px">${t}</td>${days.map(x=>`<td style="padding:4px 10px;text-align:right">${cell(x,t)}</td>`).join("")}</tr>`).join(""):`<tr><td class="hint">No events yet.</td></tr>`;
+const r=await fetch("/api/admin/overview");const d=await r.json();
+if(!r.ok){$("err").textContent=d.error+" Sign in from the main site with an admin email.";return}
+$("stats").innerHTML=Object.entries(d.stats).map(([k,v])=>`<div class="stat"><div class="n">${v}</div><div class="l">${LABELS[k]||k}</div></div>`).join("");
+$("flagged").innerHTML=d.flagged.length?d.flagged.map(p=>`<article class="card"><div class="ch"><span class="ttl">${esc(p.title||"Untitled")}</span><span class="pill">${p.hidden?"Hidden":"Visible"} · ${p.reports} reports</span></div><pre>${esc(p.excerpt)}</pre><div class="row">${p.hidden?`<button class="btn" data-a="unhide" data-id="${p.id}">Restore</button>`:`<button class="btn" data-a="hide" data-id="${p.id}">Hide</button>`}<button class="btn" data-a="delete" data-id="${p.id}">Delete for good</button></div></article>`).join(""):`<p class="hint">Nothing reported. 🎉</p>`;
+document.querySelectorAll("[data-a]").forEach(b=>b.onclick=async()=>{if(b.dataset.a==="delete"&&!b.dataset.sure){b.dataset.sure=1;b.textContent="Tap again to delete";return}
+b.disabled=true;await fetch("/api/admin/post",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({id:b.dataset.id,action:b.dataset.a})});load()});
+const days=[...new Set(d.events.map(e=>e.day))].slice(0,14),types=[...new Set(d.events.map(e=>e.type))].sort();
+const cell=(day,t)=>(d.events.find(e=>e.day===day&&e.type===t)||{}).count||"";
+$("events").innerHTML=types.length?`<tr><th style="text-align:left;padding:4px 10px">Event</th>${days.map(x=>`<th style="padding:4px 10px">${x.slice(5)}</th>`).join("")}</tr>`+types.map(t=>`<tr><td style="padding:4px 10px">${t}</td>${days.map(x=>`<td style="padding:4px 10px;text-align:right">${cell(x,t)}</td>`).join("")}</tr>`).join(""):`<tr><td class="hint">No events yet.</td></tr>`;
 }
 load();
+$("cleanBtn").onclick=async()=>{const b=$("cleanBtn");if(!b.dataset.sure){b.dataset.sure=1;b.textContent="Tap again to remove them";return}b.disabled=true;const r=await fetch("/api/admin/cleanup",{method:"POST",headers:{"content-type":"application/json"},body:"{}"});const d=await r.json();$("cleanNote").textContent=r.ok?`Removed ${d.removed} empty records.`:d.error;b.textContent="Remove empty visitor records";delete b.dataset.sure;b.disabled=false;load()};
 $("resetBtn").onclick=async()=>{const r=await fetch("/api/admin/user",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({username:$("resetUser").value,action:"reset"})});const d=await r.json();$("resetNote").textContent=r.ok?"Profile cleared.":d.error};
 </script><footer><a class="dbv" href="https://donebyverde.com" target="_blank" rel="noopener noreferrer" aria-label="Website by donebyverde (opens in a new tab)" title="Website by donebyverde"><svg viewBox="0 0 200 200" aria-hidden="true"><path d="M75 0H125L123 61L174 28L200 72L146 100L200 128L174 172L123 139L125 200H75L77 139L26 172L0 128L54 100L0 72L26 28L77 61Z"/></svg></a></footer></div></body></html>

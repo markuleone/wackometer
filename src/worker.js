@@ -2,7 +2,7 @@
 // Everything under /api/* lands here; Cloudflare serves the front end from /public.
 import { SCHEMA, MIGRATIONS } from "./schema.js";
 import { handleSocial, profileMeta } from "./social.js";
-import { analyze, tierOf, clamp, MID, TIERS, METRICS, words, dailyKey, dailyPrompt } from "../public/js/score.js";
+import { analyze, tierOf, clamp, MID, TIERS, METRICS, words, dailyKey, dailyPrompt } from "../web/js/score.js";
 
 const json = (data, status = 200, headers = {}) =>
   new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...headers } });
@@ -32,20 +32,35 @@ function safeEqual(a, b) {
   let r = 0; for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i);
   return r === 0;
 }
-async function session(req, env) {
-  const secret = env.SESSION_SECRET || "dev-only-secret-change-me";
+// Cookie signing key: SESSION_SECRET if set, otherwise a random key generated once and kept in the database.
+// Never falls back to a fixed string, so accounts can't be forged from the public code.
+let cachedSecret = null;
+async function getSecret(env) {
+  if (env.SESSION_SECRET) return env.SESSION_SECRET;
+  if (cachedSecret) return cachedSecret;
+  const fresh = [...crypto.getRandomValues(new Uint8Array(32))].map((b) => b.toString(16).padStart(2, "0")).join("");
+  await env.DB.prepare("INSERT OR IGNORE INTO settings (k, v) VALUES ('session_secret', ?)").bind(fresh).run();
+  cachedSecret = (await env.DB.prepare("SELECT v FROM settings WHERE k='session_secret'").first()).v;
+  return cachedSecret;
+}
+// A visitor who hasn't done anything yet. Reading pages doesn't create an account; the first post, vote,
+// Daily W, Wingman message or sign-in does.
+const GHOST = { id: "", plan: "free", pro_until: null, credits: 0, stripe_customer: null, handle: null, streak: 0, last_daily: null, email: null, username: null };
+async function session(req, env, needUser = true) {
+  const secret = await getSecret(env);
   const m = (req.headers.get("cookie") || "").match(/(?:^|;\s*)wk=([a-z0-9]+)\.([a-f0-9]{64})/);
   if (m && safeEqual(await hmac(secret, m[1]), m[2])) {
     const u = await env.DB.prepare("SELECT * FROM users WHERE id=?").bind(m[1]).first();
     if (u) return { user: u, setCookie: null };
   }
+  if (!needUser) return { user: GHOST, setCookie: null };
   const id = "u" + rid();
   await env.DB.prepare("INSERT INTO users (id, created_at) VALUES (?, ?)").bind(id, now()).run();
   const user = await env.DB.prepare("SELECT * FROM users WHERE id=?").bind(id).first();
   return { user, setCookie: await cookieFor(req, env, id) };
 }
 async function cookieFor(req, env, id) {
-  const secret = env.SESSION_SECRET || "dev-only-secret-change-me";
+  const secret = await getSecret(env);
   const secure = new URL(req.url).protocol === "https:" ? "; Secure" : "";
   return `wk=${id}.${await hmac(secret, id)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=63072000${secure}`;
 }
@@ -135,22 +150,26 @@ export default {
     // Stripe calls this directly; no session cookie.
     if (path === "/api/stripe/webhook" && method === "POST") { await ensureSchema(env); return stripeWebhook(req, env); }
     if (path.startsWith("/u/")) return profilePage(req, env, decodeURIComponent(path.slice(3)).toLowerCase());
+    if (path === "/sitemap.xml") return sitemap(env);
     if (!path.startsWith("/api/")) return env.ASSETS.fetch(req);
     if (method !== "GET" && req.headers.get("origin") && new URL(req.headers.get("origin")).host !== url.host) return bad("Wrong origin", 403);
 
     let s;
-    try { await ensureSchema(env); s = await session(req, env); } catch (e) { return bad("Database isn't set up yet. Run the schema (see README).", 500); }
+    // Anonymous counters don't need (or create) an account.
+    const needUser = method !== "GET" && path !== "/api/event";
+    try { await ensureSchema(env); s = await session(req, env, needUser); } catch (e) { return bad("Database isn't set up yet. Run the schema (see README).", 500); }
     const u = s.user;
     const body = method === "POST" ? await req.json().catch(() => ({})) : {};
     let res;
-    try { res = await route(path, method, url, body, u, env); }
+    try { res = await route(path, method, url, body, u, env, req); }
     catch (e) { console.error(e); res = bad("Something broke on our side. Try again in a moment.", 500); }
     if (s.setCookie && !res.headers.has("set-cookie")) res.headers.append("set-cookie", s.setCookie);
     return res;
   },
 };
 
-async function route(path, method, url, body, u, env) {
+async function route(path, method, url, body, u, env, req) {
+  const req_ip = () => req.headers.get("cf-connecting-ip") || "";
   const DB = env.DB;
 
   if (path === "/api/login/verify" && method === "GET") {
@@ -267,6 +286,11 @@ async function route(path, method, url, body, u, env) {
     if (!env.ANTHROPIC_API_KEY) return bad("Wingman isn't connected yet. Add ANTHROPIC_API_KEY (see README).", 503);
     const free = +env.FREE_DAILY || 5, used = await usedToday(env, u.id), pro = isPro(u);
     let payWith = "free";
+    const ip = req_ip();
+    const ipKey = ip ? "ip:" + (await hmac(await getSecret(env), "ip:" + ip)).slice(0, 24) : null;
+    const ipUsed = ipKey ? await usedToday(env, ipKey) : 0;
+    if (!pro && used < free && ipKey && ipUsed >= free * 3 && u.credits <= 0)
+      return json({ error: "limit", message: `Lots of free Wingman messages from this network today. They reset at midnight, or go Pro for unlimited.` }, 402);
     if (!pro && used >= free) {
       if (u.credits > 0) payWith = "credit";
       else return json({ error: "limit", message: `That's your ${free} free Wingman messages for today. They reset at midnight, or go Pro for unlimited.` }, 402);
@@ -296,7 +320,10 @@ async function route(path, method, url, body, u, env) {
       text = await callClaude(env, WINGMAN_SYSTEM, fixed);
     }
     if (payWith === "credit") await DB.prepare("UPDATE users SET credits=credits-1 WHERE id=? AND credits>0").bind(u.id).run();
-    else await DB.prepare(`INSERT INTO usage (user_id,day,wingman) VALUES (?,?,1) ON CONFLICT(user_id,day) DO UPDATE SET wingman=wingman+1`).bind(u.id, dailyKey()).run();
+    else {
+      await DB.prepare(`INSERT INTO usage (user_id,day,wingman) VALUES (?,?,1) ON CONFLICT(user_id,day) DO UPDATE SET wingman=wingman+1`).bind(u.id, dailyKey()).run();
+      if (ipKey && !pro) await DB.prepare(`INSERT INTO usage (user_id,day,wingman) VALUES (?,?,1) ON CONFLICT(user_id,day) DO UPDATE SET wingman=wingman+1`).bind(ipKey, dailyKey()).run();
+    }
     const fresh = await DB.prepare("SELECT * FROM users WHERE id=?").bind(u.id).first();
     return json({ text, me: me(fresh, await usedToday(env, u.id), env) });
   }
@@ -306,20 +333,20 @@ async function route(path, method, url, body, u, env) {
     const key = dailyKey(), p = dailyPrompt(key);
     const mineRow = await DB.prepare("SELECT * FROM daily_entries WHERE day=? AND user_id=?").bind(key, u.id).first();
     const { results: crew } = await DB.prepare(
-      `SELECT e.user_id, e.lines, e.score, e.tier, us.handle, (SELECT COUNT(*) FROM daily_likes l WHERE l.day=e.day AND l.entry_user=e.user_id) fires
+      `SELECT e.rowid rid, e.user_id, e.lines, e.score, e.tier, us.handle, (SELECT COUNT(*) FROM daily_likes l WHERE l.day=e.day AND l.entry_user=e.user_id) fires
        FROM daily_entries e JOIN users us ON us.id=e.user_id WHERE e.day=? ORDER BY e.score ASC, e.created_at ASC LIMIT 20`).bind(key).all();
     const { results: crowd } = await DB.prepare(
-      `SELECT e.user_id, e.lines, e.score, e.tier, us.handle, COUNT(l.user_id) fires
+      `SELECT e.rowid rid, e.user_id, e.lines, e.score, e.tier, us.handle, COUNT(l.user_id) fires
        FROM daily_entries e JOIN users us ON us.id=e.user_id LEFT JOIN daily_likes l ON l.day=e.day AND l.entry_user=e.user_id
        WHERE e.day=? GROUP BY e.user_id HAVING fires>0 ORDER BY fires DESC, e.score ASC LIMIT 20`).bind(key).all();
-    const { results: myLikes } = await DB.prepare("SELECT entry_user FROM daily_likes WHERE day=? AND user_id=?").bind(key, u.id).all();
+    const { results: myLikes } = await DB.prepare("SELECT e.rowid rid FROM daily_likes l JOIN daily_entries e ON e.day=l.day AND e.user_id=l.entry_user WHERE l.day=? AND l.user_id=?").bind(key, u.id).all();
     const total = await DB.prepare("SELECT COUNT(*) c FROM daily_entries WHERE day=?").bind(key).first();
-    const pub = (r) => ({ who: r.user_id === u.id ? "you" : r.handle || "Anonymous writer", entry: r.user_id, lines: r.lines, score: r.score, tier: r.tier, fires: r.fires, mine: r.user_id === u.id });
+    const pub = (r) => ({ who: r.user_id === u.id ? "you" : r.handle || "Anonymous writer", entry: String(r.rid), lines: r.lines, score: r.score, tier: r.tier, fires: r.fires, mine: r.user_id === u.id });
     let rank = null;
     if (mineRow) rank = (await DB.prepare("SELECT COUNT(*) c FROM daily_entries WHERE day=? AND score<?").bind(key, mineRow.score).first()).c + 1;
     return json({ key, number: p.number, prompt: p.prompt, emoji: p.emoji, entries: total.c,
       mine: mineRow ? { lines: mineRow.lines, score: mineRow.score, tier: mineRow.tier, rank } : null,
-      crew: crew.map(pub), crowd: crowd.map(pub), liked: myLikes.map((l) => l.entry_user), streak: liveStreak(u), handle: u.handle || null });
+      crew: crew.map(pub), crowd: crowd.map(pub), liked: myLikes.map((l) => String(l.rid)), streak: liveStreak(u), handle: u.handle || null });
   }
   if (path === "/api/daily" && method === "POST") {
     const key = dailyKey();
@@ -344,10 +371,11 @@ async function route(path, method, url, body, u, env) {
     return json({ score, tier, rank, total, streak, vals: Object.fromEntries(Object.entries(a.vals).map(([k, v]) => [k, Math.round(v)])) });
   }
   if (path === "/api/daily/fire" && method === "POST") {
-    const key = dailyKey(), entry = String(body.entry || "");
-    if (entry === u.id) return bad("You can't fire your own lines.");
-    const e = await DB.prepare("SELECT 1 FROM daily_entries WHERE day=? AND user_id=?").bind(key, entry).first();
+    const key = dailyKey();
+    const e = await DB.prepare("SELECT user_id FROM daily_entries WHERE day=? AND rowid=?").bind(key, Number(body.entry) || 0).first();
     if (!e) return bad("That entry is gone.", 404);
+    const entry = e.user_id;
+    if (entry === u.id) return bad("You can't fire your own lines.");
     if (body.off) await DB.prepare("DELETE FROM daily_likes WHERE day=? AND entry_user=? AND user_id=?").bind(key, entry, u.id).run();
     else await DB.prepare("INSERT OR IGNORE INTO daily_likes (day,entry_user,user_id) VALUES (?,?,?)").bind(key, entry, u.id).run();
     return json({ ok: true });
@@ -468,7 +496,11 @@ async function route(path, method, url, body, u, env) {
       const c = async (q, ...b) => (await DB.prepare(q).bind(...b).first()).c;
       const day = dailyKey(), weekAgo = now() - 7 * 86400000;
       const stats = {
-        users: await c("SELECT COUNT(*) c FROM users"), signedIn: await c("SELECT COUNT(*) c FROM users WHERE email IS NOT NULL"),
+        users: await c("SELECT COUNT(*) c FROM users"),
+        active: await c(`SELECT COUNT(*) c FROM users u WHERE u.email IS NOT NULL OR u.username IS NOT NULL OR u.stripe_customer IS NOT NULL
+          OR EXISTS (SELECT 1 FROM readings WHERE user_id=u.id) OR EXISTS (SELECT 1 FROM votes WHERE user_id=u.id) OR EXISTS (SELECT 1 FROM daily_entries WHERE user_id=u.id)
+          OR EXISTS (SELECT 1 FROM pen_lines WHERE user_id=u.id) OR EXISTS (SELECT 1 FROM usage WHERE user_id=u.id) OR EXISTS (SELECT 1 FROM reactions WHERE user_id=u.id)
+          OR EXISTS (SELECT 1 FROM friends WHERE a=u.id OR b=u.id)`), signedIn: await c("SELECT COUNT(*) c FROM users WHERE email IS NOT NULL"),
         pro: await c("SELECT COUNT(*) c FROM users WHERE pro_until>?", now()), posts: await c("SELECT COUNT(*) c FROM readings"),
         postsWeek: await c("SELECT COUNT(*) c FROM readings WHERE created_at>?", weekAgo), votes: await c("SELECT COUNT(*) c FROM votes"),
         dailyToday: await c("SELECT COUNT(*) c FROM daily_entries WHERE day=?", day), pens: await c("SELECT COUNT(*) c FROM pens"),
@@ -477,6 +509,15 @@ async function route(path, method, url, body, u, env) {
       const { results: events } = await DB.prepare("SELECT day, type, count FROM events ORDER BY day DESC LIMIT 200").all();
       const { results: flagged } = await DB.prepare("SELECT id, title, excerpt, score, tier, reports, hidden, created_at FROM readings WHERE reports>0 OR hidden=1 ORDER BY hidden DESC, reports DESC, created_at DESC LIMIT 100").all();
       return json({ stats, events, flagged });
+    }
+    if (path === "/api/admin/cleanup" && method === "POST") {
+      // Removes visitor records that never did anything (no posts, votes, Daily W, songs, Wingman, sign-in, profile or payments).
+      const r = await DB.prepare(`DELETE FROM users WHERE email IS NULL AND username IS NULL AND stripe_customer IS NULL AND credits=0 AND (pro_until IS NULL OR pro_until<?)
+        AND id NOT IN (SELECT user_id FROM readings) AND id NOT IN (SELECT user_id FROM votes) AND id NOT IN (SELECT user_id FROM daily_entries)
+        AND id NOT IN (SELECT user_id FROM pen_lines) AND id NOT IN (SELECT user_id FROM usage) AND id NOT IN (SELECT user_id FROM reactions)
+        AND id NOT IN (SELECT user_id FROM daily_likes) AND id NOT IN (SELECT a FROM friends) AND id NOT IN (SELECT b FROM friends)
+        AND id NOT IN (SELECT user_id FROM login_tokens) AND created_at < ?`).bind(now(), now() - 3600000).run();
+      return json({ removed: r.meta.changes || 0 });
     }
     if (path === "/api/admin/post" && method === "POST") {
       const id = String(body.id || ""), action = body.action;
@@ -516,6 +557,16 @@ async function route(path, method, url, body, u, env) {
   if (social) return social;
 
   return bad("Not found", 404);
+}
+
+// Sitemap: the main pages plus every public profile.
+async function sitemap(env) {
+  let users = [];
+  try { await ensureSchema(env); users = (await env.DB.prepare("SELECT username FROM users WHERE username IS NOT NULL ORDER BY created_at DESC LIMIT 45000").all()).results; } catch (e) {}
+  const base = env.APP_URL || "https://wackometer.com";
+  const urls = [["/", "daily", "1.0"], ["/terms", "yearly", "0.2"], ["/privacy", "yearly", "0.2"]].map(([p, f, pr]) => `<url><loc>${base}${p}</loc><changefreq>${f}</changefreq><priority>${pr}</priority></url>`)
+    .concat(users.map((u) => `<url><loc>${base}/u/${encodeURIComponent(u.username)}</loc><changefreq>weekly</changefreq><priority>0.5</priority></url>`));
+  return new Response(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.join("")}</urlset>`, { headers: { "content-type": "application/xml; charset=utf-8", "cache-control": "public, max-age=3600" } });
 }
 
 // Profile links get their own title and description in link previews (iMessage, Instagram, X).

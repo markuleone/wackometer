@@ -154,3 +154,9 @@ CREATE TABLE IF NOT EXISTS battles (
 );
 CREATE INDEX IF NOT EXISTS battles_c ON battles(challenger);
 CREATE INDEX IF NOT EXISTS battles_o ON battles(opponent);
+
+-- site settings (e.g. an auto-generated cookie signing key when SESSION_SECRET isn't set)
+CREATE TABLE IF NOT EXISTS settings (
+  k  TEXT PRIMARY KEY,
+  v  TEXT NOT NULL
+);

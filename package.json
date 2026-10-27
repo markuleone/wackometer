@@ -3,12 +3,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "node scripts/build.mjs && wrangler dev",
     "db:local": "wrangler d1 execute wackometer --local --file=schema.sql",
     "db:remote": "wrangler d1 execute wackometer --remote --file=schema.sql",
-    "deploy": "wrangler deploy"
+    "deploy": "node scripts/build.mjs && wrangler deploy",
+    "build": "node scripts/build.mjs"
   },
   "devDependencies": {
+    "@fontsource-variable/fredoka": "^5.2.6",
+    "@fontsource-variable/work-sans": "^5.2.6",
+    "esbuild": "^0.25.10",
     "wrangler": "4.150.0"
   }
 }

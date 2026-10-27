@@ -7,17 +7,23 @@ Runs entirely on Cloudflare: one Worker serves the site and the API, and a D1 da
 ## What's in here
 
 ```
-public/            the website (served as static files)
-  index.html
+web/               the website source: edit these
+  index.html, terms.html, privacy.html, admin.html
   css/site.css
   js/app.js        the front end
   js/score.js      the scoring engine, shared with the API
-  favicon.svg      Wretch
-  og.png           link preview image
+  fonts/           self-hosted Fredoka
+  _headers         cache and security headers
+public/            built from web/ by `npm run build` (minified, cache-stamped). Cloudflare serves this.
+scripts/build.mjs  the build
 src/worker.js      the API (/api/*)
 schema.sql         database tables
 wrangler.toml      Cloudflare config
 ```
+
+## Making changes
+
+Edit files in `web/`, then run `npm run build` and commit both `web/` and `public/`. Pushing to GitHub deploys automatically.
 
 ## Deploy it (about 20 minutes)
 
@@ -37,7 +43,7 @@ You need Node 18+ and a Cloudflare account.
 
 3. **Add your secrets** (each command asks you to paste the value):
    ```
-   npx wrangler secret put SESSION_SECRET        # any long random string
+   npx wrangler secret put SESSION_SECRET        # optional: any long random string. If unset, the site generates one and keeps it in the database.
    npx wrangler secret put ANTHROPIC_API_KEY     # console.anthropic.com → API keys
    ```
    The site works without Stripe. Pro checkout just shows "not connected yet" until step 6.
