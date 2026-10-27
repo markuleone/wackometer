@@ -31,7 +31,7 @@ PRO_PRICE_YEARLY = ""
 CREDITS_PRICE = ""
 ADMIN_EMAILS = "info@donebyverde.com"          # who can open /admin (comma-separated)
 EMAIL_FROM = "Wackometer <hello@wackometer.com>" # sender for sign-in emails
-TURNSTILE_SITE_KEY = ""                         # public Turnstile site key (bot check); pair with the TURNSTILE_SECRET secret
+TURNSTILE_SITE_KEY = "0x4AAAAAAFoKvh8oQOnhX6zJ"                         # public Turnstile site key (bot check); pair with the TURNSTILE_SECRET secret
 
 # Secrets (set with `npx wrangler secret put NAME`, never put them here):
 #   SESSION_SECRET         any long random string
