@@ -1,5 +1,8 @@
 // Wackometer front end
 import { TIERS, MID, METRICS, CLICHES, FILLER, WEIGHTLESS, DAILY_EMOJI, SWAPS, tierOf, clamp, words, analyze, bestLine, lineSyllables } from "./score.js";
+import { washScan, washVerdict, WASH_EXAMPLE } from "./wash.js";
+import { LESSONS, rankOf } from "./workshop.js";
+import { initStorm } from "./storm.js";
 
 const CONTACT_EMAIL = "hello@wackometer.com";
 const SITE = /\./.test(location.hostname) && !/^\d/.test(location.hostname) ? location.hostname.replace(/^www\./, "") : "the Wackometer";
@@ -24,7 +27,8 @@ function setNeedle(v){document.getElementById("needle").style.transform=`rotate(
 setNeedle(50);
 
 
-const EXAMPLES=[
+// Example verses: original lines written for the Wackometer. "Show me a wack one" cycles through them.
+const WACK_EX = [
 `Baby you set me free
 You're my everything, it's meant to be
 I feel the fire inside, the burning desire
@@ -35,20 +39,110 @@ Tears fall like rain, I feel the pain
 Until the end of time
 Until the end of time
 Oh oh oh yeah`,
+`Girl you light the way
+Every night and day
+Shine bright tonight, my love, my life
+Hold me tight, my heart, my soul
+Dancing in the rain
+I feel alive again, no more pain
+Oh baby baby yeah
+Oh baby baby yeah
+Never let you go
+Never let you go`,
+`Oh baby I rise above the pain and the love
+Spread my wings and fly away, oh yeah
+Chasing dreams into the night
+On top of the world, I feel so right
+Living the dream, I'm young and free
+No regrets, my soul, my love, my destiny
+Yeah yeah yeah, oh oh oh
+Yeah yeah yeah, oh oh oh
+Fly away, fly away, fly away
+Fly away, fly away, fly away`,
+`You took my breath away
+You're my heart and soul
+Lost without you every day
+Hold me tight, don't let go
+Love is blind, love is true
+Love will find a way to you
+Forever and always, me and you
+Ooh ooh yeah, baby it's true`,
+`Cold as ice, you break my heart
+Since the start we fell apart
+Tears falling in the dark
+Broken wings, a broken heart
+Hey hey hey, yeah yeah yeah
+Save me, save me, baby
+Save me, save me, baby
+One more time, you're on my mind`,
+`Through the storm and after the rain
+We rise from the ashes again, again
+Oh yeah, against all odds the stars align
+Your heart of gold, my love, my soul, forever mine
+Oh baby reach for the stars, touch the sky
+Into the night, baby we fly so high, yeah
+Made for each other, meant to be
+Ooh baby baby, you complete me
+Ooh baby baby, you complete me
+Ooh baby baby, you complete me
+Ooh baby baby, you complete me`];
+const WICKED_EX = [
 `Dashboard glow is the only lamp still on
 your hoodie smells like the 7-Eleven
 we split a cherry slush at the light on Hillsboro
 and you counted red cars out loud like a prayer
 I keep the receipt in the cupholder
-like proof we were ever that easy`];
+like proof we were ever that easy`,
+`My grandma salts the cantaloupe
+and swears it makes it sweeter
+she calls the TV by its brand name
+and hangs up on the weather
+I've got her laugh and half her stubborn
+and none of her patience with butter`,
+`Payday Friday, the bank app loads like dial-up
+I split a Lyft with a stranger named Theo
+he's got a guitar case with no guitar in it
+says that's where he keeps the songs he hasn't written
+I tip him two bucks and a lighter
+he says I'll be on the album`,
+`Our group chat's named after a dog that died in 2014
+nobody's changed it, nobody's said why
+Kayla posts a sunset every Sunday at 6:40
+like she's clocking in
+I heart it from the break room
+that's the whole way we say we're still here`];
+const exIdx = { wack: -1, wicked: -1 };
+function nextExample(kind) { const list = kind === "wicked" ? WICKED_EX : WACK_EX; exIdx[kind] = (exIdx[kind] + 1) % list.length; return list[exIdx[kind]]; }
+let padIsExample = false;
+function loadExample(kind, scroll) {
+  $("lyrics").value = nextExample(kind); padIsExample = true; renderReading();
+  if (scroll) $("meter").scrollIntoView({ behavior: "smooth", block: "center" });
+}
 
 
 /* ---------- API ---------- */
-async function api(path, opts = {}) {
+async function api(path, opts = {}, retried = false) {
   const res = await fetch(path, { method: opts.method || (opts.body ? "POST" : "GET"), headers: opts.body ? { "content-type": "application/json" } : {}, body: opts.body ? JSON.stringify(opts.body) : undefined, credentials: "same-origin" });
   let data = {}; try { data = await res.json(); } catch (e) {}
+  if (res.status === 428 && data.error === "challenge" && !retried) { await ensureHuman(data.siteKey); return api(path, opts, true); }
   if (!res.ok) { const err = new Error(data.message || data.error || "Something went wrong. Try again."); err.status = res.status; err.code = data.error; throw err; }
   return data;
+}
+// Cloudflare Turnstile: loads only when the server asks for a human check.
+let humanP = null;
+function ensureHuman(siteKey) {
+  if (humanP) return humanP;
+  humanP = new Promise((resolve, reject) => {
+    const modal = $("humanModal"); modal.hidden = false; $("humanChar").innerHTML = charSVG(3); $("humanNote").textContent = "";
+    const go = () => window.turnstile.render("#turnstileBox", { sitekey: siteKey, theme: "auto", callback: async (token) => {
+      try { await fetch("/api/human", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token }) }).then((r) => { if (!r.ok) throw 0; }); modal.hidden = true; $("turnstileBox").innerHTML = ""; resolve(); }
+      catch (e) { $("humanNote").textContent = "That didn't go through. Refresh the page and try again."; reject(new Error("Human check failed. Refresh and try again.")); }
+      humanP = null;
+    }, "error-callback": () => { $("humanNote").textContent = "The check couldn't load. Refresh the page and try again."; humanP = null; reject(new Error("Human check failed.")); } });
+    if (window.turnstile) go();
+    else { const sc = document.createElement("script"); sc.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"; sc.async = true; sc.onload = go; sc.onerror = () => { humanP = null; reject(new Error("The human check couldn't load.")); }; document.head.appendChild(sc); }
+  });
+  return humanP;
 }
 let ME = null;
 const isPro = () => !!(ME && ME.pro);
@@ -76,6 +170,8 @@ function renderReading() {
   $("metrics").innerHTML = METRICS.map((mm) => { const val = Math.round(last.vals[mm.k]); const ti = tierOf(val);
     return `<div class="m"><div class="top"><b>${mm.n}</b><span class="v">${val}</span></div><div class="bar"><i class="bg-t${ti}" style="width:${Math.max(val, 2)}%"></i></div><small>${esc(last.notes[mm.k])}</small></div>`; }).join("");
   renderMap();
+  renderCoach();
+  if (!padIsExample) saveHistory();
   $("post").hidden = false; $("postNote").textContent = ""; $("postBtn").disabled = false;
   $("roast").hidden = true;
   updateWingCtx();
@@ -85,14 +181,19 @@ function wipe() {
   $("lyrics").value = ""; try { localStorage.removeItem("wk-draft"); } catch (e) {}
   $("map").hidden = true; $("post").hidden = true; $("roast").hidden = true; $("bestPick").hidden = true; $("metrics").innerHTML = ""; $("score").textContent = "–";
   const v = $("verdict"); v.textContent = "Waiting"; v.className = "verdict bg-t2 t2"; $("blurb").textContent = "Paste some lines and hit Weigh it."; $("tune").textContent = "";
-  setNeedle(50); last = null; $("share").hidden = true; renderCrew(null); $("mchar").innerHTML = charSVG(5); $("quip").textContent = "The crew is ready. Paste something."; updateWingCtx(); $("lyrics").focus();
+  setNeedle(50); last = null; $("share").hidden = true; $("coach").hidden = true; padIsExample = false; renderCrew(null); $("mchar").innerHTML = charSVG(5); $("quip").textContent = "The crew is ready. Paste something."; updateWingCtx(); $("lyrics").focus();
 }
 
 /* ---------- tabs ---------- */
-const VIEWS = ["weigh", "daily", "pen", "squad", "wall", "wingman", "why", "pro", "lost", "profile"];
+const VIEWS = ["weigh", "wash", "storm", "workshop", "daily", "pen", "squad", "wall", "wingman", "why", "pro", "lost", "profile"];
 function show(v) {
-  document.querySelectorAll("#mainNav button").forEach((b) => b.setAttribute("aria-selected", b.dataset.v === v));
+  document.querySelectorAll("#mainNav button,#proBtn").forEach((b) => (b.dataset.v === v ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current")));
+  const cur = document.querySelector('#mainNav [aria-current="page"]'); if (cur) cur.scrollIntoView({ block: "nearest", inline: "nearest" });
+  if (v !== "storm") storm.onHide();
   VIEWS.forEach((x) => ($("v-" + x).hidden = x !== v)); window.scrollTo(0, 0);
+  const h = $("v-" + v).querySelector("h1,h2"); document.title = v === "weigh" ? "Wackometer · How wack are your lyrics?" : `${h ? h.textContent.replace(/^[^A-Za-z]+/, "").trim() : "Wackometer"} · Wackometer`;
+  if (v === "storm") storm.onShow();
+  if (v === "workshop") renderWorkshop();
   if (v === "pen") { if (!location.pathname.startsWith("/pen/")) history.replaceState(null, "", "/#pen"); }
   else if (v === "profile") { /* path is /u/<name> */ }
   else if (v !== "lost" && (location.pathname !== "/" || location.hash !== "#" + v)) history.replaceState(null, "", "/#" + v);
@@ -137,6 +238,7 @@ function renderWall() {
       <div class="votes">${TIERS.map((t, i) => `<button data-i="${i}" class="t${i} ${r.myVote === i ? "mine bg-t" + i : ""}" aria-pressed="${r.myVote === i}">${t.n}</button>`).join("")}</div>
       <div class="cfoot"><div class="reacts">${REACTS.map((e) => `<button class="react${(r.myReacts || []).includes(e) ? " on" : ""}" data-e="${e}" aria-pressed="${(r.myReacts || []).includes(e)}">${e} <span>${(r.reacts || {})[e] || ""}</span></button>`).join("")}</div></div>`;
     card.querySelector(".ttl").textContent = r.title || "Untitled";
+    if (r.by) { const by = document.createElement("a"); by.className = "by"; by.href = "/u/" + r.by; by.textContent = "by @" + r.by; by.onclick = (ev) => { ev.preventDefault(); goProfile(r.by); }; card.querySelector(".ch").after(by); }
     card.querySelector("pre").textContent = r.excerpt;
     card.querySelectorAll(".votes button").forEach((b) => (b.onclick = () => castVote(r, +b.dataset.i, b)));
     const foot = card.querySelector(".cfoot");
@@ -164,7 +266,7 @@ async function castVote(r, i, btn) {
   catch (e) { btn.textContent = "Didn't save"; btn.disabled = false; }
 }
 document.querySelectorAll("[data-f]").forEach((b) => (b.onclick = () => {
-  feed = b.dataset.f; document.querySelectorAll("[data-f]").forEach((x) => x.setAttribute("aria-selected", x === b));
+  feed = b.dataset.f; document.querySelectorAll("[data-f]").forEach((x) => x.setAttribute("aria-pressed", x === b));
   $("feedHint").textContent = feed === "fresh" ? "Everything new, newest first. Posts with 5+ votes get Featured." : "Crowd-promoted: 5+ votes, ranked by how many people weighed in.";
   loadWall();
 }));
@@ -278,14 +380,16 @@ function showDailyResult(r) {
 }
 function renderBoard() {
   const list = board === "crew" ? daily.crew : daily.crowd, el = $("dBoard");
-  document.querySelectorAll("[data-b]").forEach((x) => x.setAttribute("aria-selected", x.dataset.b === board));
+  document.querySelectorAll("[data-b]").forEach((x) => x.setAttribute("aria-pressed", x.dataset.b === board));
   if (!list.length) { el.innerHTML = `<div class="empty"><div class="ch">${charSVG(board === "crew" ? 0 : 1)}</div>${board === "crew" ? "No entries yet today. Be the first name on the board." : "No 🔥 yet. Fire the lines you'd steal."}</div>`; return; }
   el.innerHTML = "";
   list.forEach((e, i) => {
     const row = document.createElement("div"); row.className = "entry" + (e.mine ? " you" : "");
     const lit = daily.liked.includes(e.entry);
     row.innerHTML = `<span class="rank">${i + 1}</span><span class="mini">${charSVG(e.tier)}</span><div class="ebody"><div class="ewho"></div><pre></pre></div><div class="eside"><span class="pill bg-t${e.tier}">${e.score}</span><button class="fire${lit ? " lit" : ""}" ${e.mine ? "disabled" : ""} aria-pressed="${lit}" title="Fire it">🔥 <span>${e.fires}</span></button></div>`;
-    row.querySelector(".ewho").textContent = e.who;
+    const ew = row.querySelector(".ewho");
+    if (e.username && !e.mine) { const l = document.createElement("a"); l.href = "/u/" + e.username; l.textContent = e.who; l.onclick = (ev) => { ev.preventDefault(); goProfile(e.username); }; ew.appendChild(l); }
+    else ew.textContent = e.who;
     row.querySelector("pre").textContent = e.lines;
     const f = row.querySelector(".fire");
     f.onclick = async () => { f.disabled = true; try { await api("/api/daily/fire", { body: { entry: e.entry, off: lit } }); await loadDaily(); } catch (err) { f.disabled = false; } };
@@ -489,7 +593,7 @@ function track(type) { try { fetch("/api/event", { method: "POST", headers: { "c
 
 /* ---------- sound ---------- */
 let soundOn = ls("wk-sound") === "1", actx = null;
-function renderSound() { const b = $("soundBtn"); b.textContent = soundOn ? "🔊 Sound on" : "🔈 Sound off"; b.setAttribute("aria-pressed", soundOn); }
+function renderSound() { const b = $("soundBtn"); b.textContent = soundOn ? "🔊" : "🔈"; b.setAttribute("aria-pressed", soundOn); b.title = soundOn ? "Sound on" : "Sound off"; }
 $("soundBtn").onclick = () => { soundOn = !soundOn; ls("wk-sound", soundOn ? "1" : "0"); renderSound(); if (soundOn) sfx("sparkle"); };
 renderSound();
 function tone(f0, f1, dur, type = "sine", vol = 0.12, delay = 0) {
@@ -554,7 +658,7 @@ function doSwap(alt) {
 }
 $("swapX").onclick = closeSwap;
 $("swapMore").onclick = () => { const c = swapCtx && swapCtx.cliche; closeSwap(); if (c) { show("wingman"); ask(`Give me 5 fresh, specific replacements for the cliché "${c}" that fit my lyrics.`); } };
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeSwap(); closeLogin(); } });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeSwap(); closeLogin(); if (!$("tour").hidden) { tourI = TOUR.length; tourStep(); } } });
 document.addEventListener("click", (e) => { if (!$("swapPop").hidden && !e.target.closest("#swapPop") && !e.target.closest(".wk-c")) closeSwap(); });
 
 /* ---------- unlockables ---------- */
@@ -612,7 +716,10 @@ function renderPen() {
   pen.lines.forEach((l) => {
     const li = document.createElement("li"); li.className = l.mine ? "mine" : "";
     li.innerHTML = `<span class="dot" style="background:${PEN_COLORS[l.writer % PEN_COLORS.length]}"></span><span class="ptext"></span><span class="pwho"></span>`;
-    li.querySelector(".ptext").textContent = l.text; li.querySelector(".pwho").textContent = l.who;
+    li.querySelector(".ptext").textContent = l.text;
+    const pw = li.querySelector(".pwho");
+    if (l.username && !l.mine) { const a2 = document.createElement("a"); a2.href = "/u/" + l.username; a2.textContent = "@" + l.username; a2.onclick = (ev) => { ev.preventDefault(); goProfile(l.username); }; pw.appendChild(a2); }
+    else pw.textContent = l.who;
     $("penLines").appendChild(li);
   });
   const full = pen.lines.length >= pen.max;
@@ -674,7 +781,7 @@ let theme = ls("wk-theme") || "auto";
 function applyTheme() {
   const r = document.documentElement;
   if (theme === "auto") r.removeAttribute("data-theme"); else r.setAttribute("data-theme", theme);
-  $("themeBtn").textContent = theme === "light" ? "☀️ Light" : theme === "dark" ? "🌙 Dark" : "🖥️ Auto";
+  $("themeBtn").textContent = theme === "light" ? "☀️" : theme === "dark" ? "🌙" : "🖥️"; $("themeBtn").setAttribute("aria-label", "Theme: " + theme);
   const dark = theme === "dark" || (theme === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
   document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#13152A" : "#FBFCFF");
 }
@@ -729,6 +836,7 @@ let PROFILE = null, lbScope = "friends", lbPeriod = "week", battleOpen = null;
 async function loadSquad() {
   const [pr, fr] = await Promise.all([api("/api/profile").catch(() => null), api("/api/friends").catch(() => null)]);
   PROFILE = pr; renderMeCard(fr); renderFriends(fr); loadBoard(); loadBattles();
+  loadSuggestions($("fSuggest"), $("fSuggestBox"), $("fNote"));
 }
 function renderMeCard(fr) {
   const el = $("meCard"), p = PROFILE || {};
@@ -737,10 +845,20 @@ function renderMeCard(fr) {
   el.innerHTML = `<div class="mcbanner"></div><div class="mcin">${avatarHTML(me, 72)}<div class="mcid"><b></b><span></span></div></div>
     <p class="mcbio"></p>
     <div class="row">${p.username ? `<a class="btn go" href="/u/${p.username}" id="mcView">View my profile</a>` : ""}<button class="btn ${p.username ? "" : "bile"}" id="mcEdit">${p.username ? "Edit profile" : "Claim your @username"}</button>${p.username ? '<button class="btn" id="mcShare">Share profile</button>' : ""}</div>
-    ${!p.signedIn ? `<p class="hint">Tip: <a href="#" id="mcSignin">sign in with email</a> so your profile and squad follow you to any device.</p>` : ""}`;
+    ${!p.signedIn ? `<p class="hint">Tip: <a href="#" id="mcSignin">sign in with email</a> so your profile and squad follow you to any device.</p>` : ""}
+    <details class="acct"><summary>Account settings</summary>
+      ${p.email ? `<label class="attest"><input type="checkbox" id="mcNotify" ${p.notify ? "checked" : ""}> Email me about friend requests, battles, Pen lines and my weekly recap</label>` : `<p class="hint">Sign in with email to get notified when friends challenge you.</p>`}
+      <div class="danger"><b>Delete my account</b><p class="hint">Removes your profile, posts, Daily Ws, votes, friends and battles. Lines you added to friends' Pass the Pen songs stay, without your name. This can't be undone.</p>
+      <div class="row"><input type="text" id="mcDelConfirm" placeholder="Type DELETE" aria-label="Type DELETE to confirm" style="max-width:160px"><button class="btn" id="mcDel">Delete forever</button></div><span class="hint" id="mcDelNote"></span></div>
+    </details>`;
   el.querySelector("b").textContent = me.name; el.querySelector(".mcid span").textContent = p.username ? "@" + p.username : "No username yet";
   el.querySelector(".mcbio").textContent = p.bio || (p.username ? "" : "Pick a username so friends can find you, battle you and see you on the leaderboard.");
   $("mcEdit").onclick = openEditor;
+  if ($("mcNotify")) $("mcNotify").onchange = async (e) => { await api("/api/notify", { body: { on: e.target.checked } }).catch(() => {}); };
+  $("mcDel").onclick = async () => {
+    try { await api("/api/account/delete", { body: { confirm: $("mcDelConfirm").value } }); try { localStorage.clear(); } catch (e) {} location.href = "/?deleted=1"; }
+    catch (err) { $("mcDelNote").textContent = err.message; }
+  };
   if ($("mcView")) $("mcView").onclick = (e) => { e.preventDefault(); goProfile(p.username); };
   if ($("mcShare")) $("mcShare").onclick = () => shareLink(`${location.origin}/u/${p.username}`, "Come write with me on Wackometer 👉", $("fNote"));
   if ($("mcSignin")) $("mcSignin").onclick = (e) => { e.preventDefault(); openLogin(); };
@@ -760,6 +878,7 @@ function openEditor() {
     $("pfColors").querySelectorAll(".colb").forEach((b) => (b.onclick = () => { pfColor = b.dataset.c; sfx("pop"); drawPick(); }));
   };
   drawPick();
+  $("pfAgeRow").hidden = !!p.ageOk;
   const best = last && last.best; $("pfUseBest").hidden = !best; $("pfUseBest").onclick = () => { $("pfPinned").value = best.line; };
   f.scrollIntoView({ behavior: "smooth", block: "start" }); setTimeout(() => $(p.username ? "pfName" : "pfUser").focus(), 300);
 }
@@ -767,7 +886,7 @@ $("pfCancel").onclick = () => ($("pEdit").hidden = true);
 $("pEdit").addEventListener("submit", async (e) => {
   e.preventDefault(); const b = $("pfSave"); b.disabled = true; $("pfNote").textContent = "Saving…";
   try {
-    await api("/api/profile", { body: { username: $("pfUser").value, name: $("pfName").value, bio: $("pfBio").value, avatar: pfAvatar, color: pfColor, genre: $("pfGenre").value, pinned: $("pfPinned").value,
+    await api("/api/profile", { body: { age13: $("pfAge").checked, username: $("pfUser").value, name: $("pfName").value, bio: $("pfBio").value, avatar: pfAvatar, color: pfColor, genre: $("pfGenre").value, pinned: $("pfPinned").value,
       links: { instagram: $("pfIg").value, tiktok: $("pfTt").value, spotify: $("pfSp").value, soundcloud: $("pfSc").value, youtube: $("pfYt").value } } });
     $("pfNote").textContent = "Saved."; sfx("sparkle"); $("pEdit").hidden = true; await loadMe(); loadSquad();
   } catch (err) { $("pfNote").textContent = err.message; }
@@ -792,23 +911,60 @@ function renderFriends(fr) {
   });
   fr.outgoing.forEach((p) => list.appendChild(personRow(p, `<span class="hint">Request sent</span>`)));
 }
+// Search results and suggestions share one renderer with the right button for each relationship.
+function friendButton(p, noteEl) {
+  const b = document.createElement("button"); b.className = "btn sm";
+  const set = (rel) => {
+    p.relation = rel; b.disabled = false; b.className = "btn sm" + (rel === "none" || rel === "incoming" ? " bile" : "");
+    b.textContent = rel === "friends" ? "Friends ✓" : rel === "requested" ? "Sent" : rel === "incoming" ? "Accept" : "➕ Add";
+    b.disabled = rel === "requested" || rel === "friends";
+  };
+  set(p.relation || "none");
+  b.onclick = async () => {
+    b.disabled = true;
+    try {
+      if (p.relation === "incoming") { await api("/api/friends/respond", { body: { username: p.username, accept: true } }); set("friends"); sfx("sparkle"); }
+      else { const r = await api("/api/friends/request", { body: { username: p.username } }); set(r.status === "friends" ? "friends" : "requested"); sfx("pop"); }
+      if (!$("v-squad").hidden) loadSquad();
+    } catch (err) {
+      b.disabled = false; noteEl.textContent = err.message;
+      if (err.status === 409) { $("findModal").hidden = true; show("squad"); setTimeout(openEditor, 400); }
+    }
+  };
+  return b;
+}
+function renderPeople(list, box, noteEl, emptyMsg) {
+  box.innerHTML = "";
+  if (!list.length) { if (emptyMsg) box.innerHTML = `<p class="hint">${emptyMsg}</p>`; return; }
+  list.forEach((p) => {
+    const row = personRow(p, p.why ? `<span class="why">${esc(p.why)}</span>` : "");
+    if (p.bio) { const s = document.createElement("span"); s.className = "fbio"; s.textContent = p.bio; row.querySelector(".fname").appendChild(s); }
+    row.querySelector(".fextra").appendChild(friendButton(p, noteEl));
+    box.appendChild(row);
+  });
+}
+async function runSearch(q, box, noteEl) {
+  if (q.replace(/^@/, "").length < 2) { box.innerHTML = ""; return; }
+  const r = await api("/api/users/search?q=" + encodeURIComponent(q)).catch(() => ({ users: [] }));
+  renderPeople(r.users, box, noteEl, `No one called “${esc(q)}” yet. Send them an invite link!`);
+}
+async function loadSuggestions(box, wrap, noteEl) {
+  const r = await api("/api/users/suggest").catch(() => ({ users: [] }));
+  wrap.hidden = !r.users.length; renderPeople(r.users, box, noteEl);
+}
 let searchT = null;
-$("fSearch").addEventListener("input", () => {
-  clearTimeout(searchT);
-  searchT = setTimeout(async () => {
-    const q = $("fSearch").value.trim(), box = $("fResults");
-    if (q.length < 2) { box.innerHTML = ""; return; }
-    const r = await api("/api/users/search?q=" + encodeURIComponent(q)).catch(() => ({ users: [] }));
-    box.innerHTML = r.users.length ? "" : `<p class="hint">No one with that username yet. Invite them!</p>`;
-    r.users.forEach((p) => {
-      const row = personRow(p, `<button class="btn sm bile">Add</button>`);
-      row.querySelector("button").onclick = async (e) => { const btn = e.currentTarget; btn.disabled = true;
-        try { const res = await api("/api/friends/request", { body: { username: p.username } }); btn.textContent = res.status === "friends" ? "Friends ✓" : "Sent"; sfx("pop"); loadSquad(); }
-        catch (err) { $("fNote").textContent = err.message; btn.disabled = false; if (err.status === 409) openEditor(); } };
-      box.appendChild(row);
-    });
-  }, 250);
-});
+$("fSearch").addEventListener("input", () => { clearTimeout(searchT); searchT = setTimeout(() => runSearch($("fSearch").value.trim(), $("fResults"), $("fNote")), 250); });
+let findT = null;
+$("findQ").addEventListener("input", () => { clearTimeout(findT); findT = setTimeout(() => runSearch($("findQ").value.trim(), $("findResults"), $("findNote")), 250); });
+function openFind() {
+  $("findModal").hidden = false; $("findNote").textContent = ""; setTimeout(() => $("findQ").focus(), 50);
+  loadSuggestions($("findSuggest"), $("findSuggestBox"), $("findNote"));
+}
+$("findBtn").onclick = openFind;
+$("findX").onclick = () => ($("findModal").hidden = true);
+$("findModal").addEventListener("click", (e) => { if (e.target.id === "findModal") $("findModal").hidden = true; });
+$("findInvite").onclick = () => shareLink(PROFILE && PROFILE.username ? `${location.origin}/u/${PROFILE.username}` : location.origin, "Write lyrics with me on Wackometer. Add me 👉", $("findNote"));
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") { $("findModal").hidden = true; } if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); openFind(); } });
 $("fInvite").onclick = () => shareLink(PROFILE && PROFILE.username ? `${location.origin}/u/${PROFILE.username}` : location.origin, "Write lyrics with me on Wackometer. Add me 👉", $("fNote"));
 async function shareLink(url, text, noteEl) {
   if (navigator.share) { try { await navigator.share({ text, url }); return; } catch (e) {} }
@@ -911,6 +1067,15 @@ async function loadProfile(username) {
     else if (p.relation === "incoming") btn("Accept friend request", "bile", async () => { await api("/api/friends/respond", { body: { username: p.username, accept: true } }); sfx("sparkle"); loadProfile(p.username); });
     else btn("➕ Add friend", "bile", async (e) => { try { await api("/api/friends/request", { body: { username: p.username } }); sfx("pop"); loadProfile(p.username); } catch (err) { e.target.textContent = err.status === 409 ? "Pick your username first" : err.message; if (err.status === 409) { show("squad"); setTimeout(openEditor, 400); } } });
     btn("Share", "", () => shareLink(location.href.split("#")[0], `${p.name} on Wackometer 👉`, $("pBio")));
+    if (!p.you) {
+      if (p.relation === "blocked") btn("Unblock", "", async () => { await api(`/api/u/${p.username}/unblock`, { body: {} }); loadProfile(p.username); });
+      else {
+        const more = document.createElement("details"); more.className = "pmore"; more.innerHTML = `<summary aria-label="More options">•••</summary><div class="pmenu"><button class="linkbtn" data-a="report">🚩 Report profile</button><button class="linkbtn" data-a="block">🚫 Block @${esc(p.username)}</button></div>`;
+        more.querySelector('[data-a="report"]').onclick = async (e) => { const t = e.target; if (!t.dataset.sure) { t.dataset.sure = 1; t.textContent = "Tap again to report (offensive or fake)"; return; } await api(`/api/u/${p.username}/report`, { body: { reason: "profile" } }).catch(() => {}); t.textContent = "Reported. Thanks."; t.disabled = true; };
+        more.querySelector('[data-a="block"]').onclick = async (e) => { const t = e.target; if (!t.dataset.sure) { t.dataset.sure = 1; t.textContent = "Tap again: they can't friend or battle you"; return; } await api(`/api/u/${p.username}/block`, { body: {} }).catch(() => {}); loadProfile(p.username); };
+        act.appendChild(more);
+      }
+    }
   } catch (e) {
     $("pName").textContent = "No writer here"; $("pUser").textContent = "@" + username; $("pBio").textContent = e.message; $("pActions").innerHTML = ""; $("pAvatar").innerHTML = charSVG(3);
     ["pStats", "pTags", "pRecent", "pUnlocks"].forEach((i) => ($(i).innerHTML = "")); $("pPin").hidden = true; $("pLinksBox").hidden = true; $("pLastDaily").hidden = true;
@@ -925,7 +1090,7 @@ function renderAccount() {
 function openLogin() {
   $("loginModal").hidden = false; $("loginChar").innerHTML = charSVG(1); $("loginNote").textContent = "";
   const inn = !!(ME && ME.email);
-  $("loginForm").hidden = inn; $("loginOut").hidden = !inn; $("adminLink").hidden = !(ME && ME.admin);
+  $("loginForm").hidden = inn; $("loginOut").hidden = !inn; $("loginAge").parentElement.hidden = !!(ME && ME.ageOk); $("adminLink").hidden = !(ME && ME.admin);
   const mp = $("myProfileLink"); mp.hidden = !(ME && ME.username); if (ME && ME.username) mp.href = "/u/" + ME.username;
   $("loginH").textContent = inn ? "You're signed in" : "Save your streak and songs";
   $("loginSub").textContent = inn ? `Signed in as ${ME.email}. Your streak, Pro and songs follow you to any device.` : "Sign in with your email and we'll send you a link. No password. Your streak, Pro and songs follow you to any device.";
@@ -936,7 +1101,7 @@ $("acctBtn").onclick = openLogin; $("loginX").onclick = closeLogin; $("loginX2")
 $("loginModal").addEventListener("click", (e) => { if (e.target.id === "loginModal") closeLogin(); });
 $("loginGo").onclick = async () => {
   const b = $("loginGo"); b.disabled = true; $("loginNote").textContent = "Sending…";
-  try { await api("/api/login", { body: { email: $("loginEmail").value } }); $("loginNote").textContent = "Check your email for the sign-in link. It works for 20 minutes."; }
+  try { await api("/api/login", { body: { email: $("loginEmail").value, age13: $("loginAge").checked } }); $("loginNote").textContent = "Check your email for the sign-in link. It works for 20 minutes."; }
   catch (e) { $("loginNote").textContent = e.message; }
   b.disabled = false;
 };
@@ -946,23 +1111,164 @@ $("logoutBtn").onclick = async () => { await api("/api/logout", { body: {} }).ca
 /* ---------- wiring ---------- */
 $("weighBtn").onclick = renderReading;
 $("wipeBtn").onclick = wipe;
-document.querySelectorAll("[data-ex]").forEach((b) => (b.onclick = () => { $("lyrics").value = EXAMPLES[+b.dataset.ex]; renderReading(); }));
+document.querySelectorAll("[data-ex]").forEach((b) => (b.onclick = () => loadExample(b.dataset.ex)));
 $("lyrics").addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") renderReading(); });
-$("lyrics").addEventListener("input", () => ls("wk-draft", $("lyrics").value));
-document.querySelectorAll("#mainNav button").forEach((b) => (b.onclick = () => show(b.dataset.v)));
+$("lyrics").addEventListener("input", () => { padIsExample = false; ls("wk-draft", $("lyrics").value); $("draftBack").hidden = true; });
+document.querySelectorAll("#mainNav button,#proBtn").forEach((b) => (b.onclick = () => show(b.dataset.v)));
 window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if (VIEWS.includes(h)) show(h); });
 $("toWing").onclick = () => { show("wingman"); if (words($("lyrics").value).length >= 8) { if (!last) renderReading(); ask("Make my lyrics less wack"); } };
 $("whyList").innerHTML = METRICS.map((m) => `<dt>${m.n} <span class="hint">(${Math.round(m.w * 100)}%)</span></dt><dd>${m.d}</dd>`).join("");
 $("heroGo").onclick = () => { const t = $("lyrics"); t.scrollIntoView({ behavior: "smooth", block: "center" }); setTimeout(() => { t.focus(); t.select(); }, 350); };
-$("heroDare").onclick = () => { $("lyrics").value = EXAMPLES[0]; renderReading(); $("meter").scrollIntoView({ behavior: "smooth", block: "center" }); };
+$("heroDare").onclick = () => loadExample("wack", true);
 document.querySelectorAll("[data-wing],[data-wingbig]").forEach((e) => (e.innerHTML = charSVG(5)));
 $("mchar").innerHTML = charSVG(5); renderCrew(null);
 if (ls("wk-seen") !== "1") { document.body.classList.add("first"); ls("wk-seen", "1"); }
 
+
+/* ---------- Coach + progress ---------- */
+const COACH_TIPS = {
+  worn: (r) => `Your biggest habit here is borrowed phrases${r.found.length ? `, like "${r.found[0][0]}"` : ""}. Listeners finish a cliché before you do. Tap a highlighted phrase for swaps, then train it so you stop reaching for them.`,
+  wimpy: () => "Your rhymes are the first ones anyone would grab. Try slant rhymes (window / pillow) or rhyme two syllables at once.",
+  weightless: () => "Too many big feeling-words (love, soul, pain) doing the work. Swap one for an object you could photograph.",
+  variety: () => "You're circling the same words. Verses should keep moving. Hooks can repeat; verses shouldn't.",
+  wasted: () => "Filler words are holding lines together. If a line needs a 'yeah' to fit, the line isn't finished yet.",
+  wallpaper: () => "Whole lines repeat more than a hook needs. Keep the hook line, change what surrounds it each time.",
+};
+function renderCoach() {
+  if (!last) return;
+  const worst = METRICS.map((m) => [m.k, last.vals[m.k]]).sort((a, b) => b[1] - a[1])[0];
+  if (worst[1] < 25) {
+    const extra = LESSONS.find((l) => !l.metric && !wsDone()[l.id]);
+    if (!extra) { $("coach").hidden = true; return; }
+    $("coachText").textContent = `Clean on all six metrics. Next level: ${extra.why.split(". ")[0]}.`;
+    $("coachGo").textContent = `Train: ${extra.title}`; $("coachGo").onclick = () => openLesson(extra.id);
+  } else {
+    const l = LESSONS.find((x) => x.metric === worst[0]);
+    $("coachText").textContent = COACH_TIPS[worst[0]](last);
+    $("coachGo").textContent = `Train: ${l.title} (+${l.xp} XP)`; $("coachGo").onclick = () => openLesson(l.id);
+  }
+  $("coachChar").innerHTML = charSVG(1); $("coach").hidden = false;
+}
+function getHist() { try { return JSON.parse(ls("wk-hist") || "[]"); } catch (e) { return []; } }
+function saveHistory() {
+  const h = getHist(); const key = last.text.slice(0, 80);
+  if (h.length && h[h.length - 1].k === key) h.pop(); // re-weighing the same draft replaces it
+  const worst = METRICS.map((m) => [m.k, last.vals[m.k]]).sort((a, b) => b[1] - a[1])[0][0];
+  h.push({ t: Date.now(), s: last.score, w: worst, k: key }); ls("wk-hist", JSON.stringify(h.slice(-40)));
+}
+
+/* ---------- Workshop ---------- */
+function wsDone() { try { return JSON.parse(ls("wk-ws") || "{}"); } catch (e) { return {}; } }
+let wsCur = null;
+function renderWorkshop() {
+  const done = wsDone(); const xp = LESSONS.reduce((a, l) => a + (done[l.id] ? l.xp : 0), 0); const r = rankOf(xp);
+  const pct = r.next ? Math.round(((xp - r.at) / (r.next[0] - r.at)) * 100) : 100;
+  $("wsRank").innerHTML = `<b>${esc(r.name)}</b><div class="xpbar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="Progress to next rank"><i style="width:${pct}%"></i></div><span class="hint">${xp} XP${r.next ? ` · ${r.next[0] - xp} to ${r.next[1]}` : " · top rank"}</span>`;
+  $("wsList").innerHTML = LESSONS.map((l) => `<button class="lcard${done[l.id] ? " done" : ""}" data-l="${l.id}" aria-pressed="${l.id === wsCur}"><b>${done[l.id] ? "✅ " : ""}${esc(l.title)}</b><small>${esc(l.sub)} · ${l.xp} XP</small></button>`).join("");
+  $("wsList").querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => { wsCur = b.dataset.l; renderWorkshop(); if (innerWidth < 820) $("wsLesson").scrollIntoView({ behavior: "smooth" }); }));
+  if (!wsCur) wsCur = (LESSONS.find((l) => !done[l.id]) || LESSONS[0]).id;
+  const l = LESSONS.find((x) => x.id === wsCur);
+  $("wsLesson").innerHTML = `<h3>${esc(l.title)}</h3><p>${esc(l.why)}</p>
+    <div class="ba"><div class="bef"><small>🤢 Wack</small>${esc(l.before)}</div><div class="aft"><small>✨ Better</small>${esc(l.after)}</div></div>
+    <div class="drill"><b>🏋️ Drill${done[l.id] ? " (passed, practice anytime)" : ` · +${l.xp} XP`}</b><span>${esc(l.drill)}</span>
+    <label class="hint" for="wsIn">Your drill</label><textarea id="wsIn" spellcheck="false" placeholder="Write it here…"></textarea>
+    <div class="row"><button class="btn bile" id="wsCheck">Check my drill</button><button class="btn" id="wsAsk">Ask Wingman for an example</button></div>
+    <p id="wsOut" aria-live="polite" class="hint"></p></div>`;
+  $("wsIn").value = ls("wk-ws-" + l.id) || "";
+  $("wsIn").addEventListener("input", () => ls("wk-ws-" + l.id, $("wsIn").value));
+  $("wsCheck").onclick = () => {
+    const res = l.check($("wsIn").value);
+    if (res === true) {
+      const d = wsDone(); const first = !d[l.id]; d[l.id] = Date.now(); ls("wk-ws", JSON.stringify(d));
+      $("wsOut").innerHTML = `<span class="pass">Passed!${first ? ` +${l.xp} XP` : ""}</span> ${first ? "Habit unlocked." : "Still got it."}`;
+      sfx("sparkle"); if (first) { confetti(); track("lesson_pass"); setTimeout(renderWorkshop, 1400); }
+    } else { $("wsOut").innerHTML = `<span class="fail">Not yet.</span> ${esc(res)}`; sfx("pop"); }
+  };
+  $("wsAsk").onclick = () => { show("wingman"); ask(`Teach me "${l.title}". Give me two short original examples, then a tip for the drill: ${l.drill}`); };
+  renderProgress();
+}
+function openLesson(id) { wsCur = id; show("workshop"); }
+function renderProgress() {
+  const h = getHist();
+  if (h.length < 2) { $("wsHist").innerHTML = `<p class="hint">Weigh your own lyrics a couple of times and your trend shows up here.</p>`; return; }
+  const W = 600, H = 70, pts = h.map((x, i) => [(i / (h.length - 1)) * (W - 20) + 10, 10 + (x.s / 100) * (H - 20)]);
+  const counts = {}; h.slice(-10).forEach((x) => (counts[x.w] = (counts[x.w] || 0) + 1));
+  const habit = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0]; const hm = METRICS.find((m) => m.k === habit);
+  const first = h.slice(0, Math.ceil(h.length / 2)), second = h.slice(Math.ceil(h.length / 2));
+  const avg = (a) => Math.round(a.reduce((s, x) => s + x.s, 0) / a.length); const d = avg(first) - avg(second);
+  $("wsHist").innerHTML = `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Your last ${h.length} wack scores, lower is better"><polyline fill="none" stroke="var(--t0)" stroke-width="3" stroke-linejoin="round" points="${pts.map((p) => p.join(",")).join(" ")}"/>${pts.map((p, i) => `<circle cx="${p[0]}" cy="${p[1]}" r="4" fill="var(--t${tierOf(h[i].s)})"/>`).join("")}</svg>
+    <p>${h.length} weighs · lower line = less wack. ${d > 2 ? `You're <b>${d} points less wack</b> than when you started.` : d < -2 ? `Scores crept up ${-d} points. Time for a drill.` : "Holding steady."} Your most common habit lately: <b>${esc(hm.n.toLowerCase())}</b>.</p>`;
+}
+
+/* ---------- AI Wash ---------- */
+let washLast = null;
+function runWash() {
+  const t = $("washIn").value;
+  if (words(t).length < 8) { $("washVerdict").textContent = "Give it at least a couple of lines."; return; }
+  const r = washScan(t); washLast = r;
+  const [vt, ti] = washVerdict(r.score);
+  $("washScore").textContent = r.score + "% bot"; $("washVerdict").textContent = vt; $("washBar").style.left = `calc(${r.score}% - 3px)`;
+  $("washChar").innerHTML = charSVG(r.score >= 60 ? 4 : r.score >= 35 ? 2 : 1);
+  $("washMap").innerHTML = r.lines.map((line, li) => {
+    const hs = r.hits.filter((h) => h.li === li).sort((a, b) => a.s - b.s); let out = "", pos = 0;
+    hs.forEach((h) => { if (h.s < pos) return; out += esc(line.slice(pos, h.s)) + `<mark class="ai-t" title="${esc(h.t[1])}">${esc(line.slice(h.s, h.e))}</mark>`; pos = h.e; });
+    return `<div class="wln">${out + esc(line.slice(pos)) || "&nbsp;"}</div>`;
+  }).join("");
+  $("washMapBox").hidden = false;
+  const seen = new Set(); const tells = [];
+  r.hits.forEach((h) => { if (!seen.has(h.t[0])) { seen.add(h.t[0]); tells.push([`"${h.t[0]}"`, h.t[1], h.t[2]]); } });
+  const all = [...r.shape, ...tells];
+  $("washTells").innerHTML = all.length ? `<h3>What gave it away (${all.length})</h3>` + all.map((x) => `<div class="tell"><b>${esc(x[0])}</b><p>${esc(x[1])}</p><p class="fix">✍️ ${esc(x[2])}</p></div>`).join("") : `<div class="tell" style="border-left-color:var(--t1)"><b>No robot tells found</b><p>This reads like a person wrote it. Weigh it next to check for clichés.</p></div>`;
+  sfx(r.score >= 60 ? "gag" : "pop"); track("wash");
+}
+$("washBtn").onclick = runWash;
+$("washEx").onclick = () => { $("washIn").value = WASH_EXAMPLE; runWash(); };
+$("washWipe").onclick = () => { $("washIn").value = ""; $("washMapBox").hidden = true; $("washTells").innerHTML = ""; $("washAIBox").hidden = true; $("washScore").textContent = "–"; $("washVerdict").textContent = "Paste something and hit Wash it."; $("washBar").style.left = "0"; $("washIn").focus(); };
+$("washToWeigh").onclick = () => { $("lyrics").value = $("washIn").value; padIsExample = false; show("weigh"); renderReading(); };
+$("washIn").addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") runWash(); });
+$("washHuman").onclick = async () => {
+  const t = $("washIn").value; if (words(t).length < 8) { $("washVerdict").textContent = "Give Wingman at least a couple of lines."; return; }
+  if (!washLast) runWash();
+  const b = $("washHuman"); b.disabled = true; $("washAIBox").hidden = false; $("washAI").textContent = "Wingman is putting a person back in…";
+  try {
+    const tells = washLast ? [...washLast.shape.map((x) => x[0]), ...new Set(washLast.hits.map((h) => h.t[0]))].join(", ") : "";
+    const r = await api("/api/wingman", { body: { mode: "humanize", pad: t, message: tells } });
+    $("washAI").textContent = r.text; if (r.me) { ME = r.me; renderQuota(); } track("humanize");
+  } catch (e) { $("washAI").textContent = e.message; if (e.status === 402) addProLink($("washAI")); }
+  b.disabled = false;
+};
+$("washUse").onclick = () => { const txt = $("washAI").textContent; const lyr = txt.split(/\n\s*\n/)[0]; $("washIn").value = lyr.trim(); runWash(); };
+
+/* ---------- Wordstorm ---------- */
+const storm = initStorm({ ls, track, copyText });
+
+/* ---------- first-visit tour ---------- */
+const TOUR = [
+  ["weighBtn", 1, "Weigh your words", "Paste lyrics and hit Weigh it. The meter scores them from Wicked to Wack and circles exactly what's wack."],
+  ["mainNav", 3, "Tools for every part of writing", "Wash scrubs the robot out of AI-sounding lines. Wordstorm drops freestyle words on a beat. Workshop turns your bad habits into XP."],
+  ["heroDare", 4, "Start with a wack one", "Not ready to share your own? Load a wack example and watch me gag. Each tap brings a new one."],
+];
+let tourI = 0;
+function tourStep() {
+  document.querySelectorAll(".spot").forEach((e) => e.classList.remove("spot"));
+  if (tourI >= TOUR.length) { $("tour").hidden = true; ls("wk-tour", "1"); return; }
+  const [id, ch, h, t] = TOUR[tourI]; const el = $(id); el.classList.add("spot"); el.scrollIntoView({ block: "center", behavior: "smooth" });
+  $("tourChar").innerHTML = charSVG(ch); $("tourH").textContent = h; $("tourText").textContent = t; $("tourStep").textContent = `${tourI + 1} / ${TOUR.length}`;
+  $("tourNext").textContent = tourI === TOUR.length - 1 ? "Let's write" : "Next"; $("tour").hidden = false; $("tourNext").focus();
+}
+$("tourNext").onclick = () => { tourI++; tourStep(); };
+$("tourSkip").onclick = () => { tourI = TOUR.length; tourStep(); };
+
+/* ---------- installable app ---------- */
+let installEvt = null;
+window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installEvt = e; $("installBtn").hidden = false; });
+$("installBtn").onclick = async () => { if (!installEvt) return; installEvt.prompt(); await installEvt.userChoice.catch(() => {}); installEvt = null; $("installBtn").hidden = true; track("install"); };
+if ("serviceWorker" in navigator && location.hostname !== "localhost") window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
+
 /* ---------- boot ---------- */
-$("lyrics").value = ls("wk-draft") || EXAMPLES[0];
-renderReading();
-loadTune().then(() => { if (last && tuneN) renderReading(); });
+// Start with a clean pad. A saved draft is one tap away instead of preloaded.
+{ const d = ls("wk-draft"); if (d && d.trim()) { $("draftBack").hidden = false; $("draftBtn").onclick = () => { $("lyrics").value = d; $("draftBack").hidden = true; renderReading(); }; } }
+loadTune();
 loadMe();
 {
   const h = location.hash.slice(1), path = location.pathname.replace(/\/+$/, "") || "/";
@@ -970,8 +1276,12 @@ loadMe();
   else if (path.startsWith("/u/")) show("profile");
   else if (path !== "/" && path !== "/index.html") { show("lost"); $("lostChar").innerHTML = charSVG(3); }
   else if (VIEWS.includes(h) && h !== "weigh" && h !== "lost") show(h);
+  const qs0 = new URLSearchParams(location.search);
+  if (qs0.get("unsubscribed")) { history.replaceState(null, "", "/#weigh"); setTimeout(() => { $("quip").textContent = "Wally: Done. No more emails from us. You can turn them back on in Squad → Account settings."; $("mchar").innerHTML = charSVG(2); }, 300); }
+  if (qs0.get("deleted")) { history.replaceState(null, "", "/#weigh"); setTimeout(() => { $("quip").textContent = "Wendy: Your account is gone. Sad to see you go. The door's always open."; $("mchar").innerHTML = charSVG(1); }, 300); }
   const si = new URLSearchParams(location.search).get("signin");
   if (si) { history.replaceState(null, "", "/#weigh"); if (si === "ok") { setTimeout(() => { $("quip").textContent = "Wendy: You're signed in! Your streak and songs are safe now."; $("mchar").innerHTML = charSVG(1); }, 300); } else { openLogin(); $("loginNote").textContent = "That link expired. Send a new one."; } }
+  if (ls("wk-tour") !== "1" && path === "/" && (!h || h === "weigh") && !qs0.toString()) setTimeout(tourStep, 1200);
   const paid = new URLSearchParams(location.search).get("paid");
   if (paid) { show("pro"); setTimeout(() => ($("demoNote").textContent = paid === "credits" ? "Payment received. 25 credits are on their way to your account." : "Welcome to Wingman Pro. It can take a few seconds to switch on."), 600); history.replaceState(null, "", "/#pro"); }
 }

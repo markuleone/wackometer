@@ -1,6 +1,6 @@
 // Generated from schema.sql. The worker runs these once per instance, so a fresh database sets itself up.
 export const SCHEMA = [
-  "CREATE TABLE IF NOT EXISTS users ( id TEXT PRIMARY KEY, created_at INTEGER NOT NULL, plan TEXT NOT NULL DEFAULT 'free', pro_until INTEGER, credits INTEGER NOT NULL DEFAULT 0, stripe_customer TEXT, handle TEXT, streak INTEGER NOT NULL DEFAULT 0, last_daily TEXT, email TEXT, username TEXT, display_name TEXT, bio TEXT, avatar INTEGER, color TEXT, genre TEXT, links TEXT, pinned TEXT )",
+  "CREATE TABLE IF NOT EXISTS users ( id TEXT PRIMARY KEY, created_at INTEGER NOT NULL, plan TEXT NOT NULL DEFAULT 'free', pro_until INTEGER, credits INTEGER NOT NULL DEFAULT 0, stripe_customer TEXT, handle TEXT, streak INTEGER NOT NULL DEFAULT 0, last_daily TEXT, email TEXT, username TEXT, display_name TEXT, bio TEXT, avatar INTEGER, color TEXT, genre TEXT, links TEXT, pinned TEXT, age_ok INTEGER, human_until INTEGER, notify INTEGER NOT NULL DEFAULT 1 )",
   "CREATE TABLE IF NOT EXISTS readings ( id TEXT PRIMARY KEY, user_id TEXT NOT NULL, title TEXT, excerpt TEXT NOT NULL, raw INTEGER NOT NULL, score INTEGER NOT NULL, tier INTEGER NOT NULL, metrics TEXT NOT NULL, vote_count INTEGER NOT NULL DEFAULT 0, reports INTEGER NOT NULL DEFAULT 0, hidden INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL )",
   "CREATE INDEX IF NOT EXISTS readings_new ON readings(hidden, created_at DESC)",
   "CREATE INDEX IF NOT EXISTS readings_top ON readings(hidden, vote_count DESC)",
@@ -22,7 +22,10 @@ export const SCHEMA = [
   "CREATE TABLE IF NOT EXISTS battles ( id TEXT PRIMARY KEY, emoji TEXT, prompt TEXT NOT NULL, challenger TEXT NOT NULL, opponent TEXT NOT NULL, c_lines TEXT, o_lines TEXT, c_score INTEGER, o_score INTEGER, status TEXT NOT NULL DEFAULT 'open', created_at INTEGER NOT NULL, done_at INTEGER )",
   "CREATE INDEX IF NOT EXISTS battles_c ON battles(challenger)",
   "CREATE INDEX IF NOT EXISTS battles_o ON battles(opponent)",
-  "CREATE TABLE IF NOT EXISTS settings ( k TEXT PRIMARY KEY, v TEXT NOT NULL )"
+  "CREATE TABLE IF NOT EXISTS settings ( k TEXT PRIMARY KEY, v TEXT NOT NULL )",
+  "CREATE TABLE IF NOT EXISTS blocks ( blocker TEXT NOT NULL, blocked TEXT NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY (blocker, blocked) )",
+  "CREATE TABLE IF NOT EXISTS profile_reports ( target TEXT NOT NULL, reporter TEXT NOT NULL, reason TEXT, created_at INTEGER NOT NULL, PRIMARY KEY (target, reporter) )",
+  "CREATE TABLE IF NOT EXISTS notify_log ( k TEXT PRIMARY KEY, at INTEGER NOT NULL )"
 ];
 
 // Changes for databases created before these existed. Each runs on its own; 'duplicate column' errors are expected and ignored.
@@ -36,5 +39,8 @@ export const MIGRATIONS = [
   "ALTER TABLE users ADD COLUMN genre TEXT",
   "ALTER TABLE users ADD COLUMN links TEXT",
   "ALTER TABLE users ADD COLUMN pinned TEXT",
+  "ALTER TABLE users ADD COLUMN age_ok INTEGER",
+  "ALTER TABLE users ADD COLUMN human_until INTEGER",
+  "ALTER TABLE users ADD COLUMN notify INTEGER NOT NULL DEFAULT 1",
   "CREATE UNIQUE INDEX IF NOT EXISTS users_username ON users(username)"
 ];

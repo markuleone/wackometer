@@ -107,8 +107,17 @@ Open http://localhost:8787.
 - **Wall** with tier votes, 🔥😭💀🤢 reactions, Featured, reports.
 - **Wingman** chat, emoji starters, Pro and credits.
 - **Squad**: customizable profiles at `/u/<username>` (crew avatar, color, bio, genre, signature line, music links, stats, unlocks), friend requests and search, W Points leaderboards (squad or everyone, week or today) and blind head-to-head battles between friends.
+- **AI Wash** (`#wash`): flags phrases and habits that make lyrics read machine-written (neon, echoes, tapestry, every line the same length, no contractions, nothing specific), explains each one, and offers a Wingman "humanize" pass that asks the writer for real details. Detection runs in the browser; the rewrite uses a Wingman message.
+- **Wordstorm** (`#storm`): freestyle word generator. A synthesized boom-bap beat (or your own, with tap tempo), a new word every 1, 2 or 4 bars, rhymes underneath, 8 word packs, and optional mic scoring through the browser's speech recognition.
+- **Workshop** (`#workshop`): 10 lessons, each with a before/after and a drill the scoring engine checks. XP and ranks (Wannabe to Wicked Writer), plus a trend line of your own weighs. The Coach's note on every reading links to the lesson for your worst habit.
+- **Search pages** built at deploy time: `/rhymes/<word>` (404 words, perfect and slant rhymes, lazy rhymes flagged), `/cliches/<phrase>` (every cliché with fresh swaps), `/syllable-counter`. All listed in `/sitemap.xml`. Word data comes from `scripts/gen-words.py` (run it only if you change the word pool; its output is committed).
+- **Installable app**: `manifest.webmanifest` + `sw.js` (offline shell, never caches `/api`). Chrome and Android show an install button in the header; on iPhone it's Share → Add to Home Screen.
+- **First-visit tour**: three quick steps, shown once.
+- **Bot check**: Cloudflare Turnstile on public posts, once a month per person, only when `TURNSTILE_SECRET` and `TURNSTILE_SITE_KEY` are set.
+- **Email notifications**: friend requests, battles, Pen lines and a Monday squad digest (cron in `wrangler.toml`), with one-click unsubscribe. Needs `SENDGRID_API_KEY`.
+- **Safety**: slur filter everywhere, profanity filter on names and bios, profile reports and blocking, 13+ check, self-serve account deletion.
 - **Light and dark mode**: follows the device by default, with a toggle in the header.
-- **Admin** at `/admin`: totals, share/save counts by day, reported posts to hide, restore or delete.
+- **Admin** at `/admin`: totals, share/save counts by day, reported profiles, reported posts to hide, restore or delete.
 
 ## Known gaps before a big launch
 

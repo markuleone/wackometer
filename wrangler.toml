@@ -13,6 +13,10 @@ run_worker_first = ["/api/*", "/u/*", "/sitemap.xml"]
 [observability]
 enabled = true
 
+# Weekly squad digest email: Mondays 14:00 UTC (10am Eastern)
+[triggers]
+crons = ["0 14 * * 1"]
+
 [[d1_databases]]
 binding = "DB"
 database_name = "wackometer"
@@ -27,10 +31,12 @@ PRO_PRICE_YEARLY = ""
 CREDITS_PRICE = ""
 ADMIN_EMAILS = "info@donebyverde.com"          # who can open /admin (comma-separated)
 EMAIL_FROM = "Wackometer <hello@wackometer.com>" # sender for sign-in emails
+TURNSTILE_SITE_KEY = ""                         # public Turnstile site key (bot check); pair with the TURNSTILE_SECRET secret
 
 # Secrets (set with `npx wrangler secret put NAME`, never put them here):
 #   SESSION_SECRET         any long random string
 #   ANTHROPIC_API_KEY      from console.anthropic.com
 #   STRIPE_SECRET_KEY      sk_live_... or sk_test_...
 #   STRIPE_WEBHOOK_SECRET  whsec_...
-#   SENDGRID_API_KEY       SG.... (SendGrid, for email sign-in links)
+#   SENDGRID_API_KEY       SG.... (SendGrid, for email sign-in links and notifications)
+#   TURNSTILE_SECRET       Turnstile secret key (bot check). Leave unset to skip the check.

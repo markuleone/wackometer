@@ -18,7 +18,10 @@ CREATE TABLE IF NOT EXISTS users (
   color         TEXT,                            -- profile banner color
   genre         TEXT,
   links         TEXT,                            -- JSON of music/social links
-  pinned        TEXT                             -- signature line
+  pinned        TEXT,                            -- signature line
+  age_ok        INTEGER,                         -- confirmed 13 or older
+  human_until   INTEGER,                         -- passed the bot check until (ms)
+  notify        INTEGER NOT NULL DEFAULT 1       -- email notifications on/off
 );
 
 CREATE TABLE IF NOT EXISTS readings (
@@ -159,4 +162,27 @@ CREATE INDEX IF NOT EXISTS battles_o ON battles(opponent);
 CREATE TABLE IF NOT EXISTS settings (
   k  TEXT PRIMARY KEY,
   v  TEXT NOT NULL
+);
+
+-- people you've blocked (they can't friend you or battle you)
+CREATE TABLE IF NOT EXISTS blocks (
+  blocker     TEXT NOT NULL,
+  blocked     TEXT NOT NULL,
+  created_at  INTEGER NOT NULL,
+  PRIMARY KEY (blocker, blocked)
+);
+
+-- reports on profiles (offensive name, bio, impersonation)
+CREATE TABLE IF NOT EXISTS profile_reports (
+  target      TEXT NOT NULL,
+  reporter    TEXT NOT NULL,
+  reason      TEXT,
+  created_at  INTEGER NOT NULL,
+  PRIMARY KEY (target, reporter)
+);
+
+-- keeps notification emails from piling up (one per key per window)
+CREATE TABLE IF NOT EXISTS notify_log (
+  k   TEXT PRIMARY KEY,
+  at  INTEGER NOT NULL
 );

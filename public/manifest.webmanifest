@@ -1,0 +1,21 @@
+{
+  "name": "Wackometer",
+  "short_name": "Wackometer",
+  "description": "Weigh your lyrics, wash out the AI, freestyle on a beat and level up as a writer.",
+  "start_url": "/?source=app",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#1F2340",
+  "theme_color": "#1F2340",
+  "categories": ["music", "education", "entertainment"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Weigh", "url": "/#weigh" },
+    { "name": "Wordstorm", "url": "/#storm" },
+    { "name": "Daily W", "url": "/#daily" }
+  ]
+}

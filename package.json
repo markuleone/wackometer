@@ -12,6 +12,7 @@
   "devDependencies": {
     "@fontsource-variable/fredoka": "^5.2.6",
     "@fontsource-variable/work-sans": "^5.2.6",
+    "cmu-pronouncing-dictionary": "^3.0.0",
     "esbuild": "^0.25.10",
     "wrangler": "4.150.0"
   }

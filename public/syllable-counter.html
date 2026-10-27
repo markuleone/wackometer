@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Syllable counter for lyrics and poems, line by line · Wackometer</title>
+<meta name="description" content="Free syllable counter for songwriters. Paste lyrics and see syllables per line, so your verses fit the beat.">
+<link rel="canonical" href="https://wackometer.com/syllable-counter">
+<meta property="og:title" content="Syllable counter for lyrics and poems, line by line · Wackometer">
+<meta property="og:description" content="Free syllable counter for songwriters. Paste lyrics and see syllables per line, so your verses fit the beat.">
+<meta property="og:image" content="https://wackometer.com/og.png">
+<meta property="og:url" content="https://wackometer.com/syllable-counter">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#FBFCFF">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="stylesheet" href="/css/site.css?v=ce6c2991fd">
+<script>try{var t=localStorage.getItem("wk-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Wackometer Syllable Counter","url":"https://wackometer.com/syllable-counter","applicationCategory":"MusicApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script>
+</head>
+<body>
+<div class="wrap seo">
+<header class="top"><a class="logo" href="/" aria-label="Wackometer home"><span class="w">W</span>ackometer</a>
+<nav id="mainNav" aria-label="Tools"><a href="/">⚖️ Weigh</a><a href="/#wash">🫧 Wash</a><a href="/#storm">🎤 Wordstorm</a><a href="/#workshop">🏋️ Workshop</a><a href="/rhymes/">Rhymes</a><a href="/cliches/">Clichés</a><a href="/syllable-counter">Syllables</a></nav></header>
+<main id="main">
+<article class="seoart"><h1>Syllable counter for lyrics</h1><p class="lead">Paste your lyrics. Each line's syllable count shows up live, so you can spot the line that rushes or drags before you're in the booth.</p>
+<label class="hint" for="sc">Your lyrics</label><textarea id="sc" spellcheck="false" placeholder="Paste a verse…"></textarea>
+<div id="scOut" class="scout" aria-live="polite"></div>
+<h2>Why syllables matter</h2><p>Lines that sit in the same syllable range fit the same pocket on the beat. When one line has 6 syllables and the next has 14, you either rush or stretch. Keep lines close, then break the pattern on purpose when you want a moment to hit.</p>
+<script>
+function syl(w){w=w.toLowerCase().replace(/[^a-z]/g,"");if(!w)return 0;if(w.length<=3)return 1;w=w.replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/,"").replace(/^y/,"");var m=w.match(/[aeiouy]{1,2}/g);return Math.max(1,m?m.length:1)}
+var t=document.getElementById("sc"),o=document.getElementById("scOut");
+function run(){var ls=t.value.split(/\n/),tot=0,rows=ls.map(function(l){var n=(l.match(/[A-Za-z']+/g)||[]).reduce(function(a,w){return a+syl(w)},0);tot+=n;return l.trim()?'<div class="scl"><b>'+n+'</b><span>'+l.replace(/[&<>]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;"}[c]})+'</span></div>':''}).join("");o.innerHTML=rows?rows+'<p class="hint">'+tot+' syllables total</p>':''}
+t.addEventListener("input",run);
+</script></article>
+<div class="cta"><b>How wack are your lyrics?</b><p>Paste a verse into the Wackometer. It scores it from Wicked to Wack, circles the clichés and lazy rhymes, and shows you how to fix them.</p><a class="btn bile" href="/">Weigh my lyrics, free</a></div>
+</main>
+<footer><p class="flinks">Wackometer · <a href="/rhymes/">Fresh rhymes</a> · <a href="/cliches/">Cliché fixer</a> · <a href="/syllable-counter">Syllable counter</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a></p><a class="dbv" href="https://donebyverde.com" target="_blank" rel="noopener noreferrer" aria-label="Website by donebyverde (opens in a new tab)" title="Website by donebyverde"><svg viewBox="0 0 200 200" aria-hidden="true"><path d="M75 0H125L123 61L174 28L200 72L146 100L200 128L174 172L123 139L125 200H75L77 139L26 172L0 128L54 100L0 72L26 28L77 61Z"/></svg></a></footer>
+</div>
+</body>
+</html>

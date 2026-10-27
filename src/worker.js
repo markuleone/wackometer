@@ -2,6 +2,9 @@
 // Everything under /api/* lands here; Cloudflare serves the front end from /public.
 import { SCHEMA, MIGRATIONS } from "./schema.js";
 import { handleSocial, profileMeta } from "./social.js";
+import { cleanLyrics, cleanIdentity } from "./moderation.js";
+import SEO_URLS from "./seo-urls.js";
+import { notifyUser, nameOf, weeklyDigest, checkUnsubscribe } from "./notify.js";
 import { analyze, tierOf, clamp, MID, TIERS, METRICS, words, dailyKey, dailyPrompt } from "../web/js/score.js";
 
 const json = (data, status = 200, headers = {}) =>
@@ -92,13 +95,15 @@ function liveStreak(u) {
 const adminEmails = (env) => String(env.ADMIN_EMAILS || "").toLowerCase().split(",").map((s) => s.trim()).filter(Boolean);
 const isAdmin = (u, env) => !!(u.email && adminEmails(env).includes(u.email.toLowerCase()));
 function me(u, used, env) {
-  return { id: u.id, email: u.email || null, username: u.username || null, admin: isAdmin(u, env), canEmail: !!env.SENDGRID_API_KEY, pro: !!isPro(u), proUntil: u.pro_until || null, credits: u.credits, usedToday: used,
+  return { id: u.id, email: u.email || null, username: u.username || null, notify: u.notify !== 0, ageOk: !!u.age_ok, humanCheck: !!env.TURNSTILE_SECRET && !(u.human_until > now()), turnstileKey: env.TURNSTILE_SITE_KEY || "", admin: isAdmin(u, env), canEmail: !!env.SENDGRID_API_KEY, pro: !!isPro(u), proUntil: u.pro_until || null, credits: u.credits, usedToday: used,
     freeDaily: +env.FREE_DAILY || 5, handle: u.handle || null, streak: liveStreak(u), lastDaily: u.last_daily || null,
     billing: !!u.stripe_customer, checkout: !!env.STRIPE_SECRET_KEY };
 }
 const REACTIONS = ["🔥", "😭", "💀", "🤢"];
+const HUMAN_PATHS = [/^\/api\/wall$/, /^\/api\/daily$/, /^\/api\/pen$/, /^\/api\/pen\/[a-z0-9]+\/line$/, /^\/api\/login$/, /^\/api\/friends\/request$/, /^\/api\/battles$/, /^\/api\/profile$/, /^\/api\/report$/, /^\/api\/u\/[a-z0-9_.]+\/report$/];
+const BLOCKED_MSG = "That includes language we don't allow on Wackometer. Try different words.";
 const PEN_MAX = 16;
-const EVENT_TYPES = ["share_card", "save_card", "save_video", "copy_caption", "copy_daily", "copy_roast", "pen_share", "pen_start", "swap_used", "emoji_starter", "best_line"];
+const EVENT_TYPES = ["share_card", "save_card", "save_video", "copy_caption", "copy_daily", "copy_roast", "pen_share", "pen_start", "swap_used", "emoji_starter", "best_line", "storm_start", "storm_done", "wash", "humanize", "lesson_pass", "install"];
 const cleanLine = (s) => { const t = String(s || "").replace(/\s+/g, " ").trim().slice(0, 140); return words(t).length >= 2 ? t : ""; };
 const cleanHandle = (h) => String(h || "").replace(/[^A-Za-z0-9_.\- ]/g, "").trim().slice(0, 20);
 
@@ -107,6 +112,14 @@ const WINGMAN_SYSTEM = `You are Wingman, the songwriting assistant inside Wackom
 Voice: a confident studio friend. Short, direct, warm, a little playful. Lean into words starting with W when it's natural, never forced.
 Rules: write only original lyrics. Never reproduce or closely imitate lines from existing copyrighted songs, even if asked. Favor concrete, sensory, specific images over abstractions. When rewriting, keep the writer's meaning and voice. Plain text only, no markdown. Keep replies under 220 words unless asked for a full song.`;
 const EMOJI_SYSTEM = `You are Wingman from Wackometer. The writer gives you three emojis. Turn them into a fresh, original two-line starter for a song: concrete images, a natural rhyme or near-rhyme, nothing cliché (no "fire/desire", no "end of time", no "set me free"). Then on a new line, one short sentence suggesting where the song could go next. Plain text, no markdown, no emojis in the lyric lines. Never imitate an existing song.`;
+const HUMANIZE_SYSTEM = `You are Wingman from Wackometer, helping a songwriter make lyrics that sound machine-generated sound like a real person wrote them. The writer may have drafted with an AI tool, or just fell into generic phrasing. Rewrite their lines so they keep the same subject, mood and rough length, but:
+- replace AI tells (neon, echoes, whispers, tapestry, embers, journey, symphony, "in the silence", em dashes, every line the same length) with concrete, specific, slightly imperfect details a real person would notice
+- use contractions and plain speech; vary line lengths; let rhymes be slant instead of perfect
+- never imitate an existing song or artist
+Output format, plain text, no markdown:
+the rewritten lyrics
+(blank line)
+"Make it yours:" followed by 2 short questions only the writer can answer (a real place, person, object or moment) so they can swap in their own details. This is for creative writing only.`;
 const ROAST_SYSTEM = `You are Wretch, the queasy green blob from Wackometer, an app that grades how wack lyrics are. You roast the writer's lyrics in character: you're nauseous from clichés, you gag at lazy rhymes, you dramatically ask for a bucket. Be funny and specific: quote the exact phrases that made you sick and say why. Roast the writing, never the person: no insults about looks, identity, intelligence or anything personal, nothing cruel, no profanity. End with one genuinely useful fix, introduced with "Okay, real talk:". Plain text, under 120 words. If the lyrics are actually good, act shocked and disappointed you have nothing to roast.`;
 
 async function callClaude(env, system, messages, maxTokens = 700) {
@@ -142,7 +155,11 @@ const periodEnd = (sub) => (sub.current_period_end || sub.items?.data?.[0]?.curr
 
 /* ---------------- router ---------------- */
 export default {
-  async fetch(req, env) {
+  async scheduled(event, env, ctx) {
+    await ensureSchema(env);
+    ctx.waitUntil(weeklyDigest(env, await getSecret(env)));
+  },
+  async fetch(req, env, ctx) {
     const url = new URL(req.url);
     const path = url.pathname.replace(/\/+$/, "");
     const method = req.method;
@@ -153,6 +170,7 @@ export default {
     if (path === "/sitemap.xml") return sitemap(env);
     if (!path.startsWith("/api/")) return env.ASSETS.fetch(req);
     if (method !== "GET" && req.headers.get("origin") && new URL(req.headers.get("origin")).host !== url.host) return bad("Wrong origin", 403);
+    if (path === "/api/unsubscribe") return unsubscribe(url, env, method);
 
     let s;
     // Anonymous counters don't need (or create) an account.
@@ -160,15 +178,22 @@ export default {
     try { await ensureSchema(env); s = await session(req, env, needUser); } catch (e) { return bad("Database isn't set up yet. Run the schema (see README).", 500); }
     const u = s.user;
     const body = method === "POST" ? await req.json().catch(() => ({})) : {};
+    // Bot check: the first time someone writes anything public, Turnstile confirms they're human (good for 30 days).
+    if (method === "POST" && env.TURNSTILE_SECRET && HUMAN_PATHS.some((re) => re.test(path)) && !(u.human_until > now())) {
+      const r = json({ error: "challenge", siteKey: env.TURNSTILE_SITE_KEY || "" }, 428);
+      if (s.setCookie) r.headers.append("set-cookie", s.setCookie);
+      return r;
+    }
+    const notify = (uid, kind, data, throttle) => { if (uid && uid !== u.id) ctx.waitUntil(getSecret(env).then((sec) => notifyUser(env, sec, uid, kind, data, throttle))); };
     let res;
-    try { res = await route(path, method, url, body, u, env, req); }
+    try { res = await route(path, method, url, body, u, env, req, notify); }
     catch (e) { console.error(e); res = bad("Something broke on our side. Try again in a moment.", 500); }
     if (s.setCookie && !res.headers.has("set-cookie")) res.headers.append("set-cookie", s.setCookie);
     return res;
   },
 };
 
-async function route(path, method, url, body, u, env, req) {
+async function route(path, method, url, body, u, env, req, notify) {
   const req_ip = () => req.headers.get("cf-connecting-ip") || "";
   const DB = env.DB;
 
@@ -212,8 +237,8 @@ async function route(path, method, url, body, u, env, req) {
   if (path === "/api/wall" && method === "GET") {
     const feed = url.searchParams.get("feed") === "featured" ? "featured" : "fresh";
     const q = feed === "featured"
-      ? "SELECT * FROM readings WHERE hidden=0 AND vote_count>=5 ORDER BY vote_count DESC, created_at DESC LIMIT 60"
-      : "SELECT * FROM readings WHERE hidden=0 ORDER BY created_at DESC LIMIT 60";
+      ? "SELECT r.*, us.username author FROM readings r LEFT JOIN users us ON us.id=r.user_id WHERE r.hidden=0 AND r.vote_count>=5 ORDER BY r.vote_count DESC, r.created_at DESC LIMIT 60"
+      : "SELECT r.*, us.username author FROM readings r LEFT JOIN users us ON us.id=r.user_id WHERE r.hidden=0 ORDER BY r.created_at DESC LIMIT 60";
     const { results: rows } = await DB.prepare(q).all();
     const ids = rows.map((r) => r.id);
     const counts = {}, mine = {};
@@ -236,7 +261,7 @@ async function route(path, method, url, body, u, env, req) {
       feed,
       readings: rows.map((r) => ({ id: r.id, title: r.title, excerpt: r.excerpt, score: r.score, tier: r.tier, createdAt: r.created_at,
         votes: counts[r.id] || [0, 0, 0, 0, 0], myVote: mine[r.id] ?? null, mine: r.user_id === u.id,
-        reacts: reacts[r.id] || {}, myReacts: myReacts[r.id] || [] })),
+        reacts: reacts[r.id] || {}, myReacts: myReacts[r.id] || [], by: r.author || null })),
       stats: { votes: agg.total || 0, wavelength: agg.total ? Math.round((agg.agree / agg.total) * 100) : null, tune: tune.tune, tuneN: tune.n },
     });
   }
@@ -246,6 +271,7 @@ async function route(path, method, url, body, u, env, req) {
     const text = String(body.text || "").slice(0, 4000);
     if (!body.attest) return bad("Confirm these are your own lyrics before posting.");
     if (words(text).length < 8) return bad("Give it at least eight words.");
+    if (!cleanLyrics(text) || !cleanIdentity(body.title)) return bad(BLOCKED_MSG);
     const today = await DB.prepare("SELECT COUNT(*) c FROM readings WHERE user_id=? AND created_at>?").bind(u.id, now() - 86400000).first();
     if (today.c >= 10) return bad("That's 10 posts today. Come back tomorrow.", 429);
     const a = analyze(text);
@@ -295,11 +321,12 @@ async function route(path, method, url, body, u, env, req) {
       if (u.credits > 0) payWith = "credit";
       else return json({ error: "limit", message: `That's your ${free} free Wingman messages for today. They reset at midnight, or go Pro for unlimited.` }, 402);
     }
-    const mode = ["roast", "emoji"].includes(body.mode) ? body.mode : "chat";
+    const mode = ["roast", "emoji", "humanize"].includes(body.mode) ? body.mode : "chat";
     const pad = String(body.pad || "").slice(0, 4000);
     const msg = String(body.message || "").slice(0, 1500);
     if (mode === "chat" && !msg.trim()) return bad("Ask Wingman something.");
     if (mode === "roast" && words(pad).length < 8) return bad("Give Wretch at least eight words to roast.");
+    if (mode === "humanize" && words(pad).length < 8) return bad("Give Wingman at least eight words to work with.");
     const emojis = [...String(body.emojis || "")].filter((c) => /\p{Extended_Pictographic}/u.test(c)).slice(0, 3).join("");
     if (mode === "emoji" && [...emojis].length < 1) return bad("Pick up to three emojis first.");
     const a = pad.trim() ? analyze(pad) : null;
@@ -307,6 +334,8 @@ async function route(path, method, url, body, u, env, req) {
     let text;
     if (mode === "emoji") {
       text = await callClaude(env, EMOJI_SYSTEM, [{ role: "user", content: `Emojis: ${emojis}` }], 250);
+    } else if (mode === "humanize") {
+      text = await callClaude(env, HUMANIZE_SYSTEM, [{ role: "user", content: `Lines:\n"""\n${pad}\n"""\nTells the Wash spotted: ${msg.slice(0, 400) || "none listed"}` }], 600);
     } else if (mode === "roast") {
       text = await callClaude(env, ROAST_SYSTEM, [{ role: "user", content: `Roast these lyrics.\n"""\n${pad}\n"""\n${reading}` }], 400);
     } else {
@@ -333,15 +362,15 @@ async function route(path, method, url, body, u, env, req) {
     const key = dailyKey(), p = dailyPrompt(key);
     const mineRow = await DB.prepare("SELECT * FROM daily_entries WHERE day=? AND user_id=?").bind(key, u.id).first();
     const { results: crew } = await DB.prepare(
-      `SELECT e.rowid rid, e.user_id, e.lines, e.score, e.tier, us.handle, (SELECT COUNT(*) FROM daily_likes l WHERE l.day=e.day AND l.entry_user=e.user_id) fires
+      `SELECT e.rowid rid, e.user_id, e.lines, e.score, e.tier, us.handle, us.username, (SELECT COUNT(*) FROM daily_likes l WHERE l.day=e.day AND l.entry_user=e.user_id) fires
        FROM daily_entries e JOIN users us ON us.id=e.user_id WHERE e.day=? ORDER BY e.score ASC, e.created_at ASC LIMIT 20`).bind(key).all();
     const { results: crowd } = await DB.prepare(
-      `SELECT e.rowid rid, e.user_id, e.lines, e.score, e.tier, us.handle, COUNT(l.user_id) fires
+      `SELECT e.rowid rid, e.user_id, e.lines, e.score, e.tier, us.handle, us.username, COUNT(l.user_id) fires
        FROM daily_entries e JOIN users us ON us.id=e.user_id LEFT JOIN daily_likes l ON l.day=e.day AND l.entry_user=e.user_id
        WHERE e.day=? GROUP BY e.user_id HAVING fires>0 ORDER BY fires DESC, e.score ASC LIMIT 20`).bind(key).all();
     const { results: myLikes } = await DB.prepare("SELECT e.rowid rid FROM daily_likes l JOIN daily_entries e ON e.day=l.day AND e.user_id=l.entry_user WHERE l.day=? AND l.user_id=?").bind(key, u.id).all();
     const total = await DB.prepare("SELECT COUNT(*) c FROM daily_entries WHERE day=?").bind(key).first();
-    const pub = (r) => ({ who: r.user_id === u.id ? "you" : r.handle || "Anonymous writer", entry: String(r.rid), lines: r.lines, score: r.score, tier: r.tier, fires: r.fires, mine: r.user_id === u.id });
+    const pub = (r) => ({ who: r.user_id === u.id ? "you" : r.handle || "Anonymous writer", entry: String(r.rid), username: r.username || null, lines: r.lines, score: r.score, tier: r.tier, fires: r.fires, mine: r.user_id === u.id });
     let rank = null;
     if (mineRow) rank = (await DB.prepare("SELECT COUNT(*) c FROM daily_entries WHERE day=? AND score<?").bind(key, mineRow.score).first()).c + 1;
     return json({ key, number: p.number, prompt: p.prompt, emoji: p.emoji, entries: total.c,
@@ -357,6 +386,7 @@ async function route(path, method, url, body, u, env, req) {
     // Nonsense guard: a "Wicked" made of random words isn't a win.
     const real = words(lines).filter((w) => w.length > 1);
     if (real.length / n < 0.8) return bad("That doesn't read like lyrics. Try real lines.");
+    if (!cleanLyrics(lines) || !cleanIdentity(body.handle)) return bad(BLOCKED_MSG);
     const exists = await DB.prepare("SELECT 1 FROM daily_entries WHERE day=? AND user_id=?").bind(key, u.id).first();
     if (exists) return bad("You've already taken today's Daily W. Come back tomorrow.", 409);
     const a = analyze(lines), score = Math.round(a.raw), tier = tierOf(score);
@@ -396,6 +426,7 @@ async function route(path, method, url, body, u, env, req) {
   if (path === "/api/pen" && method === "POST") {
     const line = cleanLine(body.line), title = String(body.title || "").replace(/\s+/g, " ").trim().slice(0, 60);
     if (!line) return bad("Write a first line with at least two words.");
+    if (!cleanLyrics(line) || !cleanIdentity(title, body.handle)) return bad(BLOCKED_MSG);
     const recent = await DB.prepare("SELECT COUNT(*) c FROM pens WHERE created_by=? AND created_at>?").bind(u.id, now() - 86400000).first();
     if (recent.c >= 15) return bad("That's a lot of songs for one day. Finish one first.", 429);
     if (body.handle) await DB.prepare("UPDATE users SET handle=? WHERE id=?").bind(cleanHandle(body.handle) || null, u.id).run();
@@ -417,13 +448,13 @@ async function route(path, method, url, body, u, env, req) {
   if ((m = path.match(/^\/api\/pen\/([a-z0-9]+)$/)) && method === "GET") {
     const p = await DB.prepare("SELECT * FROM pens WHERE id=?").bind(m[1]).first();
     if (!p) return bad("That song doesn't exist or was deleted.", 404);
-    const { results: lines } = await DB.prepare("SELECT idx, user_id, handle, text FROM pen_lines WHERE pen_id=? ORDER BY idx").bind(p.id).all();
+    const { results: lines } = await DB.prepare("SELECT l.idx, l.user_id, l.handle, l.text, us.username FROM pen_lines l LEFT JOIN users us ON us.id=l.user_id WHERE l.pen_id=? ORDER BY l.idx").bind(p.id).all();
     const lastBy = lines.length ? lines[lines.length - 1].user_id : null;
     const writers = [...new Set(lines.map((l) => l.user_id))];
     return json({ id: p.id, title: p.title, closed: !!p.closed, mine: p.created_by === u.id, max: PEN_MAX,
       canAdd: !p.closed && lines.length < PEN_MAX && lastBy !== u.id, yourTurnBlocked: lastBy === u.id,
       writers: writers.length,
-      lines: lines.map((l) => ({ idx: l.idx, text: l.text, who: l.user_id === u.id ? "you" : l.handle || "Anonymous writer", writer: writers.indexOf(l.user_id), mine: l.user_id === u.id })) });
+      lines: lines.map((l) => ({ idx: l.idx, text: l.text, username: l.username || null, who: l.user_id === u.id ? "you" : l.handle || "Anonymous writer", writer: writers.indexOf(l.user_id), mine: l.user_id === u.id })) });
   }
   if ((m = path.match(/^\/api\/pen\/([a-z0-9]+)\/line$/)) && method === "POST") {
     const p = await DB.prepare("SELECT * FROM pens WHERE id=?").bind(m[1]).first();
@@ -434,6 +465,7 @@ async function route(path, method, url, body, u, env, req) {
     if (lastLine && lastLine.user_id === u.id) return bad("Pass the pen first. Someone else writes the next line.", 409);
     const line = cleanLine(body.line);
     if (!line) return bad("Write a line with at least two words.");
+    if (!cleanLyrics(line) || !cleanIdentity(body.handle)) return bad(BLOCKED_MSG);
     if (body.handle) await DB.prepare("UPDATE users SET handle=? WHERE id=?").bind(cleanHandle(body.handle) || null, u.id).run();
     const handle = cleanHandle(body.handle) || u.handle || null;
     try {
@@ -442,6 +474,7 @@ async function route(path, method, url, body, u, env, req) {
         DB.prepare("UPDATE pens SET line_count=line_count+1, updated_at=? WHERE id=?").bind(now(), p.id),
       ]);
     } catch (e) { return bad("Someone added a line at the same moment. Refresh and try again.", 409); }
+    notify(p.created_by, "pen_line", { from: handle || nameOf(u), title: p.title || "your song", line, penId: p.id }, p.id, 60 * 60000);
     return json({ ok: true });
   }
   if ((m = path.match(/^\/api\/pen\/([a-z0-9]+)\/close$/)) && method === "POST") {
@@ -454,6 +487,8 @@ async function route(path, method, url, body, u, env, req) {
   if (path === "/api/login" && method === "POST") {
     if (!env.SENDGRID_API_KEY) return bad("Email sign-in isn't set up yet.", 503);
     const email = String(body.email || "").trim().toLowerCase();
+    if (!body.age13 && !u.age_ok) return bad("Please confirm you're 13 or older.");
+    if (body.age13 && !u.age_ok) await DB.prepare("UPDATE users SET age_ok=1 WHERE id=?").bind(u.id).run();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 200) return bad("That doesn't look like an email address.");
     const sent = await DB.prepare("SELECT COUNT(*) c FROM login_tokens WHERE (email=? OR user_id=?) AND expires_at>?").bind(email, u.id, now()).first();
     if (sent.c >= 5) return bad("We've sent a few links already. Check your inbox and spam folder.", 429);
@@ -508,7 +543,8 @@ async function route(path, method, url, body, u, env, req) {
       };
       const { results: events } = await DB.prepare("SELECT day, type, count FROM events ORDER BY day DESC LIMIT 200").all();
       const { results: flagged } = await DB.prepare("SELECT id, title, excerpt, score, tier, reports, hidden, created_at FROM readings WHERE reports>0 OR hidden=1 ORDER BY hidden DESC, reports DESC, created_at DESC LIMIT 100").all();
-      return json({ stats, events, flagged });
+      const { results: profiles } = await DB.prepare(`SELECT us.username, us.display_name, us.bio, COUNT(*) reports, GROUP_CONCAT(pr.reason, ' · ') reasons FROM profile_reports pr JOIN users us ON us.id=pr.target GROUP BY pr.target ORDER BY reports DESC LIMIT 50`).all();
+      return json({ stats, events, flagged, profiles });
     }
     if (path === "/api/admin/cleanup" && method === "POST") {
       // Removes visitor records that never did anything (no posts, votes, Daily W, songs, Wingman, sign-in, profile or payments).
@@ -527,6 +563,45 @@ async function route(path, method, url, body, u, env, req) {
       else return bad("Unknown action.");
       return json({ ok: true });
     }
+  }
+
+  /* ----- Bot check, notification setting, account deletion ----- */
+  if (path === "/api/human" && method === "POST") {
+    if (!env.TURNSTILE_SECRET) return json({ ok: true });
+    const form = new URLSearchParams({ secret: env.TURNSTILE_SECRET, response: String(body.token || ""), remoteip: req.headers.get("cf-connecting-ip") || "" });
+    const r = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", { method: "POST", body: form }).then((x) => x.json()).catch(() => ({ success: false }));
+    if (!r.success) return bad("We couldn't confirm you're human. Refresh and try again.", 403);
+    await DB.prepare("UPDATE users SET human_until=? WHERE id=?").bind(now() + 30 * 86400000, u.id).run();
+    return json({ ok: true });
+  }
+  if (path === "/api/notify" && method === "POST") {
+    await DB.prepare("UPDATE users SET notify=? WHERE id=?").bind(body.on ? 1 : 0, u.id).run();
+    return json({ ok: true, notify: !!body.on });
+  }
+  if (path === "/api/account/delete" && method === "POST") {
+    if (String(body.confirm || "").trim().toUpperCase() !== "DELETE") return bad('Type DELETE to confirm.');
+    const id = u.id;
+    await DB.batch([
+      DB.prepare("DELETE FROM votes WHERE user_id=? OR reading_id IN (SELECT id FROM readings WHERE user_id=?)").bind(id, id),
+      DB.prepare("DELETE FROM reactions WHERE user_id=? OR reading_id IN (SELECT id FROM readings WHERE user_id=?)").bind(id, id),
+      DB.prepare("DELETE FROM reports WHERE user_id=? OR reading_id IN (SELECT id FROM readings WHERE user_id=?)").bind(id, id),
+      DB.prepare("DELETE FROM readings WHERE user_id=?").bind(id),
+      DB.prepare("DELETE FROM daily_likes WHERE user_id=? OR entry_user=?").bind(id, id),
+      DB.prepare("DELETE FROM daily_entries WHERE user_id=?").bind(id),
+      // Songs other people helped write stay, with this person's lines kept anonymously.
+      DB.prepare("UPDATE pen_lines SET user_id='deleted', handle=NULL WHERE user_id=?").bind(id),
+      DB.prepare("UPDATE pens SET created_by='deleted' WHERE created_by=?").bind(id),
+      DB.prepare("DELETE FROM friends WHERE a=? OR b=?").bind(id, id),
+      DB.prepare("DELETE FROM battles WHERE challenger=? OR opponent=?").bind(id, id),
+      DB.prepare("DELETE FROM blocks WHERE blocker=? OR blocked=?").bind(id, id),
+      DB.prepare("DELETE FROM profile_reports WHERE target=? OR reporter=?").bind(id, id),
+      DB.prepare("DELETE FROM usage WHERE user_id=?").bind(id),
+      DB.prepare("DELETE FROM login_tokens WHERE user_id=?").bind(id),
+      DB.prepare("DELETE FROM users WHERE id=?").bind(id),
+    ]);
+    const res = json({ ok: true });
+    res.headers.append("set-cookie", "wk=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0");
+    return res;
   }
 
   /* ----- Payments ----- */
@@ -553,7 +628,7 @@ async function route(path, method, url, body, u, env, req) {
     return json({ url: p.url });
   }
 
-  const social = await handleSocial(path, method, url, body, u, env);
+  const social = await handleSocial(path, method, url, body, u, env, notify);
   if (social) return social;
 
   return bad("Not found", 404);
@@ -565,6 +640,7 @@ async function sitemap(env) {
   try { await ensureSchema(env); users = (await env.DB.prepare("SELECT username FROM users WHERE username IS NOT NULL ORDER BY created_at DESC LIMIT 45000").all()).results; } catch (e) {}
   const base = env.APP_URL || "https://wackometer.com";
   const urls = [["/", "daily", "1.0"], ["/terms", "yearly", "0.2"], ["/privacy", "yearly", "0.2"]].map(([p, f, pr]) => `<url><loc>${base}${p}</loc><changefreq>${f}</changefreq><priority>${pr}</priority></url>`)
+    .concat(SEO_URLS.map((p) => `<url><loc>${base}${p}</loc><changefreq>monthly</changefreq><priority>${p.endsWith("/") || p === "/syllable-counter" ? "0.8" : "0.6"}</priority></url>`))
     .concat(users.map((u) => `<url><loc>${base}/u/${encodeURIComponent(u.username)}</loc><changefreq>weekly</changefreq><priority>0.5</priority></url>`));
   return new Response(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.join("")}</urlset>`, { headers: { "content-type": "application/xml; charset=utf-8", "cache-control": "public, max-age=3600" } });
 }
@@ -608,4 +684,12 @@ async function stripeWebhook(req, env) {
     else await DB.prepare("UPDATE users SET plan=?, pro_until=? WHERE stripe_customer=?").bind(active ? "pro" : "free", until, o.customer).run();
   }
   return json({ ok: true });
+}
+
+async function unsubscribe(url, env, method) {
+  await ensureSchema(env);
+  const uid = url.searchParams.get("u") || "", sig = url.searchParams.get("s") || "";
+  if (await checkUnsubscribe(await getSecret(env), uid, sig)) await env.DB.prepare("UPDATE users SET notify=0 WHERE id=?").bind(uid).run();
+  if (method === "POST") return json({ ok: true }); // one-click unsubscribe from mail apps
+  return new Response(null, { status: 302, headers: { location: "/?unsubscribed=1#weigh" } });
 }

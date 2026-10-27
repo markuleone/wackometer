@@ -1,5 +1,8 @@
 // Profiles, friends, leaderboards and battles.
 import { analyze, tierOf, words, dailyKey, DAILY_PROMPTS, TIERS } from "../web/js/score.js";
+import { cleanIdentity, cleanLyrics } from "./moderation.js";
+const BLOCKED_MSG = "That includes language we don't allow on Wackometer. Try different words.";
+const nm = (u) => u.display_name || (u.username ? "@" + u.username : "Someone");
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
@@ -47,11 +50,15 @@ async function friendIds(DB, uid) {
 }
 async function relation(DB, me, other) {
   if (me === other) return "self";
+  if (await DB.prepare("SELECT 1 FROM blocks WHERE blocker=? AND blocked=?").bind(me, other).first()) return "blocked";
   const [a, b] = pair(me, other);
   const r = await DB.prepare("SELECT status, requested_by FROM friends WHERE a=? AND b=?").bind(a, b).first();
   if (!r) return "none";
   if (r.status === "accepted") return "friends";
   return r.requested_by === me ? "requested" : "incoming";
+}
+async function blockedEither(DB, x, y) {
+  return !!(await DB.prepare("SELECT 1 FROM blocks WHERE (blocker=? AND blocked=?) OR (blocker=? AND blocked=?)").bind(x, y, y, x).first());
 }
 async function userByName(DB, name) {
   return DB.prepare("SELECT * FROM users WHERE username=?").bind(String(name || "").toLowerCase().replace(/^@/, "")).first();
@@ -82,13 +89,13 @@ export async function profileMeta(env, username) {
   } catch (e) { return null; }
 }
 
-export async function handleSocial(path, method, url, body, u, env) {
+export async function handleSocial(path, method, url, body, u, env, notify = () => {}) {
   const DB = env.DB;
   let m;
 
   /* ----- my profile ----- */
   if (path === "/api/profile" && method === "GET") {
-    return json({ username: u.username || "", name: u.display_name || "", bio: u.bio || "", avatar: u.avatar ?? 5, color: u.color || COLORS[0], genre: u.genre || "", links: parseLinks(u.links), pinned: u.pinned || "", signedIn: !!u.email, colors: COLORS, genres: GENRES });
+    return json({ ageOk: !!u.age_ok, notify: u.notify !== 0, email: u.email || null, username: u.username || "", name: u.display_name || "", bio: u.bio || "", avatar: u.avatar ?? 5, color: u.color || COLORS[0], genre: u.genre || "", links: parseLinks(u.links), pinned: u.pinned || "", signedIn: !!u.email, colors: COLORS, genres: GENRES });
   }
   if (path === "/api/profile" && method === "POST") {
     const username = String(body.username || "").trim().toLowerCase().replace(/^@/, "");
@@ -115,6 +122,9 @@ export async function handleSocial(path, method, url, body, u, env) {
     const color = COLORS.includes(body.color) ? body.color : COLORS[0];
     const genre = GENRES.includes(body.genre) ? body.genre : null;
     const name = cleanText(body.name, 30), bio = cleanText(body.bio, 160), pinned = cleanText(body.pinned, 140);
+    if (!cleanIdentity(username, name, bio) || !cleanLyrics(pinned)) return bad(BLOCKED_MSG);
+    if (username && !u.age_ok && !body.age13) return bad("Please confirm you're 13 or older to claim a username.", 409);
+    if (body.age13 && !u.age_ok) await DB.prepare("UPDATE users SET age_ok=1 WHERE id=?").bind(u.id).run();
     try {
       await DB.prepare("UPDATE users SET username=?, display_name=?, bio=?, avatar=?, color=?, genre=?, links=?, pinned=?, handle=COALESCE(?, handle) WHERE id=?")
         .bind(username || null, name || null, bio || null, avatar, color, genre, JSON.stringify(links), pinned || null, name || username || null, u.id).run();
@@ -148,10 +158,62 @@ export async function handleSocial(path, method, url, body, u, env) {
     });
   }
   if (path === "/api/users/search" && method === "GET") {
-    const q = String(url.searchParams.get("q") || "").toLowerCase().replace(/^@/, "").replace(/[^a-z0-9_.]/g, "");
+    // Matches @usernames (start of the name) and display names (anywhere in the name).
+    const raw = String(url.searchParams.get("q") || "").trim().slice(0, 30);
+    const q = raw.toLowerCase().replace(/^@/, "");
     if (q.length < 2) return json({ users: [] });
-    const { results } = await DB.prepare("SELECT * FROM users WHERE username LIKE ? AND id<>? ORDER BY length(username) LIMIT 8").bind(q + "%", u.id).all();
-    return json({ users: results.map((r) => summary(r, u.id)) });
+    const handle = q.replace(/[^a-z0-9_.]/g, ""), like = "%" + q.replace(/[%_\\]/g, (c) => "\\" + c) + "%";
+    const { results } = await DB.prepare(
+      `SELECT * FROM users WHERE username IS NOT NULL AND id<>?
+         AND (username LIKE ? OR lower(display_name) LIKE ? ESCAPE '\\')
+         AND id NOT IN (SELECT blocked FROM blocks WHERE blocker=?) AND id NOT IN (SELECT blocker FROM blocks WHERE blocked=?)
+       ORDER BY (username = ?) DESC, (username LIKE ?) DESC, length(username) LIMIT 12`)
+      .bind(u.id, (handle || "~") + "%", like, u.id, u.id, handle, (handle || "~") + "%").all();
+    const rels = await Promise.all(results.map((r) => relation(DB, u.id, r.id)));
+    return json({ users: results.map((r, i) => ({ ...summary(r, u.id), bio: r.bio || "", relation: rels[i] })) });
+  }
+  if (path === "/api/users/suggest" && method === "GET") {
+    // Friends of your friends first (most mutual friends), then the most active writers this week.
+    const exclude = `SELECT ? UNION SELECT CASE WHEN a=? THEN b ELSE a END FROM friends WHERE a=? OR b=? UNION SELECT blocked FROM blocks WHERE blocker=? UNION SELECT blocker FROM blocks WHERE blocked=?`;
+    const exb = [u.id, u.id, u.id, u.id, u.id, u.id];
+    const { results: fof } = u.id ? await DB.prepare(
+      `WITH mine AS (SELECT CASE WHEN a=? THEN b ELSE a END f FROM friends WHERE (a=? OR b=?) AND status='accepted'),
+            theirs AS (SELECT CASE WHEN fr.a=m.f THEN fr.b ELSE fr.a END s FROM friends fr JOIN mine m ON (fr.a=m.f OR fr.b=m.f) WHERE fr.status='accepted')
+       SELECT us.*, COUNT(*) mutual FROM theirs t JOIN users us ON us.id=t.s WHERE us.username IS NOT NULL AND us.id NOT IN (${exclude}) GROUP BY us.id ORDER BY mutual DESC LIMIT 8`)
+      .bind(u.id, u.id, u.id, ...exb).all() : { results: [] };
+    let rows = fof.map((r) => ({ ...summary(r, u.id), bio: r.bio || "", why: `${r.mutual} mutual friend${r.mutual > 1 ? "s" : ""}`, relation: "none" }));
+    if (rows.length < 8) {
+      const active = await pointsBoard(DB, { period: "week", limit: 30 });
+      const skip = new Set([u.id, ...fof.map((r) => r.id)]);
+      const { results: ex } = u.id ? await DB.prepare(exclude.replace(/UNION/g, " UNION ")).bind(...exb).all() : { results: [] };
+      ex.forEach((r) => skip.add(Object.values(r)[0]));
+      for (const r of active) { if (rows.length >= 8) break; if (skip.has(r.id)) continue; rows.push({ ...summary(r, u.id), bio: r.bio || "", why: `${r.points} W Points this week`, relation: "none" }); }
+    }
+    if (rows.length < 4) {
+      const { results: fresh } = await DB.prepare("SELECT * FROM users WHERE username IS NOT NULL AND id<>? ORDER BY created_at DESC LIMIT 12").bind(u.id).all();
+      for (const r of fresh) { if (rows.length >= 8) break; if (rows.some((x) => x.username === r.username)) continue; const rel = await relation(DB, u.id, r.id); if (rel !== "none") continue; rows.push({ ...summary(r, u.id), bio: r.bio || "", why: "New on Wackometer", relation: "none" }); }
+    }
+    return json({ users: rows });
+  }
+  if ((m = path.match(/^\/api\/u\/([a-z0-9_.]+)\/(report|block|unblock)$/)) && method === "POST") {
+    const p = await userByName(DB, m[1]);
+    if (!p) return bad("No writer with that username.", 404);
+    if (p.id === u.id) return bad("That's you.");
+    if (m[2] === "report") {
+      await DB.prepare("INSERT OR IGNORE INTO profile_reports (target, reporter, reason, created_at) VALUES (?,?,?,?)").bind(p.id, u.id, cleanText(body.reason, 80) || null, now()).run();
+      return json({ ok: true });
+    }
+    if (m[2] === "block") {
+      const [a, b] = pair(u.id, p.id);
+      await DB.batch([
+        DB.prepare("INSERT OR IGNORE INTO blocks (blocker, blocked, created_at) VALUES (?,?,?)").bind(u.id, p.id, now()),
+        DB.prepare("DELETE FROM friends WHERE a=? AND b=?").bind(a, b),
+        DB.prepare("UPDATE battles SET status='declined' WHERE status='open' AND ((challenger=? AND opponent=?) OR (challenger=? AND opponent=?))").bind(u.id, p.id, p.id, u.id),
+      ]);
+      return json({ ok: true });
+    }
+    await DB.prepare("DELETE FROM blocks WHERE blocker=? AND blocked=?").bind(u.id, p.id).run();
+    return json({ ok: true });
   }
 
   /* ----- friends ----- */
@@ -178,21 +240,23 @@ export async function handleSocial(path, method, url, body, u, env) {
     const other = await userByName(DB, body.username);
     if (!other) return bad("No writer with that username.", 404);
     if (other.id === u.id) return bad("You can't friend yourself. Nice try.");
+    if (await blockedEither(DB, u.id, other.id)) return bad("You can't send a request to this writer.", 403);
     const [a, b] = pair(u.id, other.id);
     const row = await DB.prepare("SELECT * FROM friends WHERE a=? AND b=?").bind(a, b).first();
     if (row && row.status === "accepted") return json({ status: "friends" });
-    if (row && row.requested_by !== u.id) { await DB.prepare("UPDATE friends SET status='accepted' WHERE a=? AND b=?").bind(a, b).run(); return json({ status: "friends" }); }
+    if (row && row.requested_by !== u.id) { await DB.prepare("UPDATE friends SET status='accepted' WHERE a=? AND b=?").bind(a, b).run(); notify(other.id, "friend_accept", { from: nm(u) }, u.id, 86400000); return json({ status: "friends" }); }
     if (row) return json({ status: "requested" });
     const pending = await DB.prepare("SELECT COUNT(*) c FROM friends WHERE requested_by=? AND status='pending' AND created_at>?").bind(u.id, now() - 86400000).first();
     if (pending.c >= 40) return bad("That's a lot of requests today. Give people time to accept.", 429);
     await DB.prepare("INSERT INTO friends (a,b,requested_by,status,created_at) VALUES (?,?,?,'pending',?)").bind(a, b, u.id, now()).run();
+    notify(other.id, "friend_request", { from: nm(u) }, u.id, 86400000);
     return json({ status: "requested" });
   }
   if (path === "/api/friends/respond" && method === "POST") {
     const other = await userByName(DB, body.username);
     if (!other) return bad("No writer with that username.", 404);
     const [a, b] = pair(u.id, other.id);
-    if (body.accept) await DB.prepare("UPDATE friends SET status='accepted' WHERE a=? AND b=? AND requested_by<>?").bind(a, b, u.id).run();
+    if (body.accept) { const r = await DB.prepare("UPDATE friends SET status='accepted' WHERE a=? AND b=? AND requested_by<>?").bind(a, b, u.id).run(); if (r.meta.changes) notify(other.id, "friend_accept", { from: nm(u) }, u.id, 86400000); }
     else await DB.prepare("DELETE FROM friends WHERE a=? AND b=?").bind(a, b).run();
     return json({ ok: true });
   }
@@ -226,12 +290,13 @@ export async function handleSocial(path, method, url, body, u, env) {
     if (!u.username) return bad("Pick a username on your profile first.", 409);
     const other = await userByName(DB, body.username);
     if (!other) return bad("No writer with that username.", 404);
-    if ((await relation(DB, u.id, other.id)) !== "friends") return bad("You can only battle friends. Send a friend request first.", 403);
+    if ((await relation(DB, u.id, other.id)) !== "friends" || (await blockedEither(DB, u.id, other.id))) return bad("You can only battle friends. Send a friend request first.", 403);
     const open = await DB.prepare("SELECT COUNT(*) c FROM battles WHERE status='open' AND ((challenger=? AND opponent=?) OR (challenger=? AND opponent=?))").bind(u.id, other.id, other.id, u.id).first();
     if (open.c >= 3) return bad("You already have 3 open battles with them. Finish one first.", 409);
     const pr = DAILY_PROMPTS[Math.floor(Math.random() * DAILY_PROMPTS.length)];
     const id = rid();
     await DB.prepare("INSERT INTO battles (id,emoji,prompt,challenger,opponent,status,created_at) VALUES (?,?,?,?,?,'open',?)").bind(id, pr.e, pr.p, u.id, other.id, now()).run();
+    notify(other.id, "battle_challenge", { from: nm(u), emoji: pr.e, prompt: pr.p }, id);
     return json({ id });
   }
   if ((m = path.match(/^\/api\/battles\/([a-z0-9]+)\/(submit|decline)$/)) && method === "POST") {
@@ -249,10 +314,16 @@ export async function handleSocial(path, method, url, body, u, env) {
     const n = words(lines).length;
     if (n < 12) return bad("Give it at least 12 words.");
     if (words(lines).filter((w) => w.length > 1).length / n < 0.8) return bad("That doesn't read like lyrics. Try real lines.");
+    if (!cleanLyrics(lines)) return bad(BLOCKED_MSG);
     const score = Math.round(analyze(lines).raw);
     await DB.prepare(`UPDATE battles SET ${mine}_lines=?, ${mine}_score=? WHERE id=?`).bind(lines, score, b.id).run();
     const fresh = await DB.prepare("SELECT * FROM battles WHERE id=?").bind(b.id).first();
-    if (fresh.c_lines && fresh.o_lines) await DB.prepare("UPDATE battles SET status='done', done_at=? WHERE id=?").bind(now(), b.id).run();
+    if (fresh.c_lines && fresh.o_lines) {
+      await DB.prepare("UPDATE battles SET status='done', done_at=? WHERE id=?").bind(now(), b.id).run();
+      const otherId = mine === "c" ? b.opponent : b.challenger, otherScore = mine === "c" ? fresh.o_score : fresh.c_score;
+      const res = score === otherScore ? "tie" : score > otherScore ? "win" : "loss"; // from the OTHER person's side
+      notify(otherId, "battle_done", { result: res, other: nm(u), you: otherScore, them: score, emoji: b.emoji, prompt: b.prompt }, b.id);
+    }
     return json({ ok: true, score, tier: tierOf(score) });
   }
 

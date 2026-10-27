@@ -12,46 +12,50 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#FBFCFF">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Wackometer">
 <link rel="canonical" href="https://wackometer.com/">
 <meta property="og:url" content="https://wackometer.com/">
 <meta property="og:site_name" content="Wackometer">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Wackometer","url":"https://wackometer.com/","applicationCategory":"MusicApplication","operatingSystem":"Any","description":"Paste your lyrics and the Wackometer crew grades how wack they are, from Wicked to Wack. Take the Daily W, write songs with friends, get roasted by Wretch and write with Wingman.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"creator":{"@type":"Organization","name":"donebyverde","url":"https://donebyverde.com"}}</script>
 <link rel="preload" href="/fonts/fredoka.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/css/site.css?v=dfb959edf5">
+<link rel="stylesheet" href="/css/site.css?v=ce6c2991fd">
 <script>try{var t=localStorage.getItem("wk-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 </head>
 <body>
 <div class="wrap">
-<header>
-<div class="brand">
-<h1 class="logo"><span class="w">W</span>ackometer</h1>
-<p class="tag">Write it. Weigh it. Share the W. Songwriting with a crew that has your back.</p>
-</div>
-<div class="hright">
-<div class="util">
-<button class="ubtn" id="themeBtn" title="Light or dark mode">🖥️ Auto</button>
-<button class="ubtn" id="soundBtn" aria-pressed="false" title="Sound effects">🔈 Sound off</button>
-<button class="ubtn" id="acctBtn">Sign in</button>
-</div>
-<nav id="mainNav" role="tablist" aria-label="Sections">
-<button role="tab" id="tab-weigh" aria-selected="true" data-v="weigh">Weigh</button>
-<button role="tab" id="tab-daily" aria-selected="false" data-v="daily">Daily W</button>
-<button role="tab" id="tab-pen" aria-selected="false" data-v="pen">Pass the Pen</button>
-<button role="tab" id="tab-squad" aria-selected="false" data-v="squad">Squad</button>
-<button role="tab" id="tab-wall" aria-selected="false" data-v="wall">Wall</button>
-<button role="tab" id="tab-wingman" aria-selected="false" data-v="wingman">Wingman</button>
-<button role="tab" id="tab-why" aria-selected="false" data-v="why">Why</button>
-<button role="tab" id="tab-pro" aria-selected="false" data-v="pro" class="pro">Wingman Pro</button>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+<a class="logo" href="/" aria-label="Wackometer home"><span class="w">W</span>ackometer</a>
+<nav id="mainNav" aria-label="Tools">
+<button data-v="weigh" aria-current="page"><span class="ni" aria-hidden="true">⚖️</span> Weigh</button>
+<button data-v="wash"><span class="ni" aria-hidden="true">🫧</span> Wash</button>
+<button data-v="storm"><span class="ni" aria-hidden="true">🎤</span> Wordstorm</button>
+<button data-v="workshop"><span class="ni" aria-hidden="true">🏋️</span> Workshop</button>
+<button data-v="wingman"><span class="ni" aria-hidden="true">🪽</span> Wingman</button>
+<button data-v="daily"><span class="ni" aria-hidden="true">📅</span> Daily W</button>
+<button data-v="pen"><span class="ni" aria-hidden="true">✍️</span> Pen</button>
+<button data-v="wall"><span class="ni" aria-hidden="true">🧱</span> Wall</button>
+<button data-v="squad"><span class="ni" aria-hidden="true">👯</span> Squad</button>
 </nav>
+<div class="util">
+<button class="ubtn ic" id="findBtn" aria-label="Find friends" title="Find friends (Ctrl K)">🔍</button>
+<button class="ubtn ic" id="themeBtn" aria-label="Theme: auto" title="Light or dark mode">🖥️</button>
+<button class="ubtn ic" id="soundBtn" aria-pressed="false" aria-label="Sound effects" title="Sound effects">🔈</button>
+<button class="ubtn pro" id="proBtn" data-v="pro" title="Wingman Pro">W+</button>
+<button class="ubtn" id="acctBtn">Sign in</button>
+<button class="ubtn ic" id="installBtn" hidden aria-label="Install the app" title="Install the app">📲</button>
 </div>
 </header>
+<main id="main" tabindex="-1">
 <!-- WEIGH -->
 <section id="v-weigh" class="weigh">
 <div class="hero">
 <div class="hero-copy">
-<h2>How <span class="hwrap"><em id="heroWord" class="hw tw4">wack</em></span> are your lyrics?</h2>
-<p>Paste a verse. The crew weighs it. Then the crowd decides if they got it right.</p>
+<h1>How <span class="hwrap"><em id="heroWord" class="hw tw4">wack</em></span> are your lyrics?</h1>
+<p>Paste a verse. The crew weighs it, shows you why, and teaches you how to write it better.</p>
 <div class="row"><button class="btn bile" id="heroGo">Weigh my lyrics</button><button class="btn" id="heroDare">Show me a wack one</button></div>
 </div>
 <div class="crew" id="crew" aria-label="The Wackometer crew"></div>
@@ -66,7 +70,7 @@
 <button class="btn" id="toWing">Wingman, fix it</button>
 <button class="btn" id="roastBtn">🤢 Roast me</button>
 </div>
-<div class="ex">Try an example: <button data-ex="0">a wack one</button> · <button data-ex="1">a wicked one</button></div>
+<div class="ex">Try one: <button data-ex="wack">🤢 a wack one</button> · <button data-ex="wicked">✨ a wicked one</button><span id="draftBack" hidden> · <button id="draftBtn">↩ bring back my last draft</button></span></div>
 <div class="map" id="map" hidden>
 <h3>Wack map</h3>
 <div id="mapLines"></div>
@@ -97,6 +101,10 @@
 <div class="roast" id="roast" hidden>
 <div class="rchar" id="roastChar"></div>
 <div class="rtext"><b>Wretch's roast</b><p id="roastText"></p><div class="row"><button class="btn" id="copyRoast">Copy roast</button></div></div>
+</div>
+<div class="coach" id="coach" hidden>
+<div class="cch" id="coachChar"></div>
+<div><b>📋 Coach's note</b><p id="coachText"></p><div class="row"><button class="btn bile" id="coachGo">Train it in the Workshop</button></div></div>
 </div>
 <div class="metrics" id="metrics"></div>
 <div class="post" id="post" hidden>
@@ -154,7 +162,7 @@
 </div>
 </div>
 <div class="boards">
-<nav class="subnav" aria-label="Leaderboards"><button data-b="crew" aria-selected="true">Crew board</button><button data-b="crowd" aria-selected="false">Crowd 🔥</button></nav>
+<nav class="subnav" aria-label="Leaderboards"><button data-b="crew" aria-pressed="true">Crew board</button><button data-b="crowd" aria-pressed="false">Crowd 🔥</button></nav>
 <div id="dBoard" class="board"></div>
 </div>
 </div>
@@ -187,12 +195,14 @@
 <input type="text" id="pfSp" maxlength="200" placeholder="Spotify link">
 <input type="text" id="pfSc" maxlength="200" placeholder="SoundCloud link">
 <input type="text" id="pfYt" maxlength="200" placeholder="YouTube link">
+<label class="attest" id="pfAgeRow" hidden><input type="checkbox" id="pfAge"> I'm 13 or older</label>
 <div class="row"><button type="submit" class="btn bile" id="pfSave">Save profile</button><button type="button" class="btn" id="pfCancel">Cancel</button><span class="hint" id="pfNote"></span></div>
 </form>
 <div class="panel">
 <h3>Add friends</h3>
-<div class="atfield"><span>@</span><input type="text" id="fSearch" maxlength="20" placeholder="Search usernames"></div>
+<div class="atfield"><span aria-hidden="true">🔍</span><input type="search" id="fSearch" maxlength="30" placeholder="Search names or @usernames" aria-label="Search for friends by name or username"></div>
 <div class="frlist" id="fResults"></div>
+<div class="suggest" id="fSuggestBox" hidden><span class="hint sh">People you may know</span><div class="frlist" id="fSuggest"></div></div>
 <button type="button" class="btn" id="fInvite">📨 Invite friends to Wackometer</button>
 <span class="hint" id="fNote"></span>
 </div>
@@ -302,8 +312,8 @@
 <div class="stat"><div class="n" id="sVotes">0</div><div class="l">Votes cast</div></div>
 </div>
 </div>
-<div class="row" role="tablist" aria-label="Wall feed">
-<nav style="display:inline-flex"><button id="feedFresh" data-f="fresh" aria-selected="true">Fresh</button><button id="feedFeat" data-f="featured" aria-selected="false">Featured</button></nav>
+<div class="row">
+<nav style="display:inline-flex" aria-label="Wall feed"><button id="feedFresh" data-f="fresh" aria-pressed="true">Fresh</button><button id="feedFeat" data-f="featured" aria-pressed="false">Featured</button></nav>
 <span class="hint" id="feedHint">Everything new, newest first. Posts with 5+ votes get Featured.</span>
 </div>
 <div class="cards" id="cards"></div>
@@ -312,7 +322,7 @@
 <!-- WINGMAN -->
 <section id="v-wingman" class="wing" hidden>
 <div class="chat">
-<div class="log" id="log" aria-live="polite">
+<div class="log" id="log" aria-live="polite" aria-label="Conversation with Wingman">
 <div class="msg wm"><span class="who"><span data-wing></span>WINGMAN</span>What's good. I'm Wingman. Bring me a verse, a vibe, or a blank page and we'll write something nobody can call wack. Whatever's in the Weigh pad, I can see it.</div>
 </div>
 <form class="compose" id="compose">
@@ -337,6 +347,62 @@
 <p class="ctx" id="wingCtx">Wingman reads your Weigh pad and its last reading.</p>
 <p class="quota" id="quota"></p>
 </aside>
+</section>
+<!-- WASH: de-AI -->
+<section id="v-wash" class="washv" hidden>
+<div class="toolhead"><span class="hc" data-ch="2"></span><div><h2>🫧 AI Wash</h2><p class="tag">Sounds like a robot wrote it? Paste lyrics or a poem. Wash circles the AI tells, explains each one, and helps you put yourself back in.</p></div></div>
+<div class="washgrid">
+<div class="pad">
+<label for="washIn">Lines to wash</label>
+<textarea id="washIn" spellcheck="false" placeholder="Paste the lines that feel a little too… generated."></textarea>
+<div class="row"><button class="btn go" id="washBtn">Wash it</button><button class="btn bile" id="washHuman">✨ Humanize with Wingman</button><button class="btn" id="washToWeigh">Weigh it</button><button class="btn" id="washWipe">Wipe</button></div>
+<div class="ex">Try one: <button id="washEx">🤖 a robot-written verse</button></div>
+</div>
+<div class="washout" aria-live="polite">
+<div class="robo" id="washMeter"><div class="robohead"><span class="rch" id="washChar"></span><div><div class="rscore" id="washScore">–</div><div class="rverd" id="washVerdict">Paste something and hit Wash it.</div></div></div><div class="rbar"><i id="washBar"></i></div><div class="rscale"><span>All you</span><span>Half bot</span><span>Full robot</span></div></div>
+<div class="map" id="washMapBox" hidden><h3>Robot map</h3><div id="washMap"></div></div>
+<div id="washTells"></div>
+<div class="roast" id="washAIBox" hidden><div class="rchar" data-wing></div><div class="rtext"><b>Wingman's human pass</b><p id="washAI"></p><div class="row"><button class="btn" id="washUse">Use this version</button></div></div></div>
+</div>
+</div>
+</section>
+<!-- WORDSTORM: freestyle words -->
+<section id="v-storm" class="stormv" hidden>
+<div class="toolhead"><span class="hc" data-ch="3"></span><div><h2>🎤 Wordstorm</h2><p class="tag">Freestyle training. A word drops on the beat. Work it into your bars before the next one lands.</p></div></div>
+<div class="stormgrid">
+<div class="stage" id="stStage">
+<div class="stbars" id="stBars" aria-hidden="true"></div>
+<div class="stword" id="stWord" aria-live="assertive">Ready?</div>
+<div class="strhy" id="stRhymes">Hit Start and a word drops every bar.</div>
+<div class="stnext" id="stNext"></div>
+<div class="stres" id="stResult" hidden></div>
+<div class="row stgo"><button class="btn bile big" id="stPlay">▶ Start</button><button class="btn" id="stShare" hidden>Share my round</button></div>
+</div>
+<div class="panel stctl">
+<label class="hint" for="stBpm">Tempo <b id="stBpmV">90</b> BPM</label>
+<div class="row"><input type="range" id="stBpm" min="60" max="170" value="90"><button class="btn" id="stTap">Tap tempo</button></div>
+<span class="hint" id="stEveryL">New word every</span>
+<div class="seg" id="stEvery" role="group" aria-labelledby="stEveryL"><button data-n="1" aria-pressed="false">1 bar</button><button data-n="2" aria-pressed="true">2 bars</button><button data-n="4" aria-pressed="false">4 bars</button></div>
+<span class="hint" id="stModeL">Mode</span>
+<div class="seg" id="stMode" role="group" aria-labelledby="stModeL"><button data-m="words" aria-pressed="false">Words</button><button data-m="rhyme" aria-pressed="true">Words + rhymes</button></div>
+<label class="hint" for="stTheme">Word pack</label>
+<select id="stTheme"><option value="">Everything</option></select>
+<label class="attest"><input type="checkbox" id="stBeat" checked> Play a beat (turn off to use your own)</label>
+<label class="attest" id="stMicRow"><input type="checkbox" id="stMic"> 🎙️ Score me: count the words I actually use</label>
+<span class="hint" id="stMicNote">Uses your browser's speech recognition. Nothing is saved.</span>
+<p class="hint" id="stBest"></p>
+</div>
+</div>
+</section>
+<!-- WORKSHOP: get better -->
+<section id="v-workshop" class="shopv" hidden>
+<div class="toolhead"><span class="hc" data-ch="1"></span><div><h2>🏋️ Workshop</h2><p class="tag">Don't just fix this verse. Fix the habit. Short lessons, one drill each, and the meter checks your work.</p></div>
+<div class="rank" id="wsRank"></div></div>
+<div class="shopgrid">
+<div class="lessons" id="wsList"></div>
+<div class="panel lesson" id="wsLesson"></div>
+</div>
+<div class="panel"><h3>Your progress</h3><div id="wsHist"></div><p class="hint">Every time you weigh your own lyrics, the score lands here. <a href="/#why">How the meter scores</a></p></div>
 </section>
 <!-- WHY -->
 <section id="v-why" class="whyv" hidden>
@@ -396,7 +462,8 @@
 <div><b>Who owns what Wingman writes?</b><p>You do. Wingman writes original lines for your song.</p></div>
 </div>
 </section>
-<footer><p class="flinks">Wackometer · every word starts with W, or tries to · <a href="/#why">How scoring works</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a></p>
+</main>
+<footer><p class="flinks">Wackometer · every word starts with W, or tries to · <a href="/#why">How scoring works</a> · <a href="/rhymes/">Fresh rhymes</a> · <a href="/cliches/">Cliché fixer</a> · <a href="/syllable-counter">Syllable counter</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a></p>
 <a class="dbv" href="https://donebyverde.com" target="_blank" rel="noopener noreferrer" aria-label="Website by donebyverde (opens in a new tab)" title="Website by donebyverde"><svg viewBox="0 0 200 200" aria-hidden="true"><path d="M75 0H125L123 61L174 28L200 72L146 100L200 128L174 172L123 139L125 200H75L77 139L26 172L0 128L54 100L0 72L26 28L77 61Z"/></svg></a>
 </footer>
 <div class="swappop" id="swapPop" hidden role="dialog" aria-label="Swap this cliché">
@@ -404,18 +471,40 @@
 <div class="swapopts" id="swapOpts"></div>
 <button class="swapmore" id="swapMore">✨ Ask Wingman for more</button>
 </div>
+<div class="tour" id="tour" hidden role="dialog" aria-labelledby="tourH" aria-modal="true">
+<div class="tbox"><div class="tch" id="tourChar"></div><div><h3 id="tourH"></h3><p id="tourText"></p><div class="row"><button class="btn bile" id="tourNext">Next</button><button class="btn" id="tourSkip">Skip</button><span class="hint" id="tourStep"></span></div></div></div>
+</div>
+<div class="modal" id="findModal" hidden role="dialog" aria-labelledby="findH">
+<div class="mbox wide">
+<div class="findhead"><h3 id="findH">🔍 Find friends</h3><button class="x" id="findX" aria-label="Close">×</button></div>
+<div class="atfield"><span aria-hidden="true">🔍</span><input type="search" id="findQ" maxlength="30" placeholder="Search names or @usernames" aria-label="Search for writers by name or username"></div>
+<div class="frlist" id="findResults" aria-live="polite"></div>
+<div class="suggest" id="findSuggestBox"><span class="hint sh">People you may know</span><div class="frlist" id="findSuggest"></div></div>
+<div class="row"><button class="btn" id="findInvite">📨 Invite friends</button><span class="hint" id="findNote"></span></div>
+</div>
+</div>
+<div class="modal" id="humanModal" hidden role="dialog" aria-labelledby="humanH">
+<div class="mbox">
+<div class="mch" id="humanChar"></div>
+<h3 id="humanH">Quick check: are you a human?</h3>
+<p class="tag">Keeps bots off the Wall. You only do this once a month.</p>
+<div id="turnstileBox"></div>
+<span class="hint" id="humanNote"></span>
+</div>
+</div>
 <div class="modal" id="loginModal" hidden role="dialog" aria-labelledby="loginH">
 <div class="mbox">
 <div class="mch" id="loginChar"></div>
 <h3 id="loginH">Save your streak and songs</h3>
 <p class="tag" id="loginSub">Sign in with your email and we'll send you a link. No password. Your streak, Pro and songs follow you to any device.</p>
-<div id="loginForm"><input type="text" id="loginEmail" inputmode="email" autocomplete="email" placeholder="you@email.com">
+<div id="loginForm"><input type="email" id="loginEmail" inputmode="email" autocomplete="email" placeholder="you@email.com" aria-label="Email address">
+<label class="attest"><input type="checkbox" id="loginAge"> I'm 13 or older</label>
 <div class="row"><button class="btn bile" id="loginGo">Email me a link</button><button class="btn" id="loginX">Not now</button></div></div>
 <div id="loginOut" hidden><div class="row"><button class="btn" id="logoutBtn">Sign out</button><a class="btn" id="myProfileLink" href="/u/" hidden>My profile</a><a class="btn" id="adminLink" href="/admin" hidden>Admin</a><button class="btn" id="loginX2">Close</button></div></div>
 <span class="hint" id="loginNote"></span>
 </div>
 </div>
 </div>
-<script type="module" src="/js/app.js?v=fb6648c665"></script>
+<script type="module" src="/js/app.js?v=728e2bb666"></script>
 </body>
 </html>
