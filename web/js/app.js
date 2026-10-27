@@ -411,7 +411,8 @@ document.querySelectorAll("[data-ch]").forEach((e) => (e.innerHTML = charSVG(+e.
 /* ---------- account ---------- */
 function renderAccount() {
   const b = $("acctBtn");
-  b.textContent = S.ME && S.ME.username ? "👤 @" + S.ME.username : S.ME && S.ME.email ? "👤 " + S.ME.email.split("@")[0] : "Sign in";
+  const label = S.ME && S.ME.username ? "@" + S.ME.username : S.ME && S.ME.email ? S.ME.email.split("@")[0] : "Sign in";
+  b.innerHTML = `<span aria-hidden="true">👤</span><span class="albl"> ${esc(label)}</span>`; b.setAttribute("aria-label", label === "Sign in" ? "Sign in" : "Account: " + label);
 }
 function openLogin() {
   $("loginModal").hidden = false; $("loginChar").innerHTML = charSVG(1); $("loginNote").textContent = "";
@@ -435,7 +436,8 @@ $("loginEmail").addEventListener("keydown", (e) => { if (e.key === "Enter") $("l
 $("logoutBtn").onclick = async () => { await api("/api/logout", { body: {} }).catch(() => {}); location.href = "/"; };
 
 /* ---------- wiring ---------- */
-$("weighBtn").onclick = renderReading;
+// On phones the meter sits below the pad, so bring it into view after weighing.
+$("weighBtn").onclick = () => { renderReading(); if (S.last && innerWidth < 820) $("meter").scrollIntoView({ behavior: "smooth", block: "start" }); };
 $("wipeBtn").onclick = wipe;
 document.querySelectorAll("[data-ex]").forEach((b) => (b.onclick = () => loadExample(b.dataset.ex)));
 $("lyrics").addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") renderReading(); });
