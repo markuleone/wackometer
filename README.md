@@ -101,6 +101,10 @@ Open http://localhost:8787.
 
 ## Features
 
+The header groups every tool into **Write** (Weigh, Wash, Wingman), **Train** (Workshop, Wordstorm) and **Play** (Daily W, Wall, Squad; Pass the Pen lives inside Squad).
+
+**Loading:** the first visit downloads only Weigh and the app shell (about 20 KB of compressed JavaScript). Every other tool is its own file in `public/js/` and loads the first time it's opened. The source is split the same way: `core.js` (shared helpers and state), `app.js` (Weigh, Wingman, nav), and `wall.js`, `daily.js`, `pen.js`, `squad.js`, `share.js`, `shop.js`, `washui.js`, `storm.js`, `swaps.js`.
+
 - **Weigh** with the crew, the Wack map, tap-to-swap clichés, Wiz's best-line pick, Wobbles' syllable check, live reactions while you type, Roast mode, share images and 6-second share videos.
 - **Daily W** with emoji prompts, streaks, unlockable crew outfits (3, 7 and 30 days), Crew and Crowd boards.
 - **Pass the Pen**: `/pen/<id>` songs written one line at a time by different people (16 lines max, nobody twice in a row).
@@ -117,7 +121,8 @@ Open http://localhost:8787.
 - **Email notifications**: friend requests, battles, Pen lines and a Monday squad digest (cron in `wrangler.toml`), with one-click unsubscribe. Needs `SENDGRID_API_KEY`.
 - **Safety**: slur filter everywhere, profanity filter on names and bios, profile reports and blocking, 13+ check, self-serve account deletion.
 - **Light and dark mode**: follows the device by default, with a toggle in the header.
-- **Admin** at `/admin`: totals, share/save counts by day, reported profiles, reported posts to hide, restore or delete.
+- **DAW plugin waitlist** on the Pro page (`POST /api/waitlist`, stored in the `waitlist` table). The plugin itself isn't built yet; it's planned as a Wingman Pro perk.
+- **Admin** at `/admin`: totals, plugin waitlist by DAW, share/save counts by day, reported profiles, reported posts to hide, restore or delete.
 
 ## Known gaps before a big launch
 

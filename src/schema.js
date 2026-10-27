@@ -25,7 +25,8 @@ export const SCHEMA = [
   "CREATE TABLE IF NOT EXISTS settings ( k TEXT PRIMARY KEY, v TEXT NOT NULL )",
   "CREATE TABLE IF NOT EXISTS blocks ( blocker TEXT NOT NULL, blocked TEXT NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY (blocker, blocked) )",
   "CREATE TABLE IF NOT EXISTS profile_reports ( target TEXT NOT NULL, reporter TEXT NOT NULL, reason TEXT, created_at INTEGER NOT NULL, PRIMARY KEY (target, reporter) )",
-  "CREATE TABLE IF NOT EXISTS notify_log ( k TEXT PRIMARY KEY, at INTEGER NOT NULL )"
+  "CREATE TABLE IF NOT EXISTS notify_log ( k TEXT PRIMARY KEY, at INTEGER NOT NULL )",
+  "CREATE TABLE IF NOT EXISTS waitlist ( email TEXT PRIMARY KEY, daw TEXT, user_id TEXT, created_at INTEGER NOT NULL )"
 ];
 
 // Changes for databases created before these existed. Each runs on its own; 'duplicate column' errors are expected and ignored.

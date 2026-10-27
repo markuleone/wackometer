@@ -1,15 +1,20 @@
-// Wackometer front end
-import { TIERS, MID, METRICS, CLICHES, FILLER, WEIGHTLESS, DAILY_EMOJI, SWAPS, tierOf, clamp, words, analyze, bestLine, lineSyllables } from "./score.js";
-import { washScan, washVerdict, WASH_EXAMPLE } from "./wash.js";
-import { LESSONS, rankOf } from "./workshop.js";
-import { initStorm } from "./storm.js";
+// Wackometer front end: Weigh, Wingman and the app shell. Other tools load on demand.
+import { TIERS, METRICS, CLICHES, FILLER, WEIGHTLESS, tierOf, clamp, words, analyze, bestLine, lineSyllables } from "./score.js";
+import { $, esc, ls, CONTACT_EMAIL, S, A, api, isPro, copyText, CREW, QUIPS, charSVG, renderCrew, confetti, track, sfx, UNLOCK, UNLOCKS, getHist } from "./core.js";
+import { lazy } from "./core.js";
 
-const CONTACT_EMAIL = "hello@wackometer.com";
-const SITE = /\./.test(location.hostname) && !/^\d/.test(location.hostname) ? location.hostname.replace(/^www\./, "") : "the Wackometer";
-const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const $ = (id) => document.getElementById(id);
-let last = null, crowdTune = 0, tuneN = 0;
-function ls(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
+// Tools load the first time they're opened, so the first visit only downloads Weigh.
+const wallM = lazy(() => import("./wall.js"));
+const dailyM = lazy(() => import("./daily.js"));
+const penM = lazy(() => import("./pen.js"));
+const squadM = lazy(() => import("./squad.js"));
+const shareM = lazy(() => import("./share.js"));
+const shopM = lazy(() => import("./shop.js"));
+const washM = lazy(() => import("./washui.js"));
+const lessonsM = lazy(() => import("./workshop.js"));
+const swapsM = lazy(() => import("./swaps.js"));
+const stormM = lazy(() => import("./storm.js").then((m) => m.initStorm({ ls, track, copyText })));
+let stormOn = false;
 
 /* ---------- gauge ---------- */
 const cx=160,cy=166,R=128;
@@ -120,181 +125,97 @@ function loadExample(kind, scroll) {
 }
 
 
-/* ---------- API ---------- */
-async function api(path, opts = {}, retried = false) {
-  const res = await fetch(path, { method: opts.method || (opts.body ? "POST" : "GET"), headers: opts.body ? { "content-type": "application/json" } : {}, body: opts.body ? JSON.stringify(opts.body) : undefined, credentials: "same-origin" });
-  let data = {}; try { data = await res.json(); } catch (e) {}
-  if (res.status === 428 && data.error === "challenge" && !retried) { await ensureHuman(data.siteKey); return api(path, opts, true); }
-  if (!res.ok) { const err = new Error(data.message || data.error || "Something went wrong. Try again."); err.status = res.status; err.code = data.error; throw err; }
-  return data;
-}
-// Cloudflare Turnstile: loads only when the server asks for a human check.
-let humanP = null;
-function ensureHuman(siteKey) {
-  if (humanP) return humanP;
-  humanP = new Promise((resolve, reject) => {
-    const modal = $("humanModal"); modal.hidden = false; $("humanChar").innerHTML = charSVG(3); $("humanNote").textContent = "";
-    const go = () => window.turnstile.render("#turnstileBox", { sitekey: siteKey, theme: "auto", callback: async (token) => {
-      try { await fetch("/api/human", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token }) }).then((r) => { if (!r.ok) throw 0; }); modal.hidden = true; $("turnstileBox").innerHTML = ""; resolve(); }
-      catch (e) { $("humanNote").textContent = "That didn't go through. Refresh the page and try again."; reject(new Error("Human check failed. Refresh and try again.")); }
-      humanP = null;
-    }, "error-callback": () => { $("humanNote").textContent = "The check couldn't load. Refresh the page and try again."; humanP = null; reject(new Error("Human check failed.")); } });
-    if (window.turnstile) go();
-    else { const sc = document.createElement("script"); sc.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"; sc.async = true; sc.onload = go; sc.onerror = () => { humanP = null; reject(new Error("The human check couldn't load.")); }; document.head.appendChild(sc); }
-  });
-  return humanP;
-}
-let ME = null;
-const isPro = () => !!(ME && ME.pro);
-async function loadMe() { try { ME = await api("/api/me"); } catch (e) { ME = null; } renderQuota(); renderPro(); renderAccount(); applyUnlocks(); }
-
+async function loadMe() { try { S.ME = await api("/api/me"); } catch (e) { S.ME = null; } if (S.ME && S.ME.email && !$("dawEmail").value) $("dawEmail").value = S.ME.email; renderQuota(); renderPro(); renderAccount(); applyUnlocks(); }
 /* ---------- Weigh ---------- */
 function renderReading() {
   const t = $("lyrics").value;
   if (words(t).length < 8) { $("blurb").textContent = "Give it at least a couple of lines. Eight words minimum."; return; }
-  last = analyze(t);
-  const score = Math.round(clamp(last.raw + crowdTune)); last.score = score; last.tier = tierOf(score); last.text = t;
+  S.last = analyze(t);
+  const score = Math.round(clamp(S.last.raw + S.crowdTune)); S.last.score = score; S.last.tier = tierOf(score); S.last.text = t;
   setNeedle(score);
   $("score").textContent = score;
-  const v = $("verdict"); v.textContent = TIERS[last.tier].n; v.className = `verdict bg-t${last.tier} t${last.tier}`;
-  $("blurb").textContent = TIERS[last.tier].blurb;
-  $("tune").textContent = tuneN ? `Crowd-tuned ${crowdTune >= 0 ? "+" : ""}${crowdTune} from ${tuneN} Wall posts. Raw meter: ${Math.round(last.raw)}.` : "Raw meter score. The crowd tune kicks in once the Wall has enough votes.";
-  const m = $("meter"); m.classList.remove("wack-now", "wicked-now"); void m.offsetWidth; m.style.setProperty("--tint", `var(--t${last.tier})`);
-  if (last.tier === 4) { m.classList.add("wack-now"); sfx("gag"); } else if (last.tier === 0) { m.classList.add("wicked-now"); confetti(); sfx("sparkle"); } else sfx("pop");
-  last.best = bestLine(t);
-  if (last.best) { $("bestPick").hidden = false; $("bestChar").innerHTML = charSVG(0); $("bestText").textContent = "“" + last.best.line + "”"; }
+  const v = $("verdict"); v.textContent = TIERS[S.last.tier].n; v.className = `verdict bg-t${S.last.tier} t${S.last.tier}`;
+  $("blurb").textContent = TIERS[S.last.tier].blurb;
+  $("tune").textContent = S.tuneN ? `Crowd-tuned ${S.crowdTune >= 0 ? "+" : ""}${S.crowdTune} from ${S.tuneN} Wall posts. Raw meter: ${Math.round(S.last.raw)}.` : "Raw meter score. The crowd tune kicks in once the Wall has enough votes.";
+  const m = $("meter"); m.classList.remove("wack-now", "wicked-now"); void m.offsetWidth; m.style.setProperty("--tint", `var(--t${S.last.tier})`);
+  if (S.last.tier === 4) { m.classList.add("wack-now"); sfx("gag"); } else if (S.last.tier === 0) { m.classList.add("wicked-now"); confetti(); sfx("sparkle"); } else sfx("pop");
+  S.last.best = bestLine(t);
+  if (S.last.best) { $("bestPick").hidden = false; $("bestChar").innerHTML = charSVG(0); $("bestText").textContent = "“" + S.last.best.line + "”"; }
   else $("bestPick").hidden = true;
-  $("mchar").innerHTML = charSVG(last.tier);
-  const qs = QUIPS[last.tier]; $("quip").textContent = `${CREW[last.tier].name}: ${qs[(Math.random() * qs.length) | 0]}`;
-  renderCrew(last.tier);
-  $("metrics").innerHTML = METRICS.map((mm) => { const val = Math.round(last.vals[mm.k]); const ti = tierOf(val);
-    return `<div class="m"><div class="top"><b>${mm.n}</b><span class="v">${val}</span></div><div class="bar"><i class="bg-t${ti}" style="width:${Math.max(val, 2)}%"></i></div><small>${esc(last.notes[mm.k])}</small></div>`; }).join("");
+  $("mchar").innerHTML = charSVG(S.last.tier);
+  const qs = QUIPS[S.last.tier]; $("quip").textContent = `${CREW[S.last.tier].name}: ${qs[(Math.random() * qs.length) | 0]}`;
+  renderCrew(S.last.tier);
+  $("metrics").innerHTML = METRICS.map((mm) => { const val = Math.round(S.last.vals[mm.k]); const ti = tierOf(val);
+    return `<div class="m"><div class="top"><b>${mm.n}</b><span class="v">${val}</span></div><div class="bar"><i class="bg-t${ti}" style="width:${Math.max(val, 2)}%"></i></div><small>${esc(S.last.notes[mm.k])}</small></div>`; }).join("");
   renderMap();
+  if (S.last.found.length && !swapsCache) swapsM().then((m) => (swapsCache = m.SWAPS)); // ready before the first tap
   renderCoach();
   if (!padIsExample) saveHistory();
   $("post").hidden = false; $("postNote").textContent = ""; $("postBtn").disabled = false;
   $("roast").hidden = true;
   updateWingCtx();
-  cardLinesTouched = false; drawCard();
+  shareM().then((m) => m.freshCard());
 }
 function wipe() {
   $("lyrics").value = ""; try { localStorage.removeItem("wk-draft"); } catch (e) {}
   $("map").hidden = true; $("post").hidden = true; $("roast").hidden = true; $("bestPick").hidden = true; $("metrics").innerHTML = ""; $("score").textContent = "–";
   const v = $("verdict"); v.textContent = "Waiting"; v.className = "verdict bg-t2 t2"; $("blurb").textContent = "Paste some lines and hit Weigh it."; $("tune").textContent = "";
-  setNeedle(50); last = null; $("share").hidden = true; $("coach").hidden = true; padIsExample = false; renderCrew(null); $("mchar").innerHTML = charSVG(5); $("quip").textContent = "The crew is ready. Paste something."; updateWingCtx(); $("lyrics").focus();
+  setNeedle(50); S.last = null; $("share").hidden = true; $("coach").hidden = true; padIsExample = false; renderCrew(null); $("mchar").innerHTML = charSVG(5); $("quip").textContent = "The crew is ready. Paste something."; updateWingCtx(); $("lyrics").focus();
 }
 
 /* ---------- tabs ---------- */
+// Write / Train / Play: each tool belongs to one group. Pass the Pen and profiles live under Squad.
+const GROUP = { weigh: "write", wash: "write", wingman: "write", workshop: "train", storm: "train", daily: "play", wall: "play", squad: "play", pen: "play", profile: "play" };
+const TITLES = { wash: "AI Wash", wingman: "Wingman", workshop: "Workshop", storm: "Wordstorm", daily: "Daily W", wall: "The Wall", squad: "Squad", pen: "Pass the Pen", why: "Why it's wack", pro: "Wingman Pro", lost: "Page not found" };
+const GROUP_FIRST = { write: "weigh", train: "workshop", play: "daily" };
 const VIEWS = ["weigh", "wash", "storm", "workshop", "daily", "pen", "squad", "wall", "wingman", "why", "pro", "lost", "profile"];
 function show(v) {
-  document.querySelectorAll("#mainNav button,#proBtn").forEach((b) => (b.dataset.v === v ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current")));
-  const cur = document.querySelector('#mainNav [aria-current="page"]'); if (cur) cur.scrollIntoView({ block: "nearest", inline: "nearest" });
-  if (v !== "storm") storm.onHide();
+  const g = GROUP[v], tab = v === "pen" || v === "profile" ? "squad" : v;
+  if (g) { $("mainNav").dataset.group = g; ls("wk-g-" + g, v === "profile" ? "squad" : v); }
+  document.querySelectorAll("#groupNav button").forEach((b) => (b.dataset.g === g ? b.setAttribute("aria-current", "true") : b.removeAttribute("aria-current")));
+  document.querySelectorAll("#mainNav button,#proBtn").forEach((b) => (b.dataset.v === tab ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current")));
+  document.querySelectorAll(".squadsw button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.v === v));
+  if (v !== "storm" && stormOn) stormM().then((st) => st.onHide());
   VIEWS.forEach((x) => ($("v-" + x).hidden = x !== v)); window.scrollTo(0, 0);
-  const h = $("v-" + v).querySelector("h1,h2"); document.title = v === "weigh" ? "Wackometer · How wack are your lyrics?" : `${h ? h.textContent.replace(/^[^A-Za-z]+/, "").trim() : "Wackometer"} · Wackometer`;
-  if (v === "storm") storm.onShow();
-  if (v === "workshop") renderWorkshop();
+  if (v !== "profile") document.title = v === "weigh" ? "Wackometer · How wack are your lyrics?" : `${TITLES[v] || "Wackometer"} · Wackometer`;
+  if (v === "storm") { stormOn = true; stormM().then((st) => st.onShow()); }
+  if (v === "workshop") shopM().then((m) => m.renderWorkshop());
+  if (v === "wash") washM();
   if (v === "pen") { if (!location.pathname.startsWith("/pen/")) history.replaceState(null, "", "/#pen"); }
   else if (v === "profile") { /* path is /u/<name> */ }
   else if (v !== "lost" && (location.pathname !== "/" || location.hash !== "#" + v)) history.replaceState(null, "", "/#" + v);
-  if (v === "wall") loadWall();
-  if (v === "daily") loadDaily();
+  if (v === "wall") wallM().then((m) => m.loadWall());
+  if (v === "daily") dailyM().then((m) => m.loadDaily());
   if (v === "pro") loadMe();
-  if (v === "pen") loadPenView();
-  if (v === "squad") loadSquad();
-  if (v === "profile") loadProfile(location.pathname.slice(3));
+  if (v === "pen") penM().then((m) => m.loadPenView());
+  if (v === "squad") squadM().then((m) => m.loadSquad());
+  if (v === "profile") squadM().then((m) => m.loadProfile(location.pathname.slice(3)));
 }
-
-/* ---------- Wall ---------- */
-let feed = "fresh"; const FEAT = 5; let wall = { readings: [], stats: {} }, wallTimer = null;
-async function loadTune() { try { const t = await api("/api/tune"); crowdTune = t.tune; tuneN = t.n; } catch (e) {} }
-async function loadWall() {
-  clearTimeout(wallTimer);
-  try { wall = await api("/api/wall?feed=" + feed); crowdTune = wall.stats.tune; tuneN = wall.stats.tuneN; renderWall(); }
-  catch (e) { $("cards").innerHTML = `<div class="empty"><div class="ch">${charSVG(3)}</div>The Wall didn't load. ${esc(e.message)}</div>`; }
-  if (!$("v-wall").hidden) wallTimer = setTimeout(loadWall, 20000);
-}
-function renderWall() {
-  const st = wall.stats || {};
-  $("sWave").textContent = st.wavelength == null ? "–" : st.wavelength + "%";
-  $("sTune").textContent = (st.tune > 0 ? "+" : "") + (st.tune || 0);
-  $("sVotes").textContent = st.votes || 0;
-  const el = $("cards"), list = wall.readings || [];
-  if (!list.length) {
-    el.innerHTML = feed === "fresh"
-      ? `<div class="empty"><div class="ch">${charSVG(2)}</div>The Wall is empty. Weigh your lyrics and post them to be the first one the crowd votes on.</div>`
-      : `<div class="empty"><div class="ch">${charSVG(2)}</div>Nothing Featured yet. Vote on Fresh posts. Once one hits ${FEAT} votes, it shows up here.</div>`;
-    return;
-  }
-  el.innerHTML = "";
-  list.forEach((r) => {
-    const c = r.votes, n = c.reduce((a, b) => a + b, 0);
-    const crowdTier = n ? tierOf(c.reduce((a, b, i) => a + b * MID[i], 0) / n) : null;
-    const card = document.createElement("article"); card.className = "card";
-    card.innerHTML = `<div class="ch"><span class="ttl"></span>${n >= FEAT ? '<span class="pill" style="background:var(--ink);color:var(--bg)">Featured</span>' : ""}<span class="pill bg-t${r.tier} t${r.tier}"><span class="mini">${charSVG(r.tier)}</span>Crew: ${TIERS[r.tier].n} ${r.score}</span></div>
-      <pre></pre>
-      <div class="crowd" title="Crowd votes">${n ? c.map((v, i) => (v ? `<i class="bg-t${i}" style="width:${(v / n) * 100}%"></i>` : "")).join("") : ""}</div>
-      <div class="cmeta"><span>${n ? `Crowd says ${TIERS[crowdTier].n} · ${n} vote${n > 1 ? "s" : ""}` : "No votes yet. Be first."}</span><span>${new Date(r.createdAt).toLocaleDateString()}</span></div>
-      <div class="votes">${TIERS.map((t, i) => `<button data-i="${i}" class="t${i} ${r.myVote === i ? "mine bg-t" + i : ""}" aria-pressed="${r.myVote === i}">${t.n}</button>`).join("")}</div>
-      <div class="cfoot"><div class="reacts">${REACTS.map((e) => `<button class="react${(r.myReacts || []).includes(e) ? " on" : ""}" data-e="${e}" aria-pressed="${(r.myReacts || []).includes(e)}">${e} <span>${(r.reacts || {})[e] || ""}</span></button>`).join("")}</div></div>`;
-    card.querySelector(".ttl").textContent = r.title || "Untitled";
-    if (r.by) { const by = document.createElement("a"); by.className = "by"; by.href = "/u/" + r.by; by.textContent = "by @" + r.by; by.onclick = (ev) => { ev.preventDefault(); goProfile(r.by); }; card.querySelector(".ch").after(by); }
-    card.querySelector("pre").textContent = r.excerpt;
-    card.querySelectorAll(".votes button").forEach((b) => (b.onclick = () => castVote(r, +b.dataset.i, b)));
-    const foot = card.querySelector(".cfoot");
-    card.querySelectorAll(".react").forEach((b) => (b.onclick = async () => {
-      const on = b.classList.contains("on"); b.disabled = true; sfx("pop");
-      try { await api("/api/react", { body: { id: r.id, emoji: b.dataset.e, off: on } }); await loadWall(); } catch (e) { b.disabled = false; }
-    }));
-    const act = document.createElement("button"); act.className = "del";
-    if (r.mine) {
-      act.textContent = "Take mine down";
-      act.onclick = async () => { if (!act.dataset.sure) { act.dataset.sure = 1; act.textContent = "Tap again to remove"; return; }
-        act.disabled = true; try { await api("/api/wall/" + r.id, { method: "DELETE" }); loadWall(); } catch (e) { act.textContent = e.message; act.disabled = false; } };
-    } else {
-      act.textContent = "Report";
-      act.onclick = async () => { if (!act.dataset.sure) { act.dataset.sure = 1; act.textContent = "Not their own lyrics, or not OK? Tap to report"; return; }
-        act.disabled = true; try { await api("/api/report", { body: { id: r.id } }); act.textContent = "Reported. Thanks."; } catch (e) { act.textContent = e.message; act.disabled = false; } };
-    }
-    foot.appendChild(act);
-    el.appendChild(card);
-  });
-}
-async function castVote(r, i, btn) {
-  btn.disabled = true;
-  try { await api("/api/vote", { body: { id: r.id, tier: i } }); await loadWall(); }
-  catch (e) { btn.textContent = "Didn't save"; btn.disabled = false; }
-}
-document.querySelectorAll("[data-f]").forEach((b) => (b.onclick = () => {
-  feed = b.dataset.f; document.querySelectorAll("[data-f]").forEach((x) => x.setAttribute("aria-pressed", x === b));
-  $("feedHint").textContent = feed === "fresh" ? "Everything new, newest first. Posts with 5+ votes get Featured." : "Crowd-promoted: 5+ votes, ranked by how many people weighed in.";
-  loadWall();
-}));
+async function loadTune() { try { const t = await api("/api/tune"); S.crowdTune = t.tune; S.tuneN = t.n; } catch (e) {} }
 $("postBtn").onclick = async () => {
-  if (!last) return; const b = $("postBtn");
+  if (!S.last) return; const b = $("postBtn");
   if (!$("postAttest").checked) { $("postNote").textContent = "Tick the box to confirm these are your own lyrics."; return; }
   b.disabled = true; $("postNote").textContent = "Posting…";
-  try { await api("/api/wall", { body: { text: last.text, title: $("postTitle").value.trim(), attest: true } });
+  try { await api("/api/wall", { body: { text: S.last.text, title: $("postTitle").value.trim(), attest: true } });
     $("postNote").innerHTML = 'Posted. <a href="#wall">See it on the Wall</a>'; $("postTitle").value = ""; }
   catch (e) { $("postNote").textContent = e.message; b.disabled = false; }
 };
 
 /* ---------- Roast ---------- */
-const REACTS = ["🔥", "😭", "💀", "🤢"];
 $("roastBtn").onclick = async () => {
   if (words($("lyrics").value).length < 8) { $("blurb").textContent = "Give Wretch at least eight words to roast."; return; }
-  if (!last) renderReading();
+  if (!S.last) renderReading();
   const box = $("roast"); box.hidden = false; $("roastText").textContent = "Wretch is reading… 🤢";
   $("roastChar").innerHTML = charSVG(4); box.scrollIntoView({ behavior: "smooth", block: "nearest" });
   sfx("gag");
-  try { const r = await api("/api/wingman", { body: { mode: "roast", pad: $("lyrics").value } }); $("roastText").textContent = r.text; ME = r.me; renderQuota(); }
+  try { const r = await api("/api/wingman", { body: { mode: "roast", pad: $("lyrics").value } }); $("roastText").textContent = r.text; S.ME = r.me; renderQuota(); }
   catch (e) { $("roastText").textContent = e.status === 402 ? e.message : e.message || "Wretch couldn't keep it down. Try again."; if (e.status === 402) addProLink($("roastText")); }
 };
 $("copyRoast").onclick = () => track("copy_roast") || copyText($("roastText").textContent + "\n\nRoasted by Wretch on the Wackometer", $("copyRoast"), "Copy roast");
 
 /* ---------- Wingman ---------- */
 const history_ = []; let busy = false;
-function updateWingCtx() { $("wingCtx").textContent = last ? `Wingman sees your pad: ${TIERS[last.tier].n} (${last.score}).` : words($("lyrics").value).length ? "Wingman sees your pad (not weighed yet)." : "Your Weigh pad is empty, so Wingman starts fresh."; }
+function updateWingCtx() { $("wingCtx").textContent = S.last ? `Wingman sees your pad: ${TIERS[S.last.tier].n} (${S.last.score}).` : words($("lyrics").value).length ? "Wingman sees your pad (not weighed yet)." : "Your Weigh pad is empty, so Wingman starts fresh."; }
 function bubble(cls, text) {
   const d = document.createElement("div"); d.className = "msg " + cls;
   if (cls === "wm") { d.innerHTML = '<span class="who">' + charSVG(5) + "WINGMAN</span>"; const s = document.createElement("span"); s.textContent = text; d.appendChild(s); d._t = s; }
@@ -307,7 +228,7 @@ async function ask(q) {
   bubble("me", q); const out = bubble("wm", "Thinking…");
   try {
     const r = await api("/api/wingman", { body: { mode: "chat", message: q, pad: $("lyrics").value.trim(), history: history_.slice(-10) } });
-    out._t.textContent = r.text; history_.push({ role: "user", content: q }, { role: "assistant", content: r.text }); ME = r.me; renderQuota();
+    out._t.textContent = r.text; history_.push({ role: "user", content: q }, { role: "assistant", content: r.text }); S.ME = r.me; renderQuota();
   } catch (e) { out._t.textContent = e.message; if (e.status === 402) addProLink(out._t); }
   busy = false; $("sendBtn").disabled = false; $("log").scrollTop = $("log").scrollHeight;
 }
@@ -316,9 +237,9 @@ $("ask").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftK
 $("chips").querySelectorAll("button").forEach((b) => (b.onclick = () => ask(b.textContent)));
 function renderQuota() {
   const q = $("quota"); if (!q) return;
-  if (!ME) { q.textContent = ""; return; }
-  if (ME.pro) q.innerHTML = 'Wingman Pro is on. Unlimited messages. <a href="#pro">Manage</a>';
-  else { const left = Math.max(0, ME.freeDaily - ME.usedToday); q.innerHTML = `${left} of ${ME.freeDaily} free messages left today${ME.credits ? ` · ${ME.credits} credits` : ""}. <a href="#pro">Go unlimited</a>`; }
+  if (!S.ME) { q.textContent = ""; return; }
+  if (S.ME.pro) q.innerHTML = 'Wingman Pro is on. Unlimited messages. <a href="#pro">Manage</a>';
+  else { const left = Math.max(0, S.ME.freeDaily - S.ME.usedToday); q.innerHTML = `${left} of ${S.ME.freeDaily} free messages left today${S.ME.credits ? ` · ${S.ME.credits} credits` : ""}. <a href="#pro">Go unlimited</a>`; }
 }
 
 /* ---------- Pro ---------- */
@@ -327,9 +248,9 @@ function setBill(y) { yearly = y; $("billM").setAttribute("aria-pressed", !y); $
 $("billM").onclick = () => setBill(false); $("billY").onclick = () => setBill(true);
 function renderPro() {
   const fb = document.querySelector('[data-plan="free"]'), pb = document.querySelector('[data-plan="pro"]');
-  if (ME && ME.pro) { fb.textContent = "Manage billing"; fb.disabled = false; pb.textContent = "You're on Pro"; pb.disabled = true;
-    $("demoNote").textContent = ME.proUntil ? `Pro is active through ${new Date(ME.proUntil).toLocaleDateString()}.` : "Pro is active."; }
-  else { fb.textContent = ME && ME.billing ? "Manage billing" : "You're on Free"; fb.disabled = !(ME && ME.billing); pb.textContent = "Start Wingman Pro"; pb.disabled = false;
+  if (S.ME && S.ME.pro) { fb.textContent = "Manage billing"; fb.disabled = false; pb.textContent = "You're on Pro"; pb.disabled = true;
+    $("demoNote").textContent = S.ME.proUntil ? `Pro is active through ${new Date(S.ME.proUntil).toLocaleDateString()}.` : "Pro is active."; }
+  else { fb.textContent = S.ME && S.ME.billing ? "Manage billing" : "You're on Free"; fb.disabled = !(S.ME && S.ME.billing); pb.textContent = "Start Wingman Pro"; pb.disabled = false;
     $("demoNote").textContent = "Payments run through Stripe. Cancel anytime from Manage billing."; }
 }
 async function checkout(plan, btn) {
@@ -343,88 +264,15 @@ document.querySelector('[data-plan="free"]').onclick = async (e) => {
   const b = e.currentTarget; b.disabled = true;
   try { const r = await api("/api/portal", { body: {} }); location.href = r.url; } catch (err) { $("demoNote").textContent = err.message; b.disabled = false; }
 };
-document.querySelector('[data-plan="class"]').onclick = (e) => { $("demoNote").textContent = `Email ${CONTACT_EMAIL} and we'll set up your class.`; };
-
-/* ---------- Daily W ---------- */
-let daily = null, board = "crew";
-async function loadDaily() {
-  try { daily = await api("/api/daily"); renderDaily(); }
-  catch (e) { $("dPrompt").textContent = "Today's prompt didn't load."; $("dNote").textContent = e.message; }
-}
-function renderDaily() {
-  $("dNum").textContent = `Daily W #${daily.number}`;
-  $("dPrompt").textContent = daily.prompt;
-  $("dEmoji").textContent = daily.emoji || "";
-  renderUnlocks(daily.streak || 0);
-  $("dStreak").textContent = daily.streak || 0;
-  $("dCount").textContent = `${daily.entries} ${daily.entries === 1 ? "writer has" : "writers have"} taken today's W.`;
-  if (daily.handle && !$("dHandle").value) $("dHandle").value = daily.handle;
-  if (daily.mine) {
-    $("dCompose").hidden = true; $("dResult").hidden = false;
-    showDailyResult({ score: daily.mine.score, tier: daily.mine.tier, rank: daily.mine.rank, total: daily.entries, streak: daily.streak, lines: daily.mine.lines });
-  } else { $("dCompose").hidden = false; $("dResult").hidden = true; }
-  renderBoard();
-}
-function shareGrid(lines) {
-  const a = analyze(lines);
-  return METRICS.map((m) => DAILY_EMOJI[tierOf(a.vals[m.k])]).join("");
-}
-function showDailyResult(r) {
-  $("dChar").innerHTML = charSVG(r.tier);
-  $("dScore").textContent = r.score;
-  const v = $("dVerdict"); v.textContent = TIERS[r.tier].n; v.className = `verdict bg-t${r.tier} t${r.tier}`;
-  $("dRank").textContent = `#${r.rank} of ${r.total} today`;
-  $("dMine").textContent = r.lines;
-  const grid = shareGrid(r.lines);
-  $("dShare").textContent = `Daily W #${daily.number} ${daily.emoji || ""} · ${TIERS[r.tier].n} ${r.score}\n${grid}\nRank ${r.rank}/${r.total}${r.streak > 1 ? ` · 🔥 ${r.streak}-day streak` : ""}\n${location.host}`;
-}
-function renderBoard() {
-  const list = board === "crew" ? daily.crew : daily.crowd, el = $("dBoard");
-  document.querySelectorAll("[data-b]").forEach((x) => x.setAttribute("aria-pressed", x.dataset.b === board));
-  if (!list.length) { el.innerHTML = `<div class="empty"><div class="ch">${charSVG(board === "crew" ? 0 : 1)}</div>${board === "crew" ? "No entries yet today. Be the first name on the board." : "No 🔥 yet. Fire the lines you'd steal."}</div>`; return; }
-  el.innerHTML = "";
-  list.forEach((e, i) => {
-    const row = document.createElement("div"); row.className = "entry" + (e.mine ? " you" : "");
-    const lit = daily.liked.includes(e.entry);
-    row.innerHTML = `<span class="rank">${i + 1}</span><span class="mini">${charSVG(e.tier)}</span><div class="ebody"><div class="ewho"></div><pre></pre></div><div class="eside"><span class="pill bg-t${e.tier}">${e.score}</span><button class="fire${lit ? " lit" : ""}" ${e.mine ? "disabled" : ""} aria-pressed="${lit}" title="Fire it">🔥 <span>${e.fires}</span></button></div>`;
-    const ew = row.querySelector(".ewho");
-    if (e.username && !e.mine) { const l = document.createElement("a"); l.href = "/u/" + e.username; l.textContent = e.who; l.onclick = (ev) => { ev.preventDefault(); goProfile(e.username); }; ew.appendChild(l); }
-    else ew.textContent = e.who;
-    row.querySelector("pre").textContent = e.lines;
-    const f = row.querySelector(".fire");
-    f.onclick = async () => { f.disabled = true; try { await api("/api/daily/fire", { body: { entry: e.entry, off: lit } }); await loadDaily(); } catch (err) { f.disabled = false; } };
-    el.appendChild(row);
-  });
-}
-document.querySelectorAll("[data-b]").forEach((b) => (b.onclick = () => { board = b.dataset.b; if (daily) renderBoard(); }));
-$("dLines").addEventListener("input", () => {
-  const t = $("dLines").value, n = words(t).length;
-  if (n < 4) { $("dLive").textContent = "Live meter: start writing"; return; }
-  const a = analyze(t), s = Math.round(a.raw); $("dLive").textContent = `Live meter: ${TIERS[tierOf(s)].n} ${s} · ${n} words`;
+$("dawForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); const b = e.submitter || $("dawForm").querySelector("button"); b.disabled = true;
+  try { const r = await api("/api/waitlist", { body: { email: $("dawEmail").value, daw: $("dawPick").value } }); $("dawNote").textContent = `You're on the list (#${r.position}). We'll email you when the plugin is ready.`; sfx("sparkle"); track("waitlist"); }
+  catch (err) { $("dawNote").textContent = err.message; b.disabled = false; }
 });
-$("dSubmit").onclick = async () => {
-  const b = $("dSubmit"), note = $("dNote");
-  if (!$("dAttest").checked) { note.textContent = "Tick the box to confirm these are your own lines."; return; }
-  b.disabled = true; note.textContent = "Weighing…";
-  try {
-    const lines = $("dLines").value;
-    const r = await api("/api/daily", { body: { lines, attest: true, handle: $("dHandle").value.trim() } });
-    note.textContent = ""; await loadDaily();
-    if (r.tier === 0) { /* party */ }
-  } catch (e) { note.textContent = e.message; b.disabled = false; }
-};
-$("dCopy").onclick = () => { copyText($("dShare").textContent, $("dCopy"), "Copy my result"); track("copy_daily"); };
-
-/* ---------- helpers ---------- */
-async function copyText(t, btn, label) {
-  try { await navigator.clipboard.writeText(t); btn.textContent = "Copied"; }
-  catch (e) { btn.textContent = "Select and copy it"; }
-  setTimeout(() => (btn.textContent = label), 1800);
-}
 
 function renderMap(){
-  const syl = last.real.map(lineSyllables), sorted = [...syl].sort((a, b) => a - b), med = sorted[Math.floor(sorted.length / 2)] || 0;
-  let ri=-1;const out=last.lines.map((l, li)=>{
+  const syl = S.last.real.map(lineSyllables), sorted = [...syl].sort((a, b) => a - b), med = sorted[Math.floor(sorted.length / 2)] || 0;
+  let ri=-1;const out=S.last.lines.map((l, li)=>{
     if(!l.trim())return `<div class="ln blank"></div>`;ri++;
     let h=esc(l);
     const spans=[];CLICHES.forEach(c=>{let re=new RegExp("\\b"+c.replace(/'/g,"(?:'|&#39;)")+"\\b","gi"),m;while((m=re.exec(h)))spans.push([m.index,m.index+m[0].length,"wk-c",c])});
@@ -433,184 +281,14 @@ function renderMap(){
     let res="",pos=0;for(const [st,e,c,cl] of spans){if(st<pos)continue;
       res+=h.slice(pos,st)+(cl?`<button type="button" class="${c}" data-c="${esc(cl)}" data-line="${li}" title="Tap for a fresh swap">${h.slice(st,e)}</button>`:`<span class="${c}">${h.slice(st,e)}</span>`);pos=e}
     res+=h.slice(pos);
-    const n = syl[ri], off = last.real.length >= 3 && med >= 4 && (n > med * 1.45 + 2 || n < med * 0.55 - 1);
-    const chips = (last.best && last.best.i === ri ? '<span class="chip gold">⭐ Wiz pick</span>' : "")
-      + (last.lazyLines.has(ri) ? '<span class="chip">wimpy rhyme</span>' : "")
+    const n = syl[ri], off = S.last.real.length >= 3 && med >= 4 && (n > med * 1.45 + 2 || n < med * 0.55 - 1);
+    const chips = (S.last.best && S.last.best.i === ri ? '<span class="chip gold">⭐ Wiz pick</span>' : "")
+      + (S.last.lazyLines.has(ri) ? '<span class="chip">wimpy rhyme</span>' : "")
       + `<span class="syl${off ? " off" : ""}" title="${off ? (n > med ? "Wobbles: this line runs long. It may rush when you sing it." : "Wobbles: this line is short next to the others.") : "Syllables"}">${off ? "🌀 " : ""}${n}</span>`;
-    return `<div class="ln${last.best && last.best.i === ri ? " best" : ""}"><span class="t">${res}</span><span class="lchips">${chips}</span></div>`});
+    return `<div class="ln${S.last.best && S.last.best.i === ri ? " best" : ""}"><span class="t">${res}</span><span class="lchips">${chips}</span></div>`});
   $("mapLines").innerHTML=out.join("");$("map").hidden=false;
   $("mapLines").querySelectorAll(".wk-c").forEach((b) => (b.onclick = (e) => openSwap(b, b.dataset.c, +b.dataset.line)));
 }
-
-/* ---------- the crew ---------- */
-const CREW=[{name:"Wiz",col:"#3D8BFF"},{name:"Wendy",col:"#22C29B"},{name:"Wally",col:"#A9A2DA"},{name:"Wobbles",col:"#FF8A3D"},{name:"Wretch",col:"#A8C42E"},{name:"Wingman",col:"#FFFFFF"}];
-const SHOUT=["Wicked!","Well put!","Meh.","Uhh…","Bleh! 🤢"];
-const QUIPS=[["That's wicked. I'm framing this.","Okay, poet. That line hit.","Fresh. Nobody's said it like that."],["Well put. I'd nod to this.","Clean. A couple of safe picks, but clean.","Solid. Push one image harder."],["Whatever. It's… words.","Heard it. Already forgot it.","It's fine. Fine is the problem."],["Weird. Something smells borrowed.","Did you just rhyme fire with desire?","Half of this I've heard on the radio."],["Wack. Somebody hold my bucket.","I'm gonna be sick. In a fun way.","This belongs inside a greeting card."]];
-const INK="#1F2340";
-function eye(cx,cy,r,dx=1,dy=1){return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#fff" stroke="${INK}" stroke-width="2.5"/><circle cx="${cx+dx*r*.25}" cy="${cy+dy*r*.15}" r="${r*.52}" fill="${INK}"/><circle cx="${cx+dx*r*.25-r*.2}" cy="${cy+dy*r*.15-r*.22}" r="${r*.18}" fill="#fff"/>`}
-function charSVG(i,size,acc){
-  const UL = acc || UNLOCK;
-  const c=CREW[i].col,S=`stroke="${INK}" stroke-width="3.5" stroke-linejoin="round"`;
-  const shadow=`<ellipse cx="60" cy="112" rx="30" ry="5" fill="${INK}" opacity=".13"/>`;
-  const shine=`<ellipse cx="42" cy="44" rx="11" ry="6" fill="#fff" opacity=".45" transform="rotate(-30 42 44)"/>`;
-  let back="",body="",face="",extra="";
-  if(i===0){body=`<path d="M60 22C86 22 102 42 102 68C102 94 84 106 60 106C36 106 18 94 18 68C18 42 34 22 60 22Z" fill="${c}" ${S}/>`;
-    face=`<g class="eyes"><rect x="31" y="52" width="25" height="15" rx="7" fill="${INK}"/><rect x="64" y="52" width="25" height="15" rx="7" fill="${INK}"/><path d="M56 57h8" stroke="${INK}" stroke-width="3.5"/><path d="M36 56l6 0M69 56l6 0" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity=".8"/></g><path d="M48 80Q62 90 76 78" fill="none" stroke="${INK}" stroke-width="3.5" stroke-linecap="round"/>`;
-    extra=`<g fill="#FFD84D" stroke="${INK}" stroke-width="2"><path class="spark" d="M100 14l3 8 8 3-8 3-3 8-3-8-8-3 8-3z"/><path class="spark" style="animation-delay:-.6s" d="M16 26l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/><path class="spark" style="animation-delay:-1.1s" d="M108 54l2 4 4 2-4 2-2 4-2-4-4-2 4-2z"/></g>`}
-  if(i===1){body=`<path d="M60 16C82 16 96 36 96 64C96 92 82 106 60 106C38 106 24 92 24 64C24 36 38 16 60 16Z" fill="${c}" ${S}/>`;
-    face=`<g class="eyes">${eye(48,54,9)}${eye(72,54,9)}</g><ellipse cx="36" cy="72" rx="6" ry="4" fill="#FF8FC0" opacity=".9"/><ellipse cx="84" cy="72" rx="6" ry="4" fill="#FF8FC0" opacity=".9"/><path d="M47 72Q60 92 73 72Z" fill="${INK}" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/><path d="M53 80Q60 76 67 80Q63 86 57 85Z" fill="#FF8FC0"/>`;
-    extra=`<g ${S}><path d="M94 66C102 62 108 56 106 48" fill="none" stroke-linecap="round"/><circle cx="106" cy="44" r="7" fill="${c}"/><path d="M106 37V31" stroke-linecap="round"/></g>`}
-  if(i===2){body=`<path d="M60 40C88 40 106 54 106 76C106 98 88 106 60 106C32 106 14 98 14 76C14 54 32 40 60 40Z" fill="${c}" ${S}/>`;
-    face=`<g class="eyes">${eye(46,70,8,0,1)}${eye(74,70,8,0,1)}<path d="M37 70A9 9 0 0 1 55 70Z M65 70A9 9 0 0 1 83 70Z" fill="${c}" stroke="${INK}" stroke-width="2.5"/></g><path d="M50 90H70" stroke="${INK}" stroke-width="3.5" stroke-linecap="round"/>`;
-    extra=`<g ${S} fill="${c}"><path d="M14 80C8 76 6 70 9 64" fill="none" stroke-linecap="round"/><path d="M106 80C112 76 114 70 111 64" fill="none" stroke-linecap="round"/></g><text x="92" y="36" font-family="Fredoka,sans-serif" font-weight="700" font-size="15" fill="${INK}" opacity=".55">meh</text>`}
-  if(i===3){body=`<path d="M58 20C76 16 98 32 100 54C103 72 96 78 99 90C101 103 82 107 60 106C38 107 18 102 20 86C22 74 15 66 19 52C24 32 42 23 58 20Z" fill="${c}" ${S}/>`;
-    face=`<g class="eyes">${eye(45,56,11,-1,-1)}${eye(77,61,6,1,1)}</g><path d="M44 84L52 79L60 86L68 79L76 84" fill="none" stroke="${INK}" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>`;
-    extra=`<text class="spark" x="94" y="22" font-family="Fredoka,sans-serif" font-weight="700" font-size="26" fill="${INK}">?</text>`}
-  if(i===4){body=`<path d="M60 26C84 26 98 44 100 66C102 86 108 98 96 104C86 108 76 101 66 106C52 112 46 102 34 106C20 110 14 96 20 82C24 70 18 44 34 32C42 27 50 26 60 26Z" fill="${c}" ${S}/>`;
-    face=`<g class="eyes"><path d="M37 52L50 59L37 66M83 52L70 59L83 66" fill="none" stroke="${INK}" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></g><circle cx="35" cy="79" r="9" fill="#C9DE6A" stroke="${INK}" stroke-width="2.5"/><circle cx="85" cy="79" r="9" fill="#C9DE6A" stroke="${INK}" stroke-width="2.5"/><path d="M47 84Q53 79 59 84T71 84" fill="none" stroke="${INK}" stroke-width="3.5" stroke-linecap="round"/><path d="M58 86q3 9 1 15a4 4 0 1 0 6 0q-2-6 0-14z" fill="#86A01A" stroke="${INK}" stroke-width="2"/>`;
-    extra=`<path d="M98 34q5 8 0 12a4 4 0 0 1-6-4q2-4 6-8z" fill="#9FD3FF" stroke="${INK}" stroke-width="2"/><g class="stink" fill="none" stroke="#86A01A" stroke-width="3" stroke-linecap="round"><path d="M34 18q-4-4 0-8t0-8"/><path d="M60 14q-4-4 0-8"/><path d="M86 18q-4-4 0-8t0-8"/></g>`}
-  if(i===5){back=`<g fill="#A8C42E" stroke="${INK}" stroke-width="3" stroke-linejoin="round"><path class="wing l" d="M26 66C8 60 2 44 6 34C16 40 22 44 30 50Z"/><path class="wing r" d="M94 66C112 60 118 44 114 34C104 40 98 44 90 50Z"/></g>`;
-    body=`<path d="M60 26C84 26 98 44 98 68C98 92 82 106 60 106C38 106 22 92 22 68C22 44 36 26 60 26Z" fill="#fff" ${S}/>`;
-    face=`<g class="eyes">${eye(48,64,7)}</g><path d="M66 64Q72 58 78 64" fill="none" stroke="${INK}" stroke-width="3.5" stroke-linecap="round"/><path d="M48 80Q60 90 72 80" fill="none" stroke="${INK}" stroke-width="3.5" stroke-linecap="round"/><ellipse cx="38" cy="76" rx="5" ry="3.5" fill="#FF8FC0"/><ellipse cx="82" cy="76" rx="5" ry="3.5" fill="#FF8FC0"/>`;
-    extra=`<path d="M28 54Q28 18 60 18T92 54" fill="none" stroke="${INK}" stroke-width="5" stroke-linecap="round"/><rect x="20" y="48" width="13" height="22" rx="6" fill="#A8C42E" stroke="${INK}" stroke-width="3"/><rect x="87" y="48" width="13" height="22" rx="6" fill="#A8C42E" stroke="${INK}" stroke-width="3"/>`}
-  if (i === 0 && UL.chain) extra += `<g><path d="M40 98Q60 112 80 98" fill="none" stroke="#E8B400" stroke-width="5" stroke-linecap="round" stroke-dasharray="1 6"/><circle cx="60" cy="106" r="6" fill="#FFD84D" stroke="${INK}" stroke-width="2"/><text x="60" y="109" text-anchor="middle" font-size="7" font-weight="700" fill="${INK}" font-family="Fredoka,sans-serif">W</text></g>`;
-  if (i === 1 && UL.crown) extra += `<g stroke="${INK}" stroke-width="1.5">${[34,46,60,74,86].map((x,k)=>`<circle cx="${x}" cy="${k===2?14:k%2?17:22}" r="6" fill="${["#FF8FC0","#FFD84D","#FF8FC0","#FFD84D","#FF8FC0"][k]}"/><circle cx="${x}" cy="${k===2?14:k%2?17:22}" r="2" fill="#fff"/>`).join("")}</g>`;
-  if (i === 4 && UL.hat) extra += `<g stroke="${INK}" stroke-width="3" stroke-linejoin="round"><path d="M22 36Q60 22 98 36L92 44Q60 34 28 44Z" fill="#FF8A3D"/><path d="M36 34Q40 10 60 10T84 34Z" fill="#FF8A3D"/><path d="M38 28Q60 20 82 28" fill="none" stroke="#FFD84D" stroke-width="3"/></g>`;
-  const sz=size?` width="${size}" height="${size}"`:"";
-  return `<svg class="char" viewBox="0 0 120 120"${sz} xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${shadow}<g class="body">${back}${body}${i!==5?shine:""}${face}${extra}</g></svg>`;
-}
-function renderCrew(active){
-  const el=$("crew");
-  el.innerHTML=CREW.slice(0,5).map((c,i)=>`<div class="member${i===active?" on":""}" title="${c.name}">${i===active?`<div class="say">${SHOUT[i]}</div>`:""}<div class="ch">${charSVG(i)}</div><div class="step bg-t${i}"><b>${TIERS[i].n}</b><span>${TIERS[i].lo}–${i<4?TIERS[i+1].lo-1:100}</span></div></div>`).join("");
-  el.classList.toggle("picked",active!=null);
-}
-function confetti(){
-  const cv=$("fx"),m=$("meter");if(matchMedia("(prefers-reduced-motion: reduce)").matches)return;
-  const W=cv.width=m.clientWidth,H=cv.height=m.clientHeight,x=cv.getContext("2d");
-  const cols=["#3D8BFF","#22C29B","#FFD84D","#FF8FC0","#FF8A3D"];
-  const ps=Array.from({length:90},()=>({x:W/2,y:H*.45,vx:(Math.random()-.5)*9,vy:-Math.random()*9-3,s:4+Math.random()*5,r:Math.random()*6,vr:(Math.random()-.5)*.3,c:cols[Math.random()*5|0]}));
-  let t=0;(function f(){x.clearRect(0,0,W,H);ps.forEach(p=>{p.vy+=.28;p.x+=p.vx;p.y+=p.vy;p.r+=p.vr;x.save();x.translate(p.x,p.y);x.rotate(p.r);x.fillStyle=p.c;x.fillRect(-p.s/2,-p.s/3,p.s,p.s*.66);x.restore()});
-    if(++t<110)requestAnimationFrame(f);else x.clearRect(0,0,W,H)})();
-}
-
-/* ---------- share card ---------- */
-const CARD={w:1080,h:1920};
-const TC=["#3D8BFF","#22C29B","#A9A2DA","#FF8A3D","#A8C42E"];
-const TEXT_ON=["#FFFFFF","#1F2340","#1F2340","#1F2340","#1F2340"];
-const CAPS=["Rated WICKED on the Wackometer. Your move.","Wackometer says WELL PUT. I'll take it.","Wackometer said WHATEVER. Rude, but fair?","Wackometer called this WEIRD. Is it?","My verse got rated WACK 🤢 Be honest, is it?"];
-let cardBlob=null,cardLinesTouched=false,cardImg=null;
-function defaultLines(){if(!last)return "";
-  if(last.best)return last.best.line;
-  const r=last.real.filter(l=>words(l).length>2&&!/^(oh|ooh|yeah|na|la)\b/i.test(l));return r.slice(0,2).join("\n")}
-function wrap(ctx,text,maxW){const out=[];text.split("\n").forEach(par=>{let line="";par.split(/\s+/).forEach(w=>{const t=line?line+" "+w:w;if(ctx.measureText(t).width>maxW&&line){out.push(line);line=w}else line=t});if(line)out.push(line)});return out}
-const ease=(t)=>1-Math.pow(1-t,3), back=(t)=>{const c=1.9;return 1+(c+1)*Math.pow(t-1,3)+c*Math.pow(t-1,2)};
-// p: animation progress 0..1 (1 = finished card). Needle sweeps, character pops, verdict stamps.
-function paintCard(x,p){
-  const t=last.tier,col=TC[t],D='"Fredoka",system-ui,sans-serif',B='system-ui,-apple-system,"Segoe UI",Roboto,sans-serif';
-  const pn=Math.min(1,p/0.55), pc=Math.max(0,Math.min(1,(p-0.45)/0.3)), pv=Math.max(0,Math.min(1,(p-0.62)/0.25)), pl=Math.max(0,Math.min(1,(p-0.8)/0.2));
-  x.save();x.textAlign="left";x.fillStyle="#FBFCFF";x.fillRect(0,0,CARD.w,CARD.h);
-  x.fillStyle=t>=3?"#EAF3C4":"#E8F1FF";x.fillRect(0,0,CARD.w,560);
-  if(t>=3){for(let i=0;i<9;i++){const dx=60+i*120+(i%2)*30,len=(60+((i*53)%140))*ease(pv);x.beginPath();x.moveTo(dx-26,560);x.lineTo(dx+26,560);x.lineTo(dx+14,560+len);x.arc(dx,560+len,14,0,Math.PI);x.closePath();x.fill()}}
-  x.fillStyle="#1F2340";x.font=`700 88px ${D}`;x.textBaseline="alphabetic";
-  const wW=x.measureText("W").width,rest="ackometer",rW=x.measureText(rest).width,sx=(CARD.w-wW-rW)/2;
-  x.save();x.translate(sx+wW/2,200);x.rotate(-.14);x.fillStyle="#86A01A";x.fillText("W",-wW/2,0);x.restore();x.fillText(rest,sx+wW,200);
-  x.font=`600 40px ${B}`;x.fillStyle="#646A8C";x.textAlign="center";x.fillText(($("postTitle").value.trim()?`"${$("postTitle").value.trim()}" `:"My lyrics ")+"got weighed",CARD.w/2,330);
-  const gx=CARD.w/2,gy=1020,gr=390;
-  for(let i=0;i<5;i++){x.beginPath();x.strokeStyle=TC[i];x.lineWidth=70;const a0=Math.PI+(i*20+(i?1:0))/100*Math.PI,a1=Math.PI+((i+1)*20-(i<4?1:0))/100*Math.PI;x.arc(gx,gy,gr,a0,a1);x.stroke()}
-  x.font=`600 30px ${B}`;x.fillStyle="#646A8C";["Wicked","Well put","Whatever","Weird","Wack"].forEach((n,i)=>{const a=Math.PI+(i*20+10)/100*Math.PI;x.fillText(n,gx+(gr+80)*Math.cos(a),gy+(gr+80)*Math.sin(a)+10)});
-  const shown=last.score*back(pn);const na=Math.PI+Math.max(0,Math.min(104,shown))/100*Math.PI;
-  x.strokeStyle="#1F2340";x.lineWidth=14;x.lineCap="round";x.beginPath();x.moveTo(gx,gy);x.lineTo(gx+(gr-60)*Math.cos(na),gy+(gr-60)*Math.sin(na));x.stroke();
-  x.fillStyle="#1F2340";x.beginPath();x.arc(gx,gy,34,0,7);x.fill();x.fillStyle="#FBFCFF";x.beginPath();x.arc(gx,gy,12,0,7);x.fill();
-  if(cardImg&&pc>0){const s=250*back(pc);x.save();x.translate(221,gy+310);x.drawImage(cardImg,-s/2,-s,s,s);x.restore()}
-  x.fillStyle="#1F2340";x.font=`700 230px ${D}`;x.fillText(String(Math.round(Math.min(last.score,Math.max(0,shown)))),gx+60,gy+250);
-  if(pv>0){x.save();x.globalAlpha=Math.min(1,pv*2);const sc=1+(1-back(pv))*0.6;x.translate(gx,gy+365);x.scale(sc,sc);
-    x.font=`700 96px ${D}`;const vt=TIERS[t].n.toUpperCase(),vw=x.measureText(vt).width+90;x.rotate(-0.04);
-    x.fillStyle=col;x.beginPath();x.roundRect(-vw/2,-65,vw,130,65);x.fill();x.fillStyle=TEXT_ON[t];x.fillText(vt,0,33);x.restore()}
-  const lines=$("cardLines").value.trim();
-  if(lines&&pl>0){x.save();x.globalAlpha=pl;x.font=`italic 400 46px ${B}`;const ws=wrap(x,lines,CARD.w-200).slice(0,5);const top=1560-((ws.length-1)*64)/2+20;
-    x.fillStyle=last.best&&lines===last.best.line?"#FFD84D":"#A8C42E";x.fillRect(90,top-50,8,ws.length*64);x.fillStyle="#1F2340";x.textAlign="left";ws.forEach((l,i)=>x.fillText(l,130,top+i*64));
-    if(last.best&&lines===last.best.line){x.font=`700 30px ${D}`;x.fillStyle="#B98A00";x.fillText("⭐ Wiz's pick",130,top-70)}
-    x.restore();x.textAlign="center"}
-  x.font=`600 38px ${B}`;x.fillStyle="#646A8C";x.fillText("Is yours wack? Weigh it at "+SITE,gx,1840);
-  if(!isPro()){x.save();x.globalAlpha=.5;x.font=`600 26px ${B}`;x.fillText("free plan",gx,1885);x.restore()}
-  x.restore();
-}
-async function loadCardAssets(){
-  try{await document.fonts.load('700 100px "Fredoka"')}catch(e){}
-  cardImg=await new Promise(res=>{const im=new Image();im.onload=()=>res(im);im.onerror=()=>res(null);im.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(charSVG(last.tier,400))});
-}
-async function drawCard(){
-  if(!last){$("share").hidden=true;return}
-  $("share").hidden=false;
-  if(!cardLinesTouched)$("cardLines").value=defaultLines();
-  await loadCardAssets();
-  const c=document.createElement("canvas");c.width=CARD.w;c.height=CARD.h;paintCard(c.getContext("2d"),1);
-  $("cardImg").src=c.toDataURL("image/png");
-  cardBlob=await new Promise(r=>c.toBlob(r,"image/png"));
-  $("cap").textContent=CAPS[last.tier]+" #wackometer #songwriting #lyrics";
-}
-$("cardLines").addEventListener("input",()=>{cardLinesTouched=true;clearTimeout(drawCard._t);drawCard._t=setTimeout(drawCard,250)});
-$("postTitle").addEventListener("input",()=>{clearTimeout(drawCard._t);drawCard._t=setTimeout(drawCard,250)});
-
-async function cardFile() { return new File([cardBlob], `wackometer-${TIERS[last.tier].n.toLowerCase().replace(/\s/g, "-")}-${last.score}.png`, { type: "image/png" }); }
-function download(blob, name) { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }
-$("saveCard").onclick = async () => { if (!cardBlob) return; const f = await cardFile(); download(f, f.name); $("cardNote").textContent = "Saved to your downloads."; track("save_card"); };
-$("shareCard").onclick = async () => {
-  if (!cardBlob) return; const f = await cardFile(), text = $("cap").textContent; track("share_card");
-  if (navigator.canShare && navigator.canShare({ files: [f] })) { try { await navigator.share({ files: [f], text }); } catch (e) {} }
-  else { $("cardNote").textContent = "Sharing straight to apps works on phones. Save the image and post it from there."; }
-};
-// 6-second vertical clip: needle swings, character pops, verdict stamps, then holds.
-$("saveVideo").onclick = async () => {
-  const btn = $("saveVideo"), note = $("cardNote");
-  const types = ["video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9", "video/webm"];
-  const type = window.MediaRecorder && types.find((t) => MediaRecorder.isTypeSupported(t));
-  if (!type) { note.textContent = "This browser can't record video. Try Chrome or Safari, or save the image."; return; }
-  btn.disabled = true; btn.textContent = "🎬 Recording…"; await loadCardAssets();
-  const c = document.createElement("canvas"); c.width = 720; c.height = 1280; const x = c.getContext("2d");
-  const stream = c.captureStream(30), rec = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 5_000_000 }), chunks = [];
-  rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
-  const done = new Promise((r) => (rec.onstop = r));
-  rec.start(250); const t0 = performance.now(), dur = 6000;
-  await new Promise((resolve) => { (function frame() {
-    const el = performance.now() - t0, p = Math.min(1, el / 3200);
-    x.setTransform(720 / CARD.w, 0, 0, 1280 / CARD.h, 0, 0); paintCard(x, p);
-    if (el < dur) requestAnimationFrame(frame); else resolve();
-  })(); });
-  rec.stop(); await done;
-  const ext = type.includes("mp4") ? "mp4" : "webm", blob = new Blob(chunks, { type: type.split(";")[0] });
-  const name = `wackometer-${TIERS[last.tier].n.toLowerCase().replace(/\s/g, "-")}-${last.score}.${ext}`;
-  const f = new File([blob], name, { type: blob.type });
-  if (navigator.canShare && navigator.canShare({ files: [f] })) { try { await navigator.share({ files: [f], text: $("cap").textContent }); } catch (e) { download(f, name); } }
-  else download(f, name);
-  note.textContent = ext === "mp4" ? "Video saved. Post it to TikTok, Reels or Stories." : "Video saved as .webm. TikTok and Instagram take it on desktop; on iPhone, use Safari for .mp4.";
-  btn.disabled = false; btn.textContent = "🎬 Save video"; track("save_video");
-};
-$("copyCap").onclick=async()=>{track("copy_caption");const t=$("cap").textContent;try{await navigator.clipboard.writeText(t);$("copyCap").textContent="Copied"}catch(e){const r=document.createRange();r.selectNodeContents($("cap"));const sel=getSelection();sel.removeAllRanges();sel.addRange(r);$("copyCap").textContent="Selected, copy it"}setTimeout(()=>$("copyCap").textContent="Copy caption",1800)};
-
-/* ---------- analytics ---------- */
-function track(type) { try { fetch("/api/event", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ type }), keepalive: true }); } catch (e) {} }
-
-/* ---------- sound ---------- */
-let soundOn = ls("wk-sound") === "1", actx = null;
-function renderSound() { const b = $("soundBtn"); b.textContent = soundOn ? "🔊" : "🔈"; b.setAttribute("aria-pressed", soundOn); b.title = soundOn ? "Sound on" : "Sound off"; }
-$("soundBtn").onclick = () => { soundOn = !soundOn; ls("wk-sound", soundOn ? "1" : "0"); renderSound(); if (soundOn) sfx("sparkle"); };
-renderSound();
-function tone(f0, f1, dur, type = "sine", vol = 0.12, delay = 0) {
-  const t = actx.currentTime + delay, o = actx.createOscillator(), g = actx.createGain();
-  o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(30, f1), t + dur);
-  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur + 0.05);
-}
-function sfx(name) {
-  if (!soundOn) return;
-  try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === "suspended") actx.resume(); } catch (e) { return; }
-  if (name === "pop") tone(520, 880, 0.12, "sine", 0.14);
-  if (name === "sparkle") [0, 0.08, 0.16, 0.24].forEach((d, i) => tone(880 + i * 220, 1400 + i * 260, 0.18, "triangle", 0.08, d));
-  if (name === "gag") { tone(200, 90, 0.35, "sawtooth", 0.07); tone(140, 60, 0.4, "square", 0.04, 0.12); }
-  if (name === "swap") { tone(660, 990, 0.1, "triangle", 0.1); tone(990, 1320, 0.12, "triangle", 0.08, 0.08); }
-}
-
 /* ---------- live buddy: the crew reacts while you type ---------- */
 let buddyT = null, lastFound = new Set();
 const HYPE = ["Keep going, this is cooking.", "Ooh, I'm listening.", "Don't stop now.", "Say more. Be specific.", "What does it smell like? Put that in."];
@@ -628,11 +306,12 @@ $("lyrics").addEventListener("input", () => {
 });
 
 /* ---------- tap-to-swap clichés ---------- */
-let swapCtx = null;
+let swapCtx = null, swapsCache = null;
 function openSwap(el, cliche, lineIdx) {
   swapCtx = { cliche, lineIdx };
   $("swapFrom").textContent = `Swap “${cliche}” for…`;
   $("swapOpts").innerHTML = "";
+  const SWAPS = swapsCache || {}; if (!swapsCache) swapsM().then((m) => { swapsCache = m.SWAPS; if (swapCtx && swapCtx.cliche === cliche) openSwap(el, cliche, lineIdx); });
   (SWAPS[cliche] || []).forEach((alt) => { const b = document.createElement("button"); b.className = "swapopt"; b.textContent = alt; b.onclick = () => doSwap(alt); $("swapOpts").appendChild(b); });
   const pop = $("swapPop"), r = el.getBoundingClientRect();
   pop.hidden = false;
@@ -662,17 +341,11 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeSwa
 document.addEventListener("click", (e) => { if (!$("swapPop").hidden && !e.target.closest("#swapPop") && !e.target.closest(".wk-c")) closeSwap(); });
 
 /* ---------- unlockables ---------- */
-const UNLOCK = { chain: false, crown: false, hat: false };
-const UNLOCKS = [{ k: "crown", d: 3, who: 1, name: "Wendy's flower crown" }, { k: "chain", d: 7, who: 0, name: "Wiz's gold chain" }, { k: "hat", d: 30, who: 4, name: "Wretch's bucket hat" }];
 function applyUnlocks() {
-  const st = (ME && ME.streak) || 0, before = JSON.stringify(UNLOCK);
+  const st = (S.ME && S.ME.streak) || 0, before = JSON.stringify(UNLOCK);
   UNLOCKS.forEach((u) => (UNLOCK[u.k] = st >= u.d));
-  if (JSON.stringify(UNLOCK) !== before) { renderCrew(last ? last.tier : null); if (last) $("mchar").innerHTML = charSVG(last.tier); }
+  if (JSON.stringify(UNLOCK) !== before) { renderCrew(S.last ? S.last.tier : null); if (S.last) $("mchar").innerHTML = charSVG(S.last.tier); }
 }
-function renderUnlocks(st) {
-  $("unlocks").innerHTML = UNLOCKS.map((u) => { const got = st >= u.d; return `<div class="unl${got ? " got" : ""}" title="${u.name}"><span class="um">${charSVG(u.who)}</span><span>${got ? "Unlocked" : u.d + "-day streak"}<br><b>${u.name}</b></span></div>`; }).join("");
-}
-
 /* ---------- emoji starter ---------- */
 const EMOJI_BANK = ["🌧️", "🚗", "🌙", "🍕", "📱", "💔", "🔥", "🌊", "🎢", "🕯️", "🏙️", "🌵", "🎈", "🧊", "🪐", "🐍", "🎧", "🌻", "🛹", "🍒", "⛈️", "🗝️", "🪞", "🦋"];
 let picked = [];
@@ -685,94 +358,13 @@ renderEmojiPick();
 $("eGo").onclick = async () => {
   if (busy) return; busy = true; $("eGo").disabled = true;
   bubble("me", "Emoji starter: " + picked.join(" ")); const out = bubble("wm", "Cooking up a starter…");
-  try { const r = await api("/api/wingman", { body: { mode: "emoji", emojis: picked.join("") } }); out._t.textContent = r.text; ME = r.me; renderQuota(); track("emoji_starter");
+  try { const r = await api("/api/wingman", { body: { mode: "emoji", emojis: picked.join("") } }); out._t.textContent = r.text; S.ME = r.me; renderQuota(); track("emoji_starter");
     const use = document.createElement("button"); use.className = "btn"; use.style.marginTop = "8px"; use.style.display = "block"; use.textContent = "Put it in my Weigh pad";
     use.onclick = () => { const lyric = r.text.split("\n").filter((l) => l.trim()).slice(0, 2).join("\n"); $("lyrics").value = lyric; ls("wk-draft", lyric); show("weigh"); $("lyrics").focus(); }; out.appendChild(use);
   } catch (e) { out._t.textContent = e.message; if (e.status === 402) addProLink(out._t); }
   busy = false; $("eGo").disabled = !picked.length;
 };
-
-/* ---------- Pass the Pen ---------- */
-let pen = null;
-const PEN_COLORS = ["#3D8BFF", "#22C29B", "#A9A2DA", "#FF8A3D", "#A8C42E", "#FF8FC0", "#FFD84D"];
-function penIdFromPath() { const m = location.pathname.match(/^\/pen\/([a-z0-9]+)/); return m ? m[1] : null; }
-async function loadPenView() {
-  $("penChars").innerHTML = [5, 1, 3].map((i) => `<span>${charSVG(i)}</span>`).join("");
-  const id = penIdFromPath();
-  if (id) await loadPen(id); else { pen = null; $("penNew").hidden = false; $("penSong").hidden = true; }
-  loadPenList();
-}
-async function loadPen(id) {
-  try { pen = await api("/api/pen/" + id); renderPen(); }
-  catch (e) { $("penNew").hidden = false; $("penSong").hidden = true; $("penNote").textContent = e.message; }
-}
-function renderPen() {
-  $("penNew").hidden = true; $("penSong").hidden = false;
-  $("penSongTitle").textContent = pen.title || "Untitled song";
-  const text = pen.lines.map((l) => l.text).join("\n"), n = words(text).length;
-  const tp = $("penTier");
-  if (n >= 8) { const s = Math.round(analyze(text).raw), t = tierOf(s); tp.className = `pill bg-t${t}`; tp.textContent = `${TIERS[t].n} ${s}`; tp.hidden = false; } else tp.hidden = true;
-  $("penLines").innerHTML = "";
-  pen.lines.forEach((l) => {
-    const li = document.createElement("li"); li.className = l.mine ? "mine" : "";
-    li.innerHTML = `<span class="dot" style="background:${PEN_COLORS[l.writer % PEN_COLORS.length]}"></span><span class="ptext"></span><span class="pwho"></span>`;
-    li.querySelector(".ptext").textContent = l.text;
-    const pw = li.querySelector(".pwho");
-    if (l.username && !l.mine) { const a2 = document.createElement("a"); a2.href = "/u/" + l.username; a2.textContent = "@" + l.username; a2.onclick = (ev) => { ev.preventDefault(); goProfile(l.username); }; pw.appendChild(a2); }
-    else pw.textContent = l.who;
-    $("penLines").appendChild(li);
-  });
-  const full = pen.lines.length >= pen.max;
-  $("penAdd").hidden = !pen.canAdd;
-  const w = $("penWait");
-  if (pen.closed || full) { w.hidden = false; w.textContent = pen.closed ? "🎤 This song is finished. Weigh it, or start another." : `🎤 ${pen.max} lines. This song is done!`; }
-  else if (pen.yourTurnBlocked) { w.hidden = false; w.textContent = "✍️ You wrote the last line. Pass the pen to a friend for the next one."; }
-  else w.hidden = true;
-  $("penClose").hidden = !(pen.mine && !pen.closed);
-  $("penLine").placeholder = pen.lines.length ? `Line ${pen.lines.length + 1}: follow “${pen.lines[pen.lines.length - 1].text.slice(0, 40)}”` : "Write the next line…";
-  if (ME && ME.handle) { if (!$("penLineHandle").value) $("penLineHandle").value = ME.handle; }
-}
-async function loadPenList() {
-  try {
-    const r = await api("/api/pens"), el = $("penList");
-    if (!r.pens.length) { el.innerHTML = `<div class="empty"><div class="ch">${charSVG(5)}</div>No songs yet. Start one and pass the pen.</div>`; return; }
-    el.innerHTML = "";
-    r.pens.forEach((p) => {
-      const a = document.createElement("a"); a.className = "entry penitem"; a.href = "/pen/" + p.id;
-      a.innerHTML = `<span class="rank">${p.lines}</span><div class="ebody"><div class="ewho"></div><pre></pre></div><span class="pill${p.closed ? "" : " bg-t1"}">${p.closed ? "Done" : "Open"}</span>`;
-      a.querySelector(".ewho").textContent = (p.title || "Untitled song") + (p.mine ? " · started by you" : "");
-      a.querySelector("pre").textContent = p.first || "";
-      a.onclick = (e) => { e.preventDefault(); history.pushState(null, "", "/pen/" + p.id); loadPen(p.id); window.scrollTo(0, 0); };
-      el.appendChild(a);
-    });
-  } catch (e) {}
-}
-$("penStart").onclick = async () => {
-  const b = $("penStart"); b.disabled = true; $("penNote").textContent = "";
-  try { const r = await api("/api/pen", { body: { title: $("penTitle").value, line: $("penFirst").value, handle: $("penHandle").value } });
-    track("pen_start"); sfx("sparkle"); history.pushState(null, "", "/pen/" + r.id); $("penTitle").value = ""; $("penFirst").value = ""; await loadPen(r.id); loadPenList(); sharePen(); }
-  catch (e) { $("penNote").textContent = e.message; }
-  b.disabled = false;
-};
-$("penAddBtn").onclick = async () => {
-  const b = $("penAddBtn"); b.disabled = true; $("penAddNote").textContent = "";
-  try { await api(`/api/pen/${pen.id}/line`, { body: { line: $("penLine").value, handle: $("penLineHandle").value } }); $("penLine").value = ""; sfx("pop"); await loadPen(pen.id); loadPenList(); }
-  catch (e) { $("penAddNote").textContent = e.message; }
-  b.disabled = false;
-};
-$("penLine").addEventListener("keydown", (e) => { if (e.key === "Enter") $("penAddBtn").click(); });
-async function sharePen() {
-  if (!pen) return; track("pen_share");
-  const url = `${location.origin}/pen/${pen.id}`, text = `I started a song on Wackometer. Write the next line 👉`;
-  if (navigator.share) { try { await navigator.share({ title: "Pass the Pen", text, url }); return; } catch (e) {} }
-  try { await navigator.clipboard.writeText(`${text} ${url}`); $("penShareNote").textContent = "Link copied. Paste it in the group chat."; }
-  catch (e) { $("penShareNote").textContent = "Copy this link: " + url; }
-}
-$("penShare").onclick = sharePen;
-$("penWeigh").onclick = () => { if (!pen) return; $("lyrics").value = pen.lines.map((l) => l.text).join("\n"); ls("wk-draft", $("lyrics").value); show("weigh"); renderReading(); };
-$("penClose").onclick = async () => { try { await api(`/api/pen/${pen.id}/close`, { body: {} }); await loadPen(pen.id); loadPenList(); } catch (e) { $("penShareNote").textContent = e.message; } };
-$("penNewBtn").onclick = () => { history.pushState(null, "", "/#pen"); pen = null; $("penNew").hidden = false; $("penSong").hidden = true; $("penFirst").focus(); };
-window.addEventListener("popstate", () => { if (penIdFromPath()) show("pen"); else if (location.pathname.startsWith("/u/")) show("profile"); });
+window.addEventListener("popstate", () => { if (/^\/pen\/[a-z0-9]+/.test(location.pathname)) show("pen"); else if (location.pathname.startsWith("/u/")) show("profile"); });
 
 
 /* ---------- theme ---------- */
@@ -816,284 +408,18 @@ const CREW_JOBS = [
 ];
 $("crewGrid").innerHTML = CREW_JOBS.map(([n, d, i]) => `<div class="crewcard" style="--cc:${CREW[i].col === "#FFFFFF" ? "#A8C42E" : CREW[i].col}"><div class="cch">${charSVG(i)}</div><b>${n}</b><p>${d}</p></div>`).join("");
 document.querySelectorAll("[data-ch]").forEach((e) => (e.innerHTML = charSVG(+e.dataset.ch)));
-
-/* ---------- avatars ---------- */
-const accFor = (streak) => ({ crown: streak >= 3, chain: streak >= 7, hat: streak >= 30 });
-function avatarHTML(p, size = 44) {
-  return `<span class="av" style="--avc:${p.color || "#3D8BFF"};width:${size}px;height:${size}px">${charSVG(p.avatar ?? 5, null, accFor(p.streak || 0))}</span>`;
-}
-function personRow(p, extra = "") {
-  const d = document.createElement("div"); d.className = "frow";
-  d.innerHTML = `${avatarHTML(p)}<a class="fname" ${p.username ? `href="/u/${p.username}"` : ""}><b></b><span></span></a><span class="fextra">${extra}</span>`;
-  d.querySelector(".fname b").textContent = p.name; d.querySelector(".fname span").textContent = p.username ? "@" + p.username + (p.streak ? ` · 🔥${p.streak}` : "") : "";
-  const a = d.querySelector(".fname"); if (p.username) a.onclick = (e) => { e.preventDefault(); goProfile(p.username); };
-  return d;
-}
-function goProfile(username) { history.pushState(null, "", "/u/" + username); show("profile"); }
-
-/* ---------- Squad ---------- */
-let PROFILE = null, lbScope = "friends", lbPeriod = "week", battleOpen = null;
-async function loadSquad() {
-  const [pr, fr] = await Promise.all([api("/api/profile").catch(() => null), api("/api/friends").catch(() => null)]);
-  PROFILE = pr; renderMeCard(fr); renderFriends(fr); loadBoard(); loadBattles();
-  loadSuggestions($("fSuggest"), $("fSuggestBox"), $("fNote"));
-}
-function renderMeCard(fr) {
-  const el = $("meCard"), p = PROFILE || {};
-  const me = { username: p.username, name: p.name || p.username || "You", avatar: p.avatar, color: p.color, streak: (ME && ME.streak) || 0 };
-  el.style.setProperty("--pc", p.color || "#3D8BFF");
-  el.innerHTML = `<div class="mcbanner"></div><div class="mcin">${avatarHTML(me, 72)}<div class="mcid"><b></b><span></span></div></div>
-    <p class="mcbio"></p>
-    <div class="row">${p.username ? `<a class="btn go" href="/u/${p.username}" id="mcView">View my profile</a>` : ""}<button class="btn ${p.username ? "" : "bile"}" id="mcEdit">${p.username ? "Edit profile" : "Claim your @username"}</button>${p.username ? '<button class="btn" id="mcShare">Share profile</button>' : ""}</div>
-    ${!p.signedIn ? `<p class="hint">Tip: <a href="#" id="mcSignin">sign in with email</a> so your profile and squad follow you to any device.</p>` : ""}
-    <details class="acct"><summary>Account settings</summary>
-      ${p.email ? `<label class="attest"><input type="checkbox" id="mcNotify" ${p.notify ? "checked" : ""}> Email me about friend requests, battles, Pen lines and my weekly recap</label>` : `<p class="hint">Sign in with email to get notified when friends challenge you.</p>`}
-      <div class="danger"><b>Delete my account</b><p class="hint">Removes your profile, posts, Daily Ws, votes, friends and battles. Lines you added to friends' Pass the Pen songs stay, without your name. This can't be undone.</p>
-      <div class="row"><input type="text" id="mcDelConfirm" placeholder="Type DELETE" aria-label="Type DELETE to confirm" style="max-width:160px"><button class="btn" id="mcDel">Delete forever</button></div><span class="hint" id="mcDelNote"></span></div>
-    </details>`;
-  el.querySelector("b").textContent = me.name; el.querySelector(".mcid span").textContent = p.username ? "@" + p.username : "No username yet";
-  el.querySelector(".mcbio").textContent = p.bio || (p.username ? "" : "Pick a username so friends can find you, battle you and see you on the leaderboard.");
-  $("mcEdit").onclick = openEditor;
-  if ($("mcNotify")) $("mcNotify").onchange = async (e) => { await api("/api/notify", { body: { on: e.target.checked } }).catch(() => {}); };
-  $("mcDel").onclick = async () => {
-    try { await api("/api/account/delete", { body: { confirm: $("mcDelConfirm").value } }); try { localStorage.clear(); } catch (e) {} location.href = "/?deleted=1"; }
-    catch (err) { $("mcDelNote").textContent = err.message; }
-  };
-  if ($("mcView")) $("mcView").onclick = (e) => { e.preventDefault(); goProfile(p.username); };
-  if ($("mcShare")) $("mcShare").onclick = () => shareLink(`${location.origin}/u/${p.username}`, "Come write with me on Wackometer 👉", $("fNote"));
-  if ($("mcSignin")) $("mcSignin").onclick = (e) => { e.preventDefault(); openLogin(); };
-  if (!p.username && fr && !fr.me.hasUsername && !$("pEdit").dataset.opened) { $("pEdit").dataset.opened = 1; }
-}
-let pfAvatar = 5, pfColor = "#3D8BFF";
-function openEditor() {
-  const p = PROFILE || {}, f = $("pEdit"); f.hidden = false; $("pfNote").textContent = "";
-  $("pfUser").value = p.username || ""; $("pfName").value = p.name || ""; $("pfBio").value = p.bio || ""; $("pfPinned").value = p.pinned || "";
-  $("pfIg").value = p.links?.instagram || ""; $("pfTt").value = p.links?.tiktok || ""; $("pfSp").value = p.links?.spotify || ""; $("pfSc").value = p.links?.soundcloud || ""; $("pfYt").value = p.links?.youtube || "";
-  pfAvatar = p.avatar ?? 5; pfColor = p.color || "#3D8BFF";
-  $("pfGenre").innerHTML = `<option value="">Pick one</option>` + (p.genres || []).map((g) => `<option${g === p.genre ? " selected" : ""}>${g}</option>`).join("");
-  const drawPick = () => {
-    $("pfAvatars").innerHTML = [0, 1, 2, 3, 4, 5].map((i) => `<button type="button" class="avb${i === pfAvatar ? " on" : ""}" data-i="${i}" aria-pressed="${i === pfAvatar}" style="--avc:${pfColor}" title="${CREW[i].name}">${charSVG(i)}</button>`).join("");
-    $("pfColors").innerHTML = (p.colors || []).map((c) => `<button type="button" class="colb${c === pfColor ? " on" : ""}" data-c="${c}" aria-label="Color ${c}" aria-pressed="${c === pfColor}" style="background:${c}"></button>`).join("");
-    $("pfAvatars").querySelectorAll(".avb").forEach((b) => (b.onclick = () => { pfAvatar = +b.dataset.i; sfx("pop"); drawPick(); }));
-    $("pfColors").querySelectorAll(".colb").forEach((b) => (b.onclick = () => { pfColor = b.dataset.c; sfx("pop"); drawPick(); }));
-  };
-  drawPick();
-  $("pfAgeRow").hidden = !!p.ageOk;
-  const best = last && last.best; $("pfUseBest").hidden = !best; $("pfUseBest").onclick = () => { $("pfPinned").value = best.line; };
-  f.scrollIntoView({ behavior: "smooth", block: "start" }); setTimeout(() => $(p.username ? "pfName" : "pfUser").focus(), 300);
-}
-$("pfCancel").onclick = () => ($("pEdit").hidden = true);
-$("pEdit").addEventListener("submit", async (e) => {
-  e.preventDefault(); const b = $("pfSave"); b.disabled = true; $("pfNote").textContent = "Saving…";
-  try {
-    await api("/api/profile", { body: { age13: $("pfAge").checked, username: $("pfUser").value, name: $("pfName").value, bio: $("pfBio").value, avatar: pfAvatar, color: pfColor, genre: $("pfGenre").value, pinned: $("pfPinned").value,
-      links: { instagram: $("pfIg").value, tiktok: $("pfTt").value, spotify: $("pfSp").value, soundcloud: $("pfSc").value, youtube: $("pfYt").value } } });
-    $("pfNote").textContent = "Saved."; sfx("sparkle"); $("pEdit").hidden = true; await loadMe(); loadSquad();
-  } catch (err) { $("pfNote").textContent = err.message; }
-  b.disabled = false;
-});
-function renderFriends(fr) {
-  if (!fr) return;
-  $("fCount").textContent = fr.friends.length ? `(${fr.friends.length})` : "";
-  const list = $("fList"); list.innerHTML = "";
-  if (!fr.friends.length) list.innerHTML = `<div class="empty small"><div class="ch">${charSVG(1)}</div>No friends yet. Search a username or send an invite link.</div>`;
-  fr.friends.forEach((p) => {
-    const chip = p.today ? `<span class="pill bg-t${p.today.tier}" title="Today's Daily W">${DAILY_EMOJI[p.today.tier]} ${p.today.score}</span>` : `<span class="hint">no Daily W yet</span>`;
-    const row = personRow(p, chip + `<button class="btn sm" data-b="${p.username}">⚔️ Battle</button>`);
-    row.querySelector("[data-b]").onclick = () => startBattle(p.username);
-    list.appendChild(row);
-  });
-  const inc = $("fIncoming"); inc.innerHTML = ""; $("fIncomingBox").hidden = !fr.incoming.length;
-  fr.incoming.forEach((p) => {
-    const row = personRow(p, `<button class="btn sm bile" data-a="1">Accept</button><button class="btn sm" data-a="0">Decline</button>`);
-    row.querySelectorAll("[data-a]").forEach((b) => (b.onclick = async () => { await api("/api/friends/respond", { body: { username: p.username, accept: b.dataset.a === "1" } }); if (b.dataset.a === "1") sfx("sparkle"); loadSquad(); }));
-    inc.appendChild(row);
-  });
-  fr.outgoing.forEach((p) => list.appendChild(personRow(p, `<span class="hint">Request sent</span>`)));
-}
-// Search results and suggestions share one renderer with the right button for each relationship.
-function friendButton(p, noteEl) {
-  const b = document.createElement("button"); b.className = "btn sm";
-  const set = (rel) => {
-    p.relation = rel; b.disabled = false; b.className = "btn sm" + (rel === "none" || rel === "incoming" ? " bile" : "");
-    b.textContent = rel === "friends" ? "Friends ✓" : rel === "requested" ? "Sent" : rel === "incoming" ? "Accept" : "➕ Add";
-    b.disabled = rel === "requested" || rel === "friends";
-  };
-  set(p.relation || "none");
-  b.onclick = async () => {
-    b.disabled = true;
-    try {
-      if (p.relation === "incoming") { await api("/api/friends/respond", { body: { username: p.username, accept: true } }); set("friends"); sfx("sparkle"); }
-      else { const r = await api("/api/friends/request", { body: { username: p.username } }); set(r.status === "friends" ? "friends" : "requested"); sfx("pop"); }
-      if (!$("v-squad").hidden) loadSquad();
-    } catch (err) {
-      b.disabled = false; noteEl.textContent = err.message;
-      if (err.status === 409) { $("findModal").hidden = true; show("squad"); setTimeout(openEditor, 400); }
-    }
-  };
-  return b;
-}
-function renderPeople(list, box, noteEl, emptyMsg) {
-  box.innerHTML = "";
-  if (!list.length) { if (emptyMsg) box.innerHTML = `<p class="hint">${emptyMsg}</p>`; return; }
-  list.forEach((p) => {
-    const row = personRow(p, p.why ? `<span class="why">${esc(p.why)}</span>` : "");
-    if (p.bio) { const s = document.createElement("span"); s.className = "fbio"; s.textContent = p.bio; row.querySelector(".fname").appendChild(s); }
-    row.querySelector(".fextra").appendChild(friendButton(p, noteEl));
-    box.appendChild(row);
-  });
-}
-async function runSearch(q, box, noteEl) {
-  if (q.replace(/^@/, "").length < 2) { box.innerHTML = ""; return; }
-  const r = await api("/api/users/search?q=" + encodeURIComponent(q)).catch(() => ({ users: [] }));
-  renderPeople(r.users, box, noteEl, `No one called “${esc(q)}” yet. Send them an invite link!`);
-}
-async function loadSuggestions(box, wrap, noteEl) {
-  const r = await api("/api/users/suggest").catch(() => ({ users: [] }));
-  wrap.hidden = !r.users.length; renderPeople(r.users, box, noteEl);
-}
-let searchT = null;
-$("fSearch").addEventListener("input", () => { clearTimeout(searchT); searchT = setTimeout(() => runSearch($("fSearch").value.trim(), $("fResults"), $("fNote")), 250); });
-let findT = null;
-$("findQ").addEventListener("input", () => { clearTimeout(findT); findT = setTimeout(() => runSearch($("findQ").value.trim(), $("findResults"), $("findNote")), 250); });
-function openFind() {
-  $("findModal").hidden = false; $("findNote").textContent = ""; setTimeout(() => $("findQ").focus(), 50);
-  loadSuggestions($("findSuggest"), $("findSuggestBox"), $("findNote"));
-}
-$("findBtn").onclick = openFind;
-$("findX").onclick = () => ($("findModal").hidden = true);
-$("findModal").addEventListener("click", (e) => { if (e.target.id === "findModal") $("findModal").hidden = true; });
-$("findInvite").onclick = () => shareLink(PROFILE && PROFILE.username ? `${location.origin}/u/${PROFILE.username}` : location.origin, "Write lyrics with me on Wackometer. Add me 👉", $("findNote"));
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") { $("findModal").hidden = true; } if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); openFind(); } });
-$("fInvite").onclick = () => shareLink(PROFILE && PROFILE.username ? `${location.origin}/u/${PROFILE.username}` : location.origin, "Write lyrics with me on Wackometer. Add me 👉", $("fNote"));
-async function shareLink(url, text, noteEl) {
-  if (navigator.share) { try { await navigator.share({ text, url }); return; } catch (e) {} }
-  try { await navigator.clipboard.writeText(`${text} ${url}`); noteEl.textContent = "Link copied. Paste it anywhere."; }
-  catch (e) { noteEl.textContent = url; }
-}
-
-/* ---------- leaderboard ---------- */
-document.querySelectorAll("#lbScope button").forEach((b) => (b.onclick = () => { lbScope = b.dataset.s; document.querySelectorAll("#lbScope button").forEach((x) => x.setAttribute("aria-pressed", x === b)); loadBoard(); }));
-document.querySelectorAll("#lbPeriod button").forEach((b) => (b.onclick = () => { lbPeriod = b.dataset.p; document.querySelectorAll("#lbPeriod button").forEach((x) => x.setAttribute("aria-pressed", x === b)); loadBoard(); }));
-async function loadBoard() {
-  const el = $("lbRows");
-  try {
-    const r = await api(`/api/leaderboard?scope=${lbScope}&period=${lbPeriod}`);
-    $("lbRules").innerHTML = r.rules.map(([a, b]) => `<li><b>${a}</b> ${b}</li>`).join("");
-    el.innerHTML = "";
-    if (!r.rows.length) { el.innerHTML = `<li class="empty small"><div class="ch">${charSVG(0)}</div>${lbScope === "friends" ? "No points yet in your squad. Take today's Daily W to get on the board." : "The board is wide open. Take the Daily W and grab the top spot."}</li>`; return; }
-    const medal = ["🥇", "🥈", "🥉"];
-    r.rows.forEach((p) => { const li = document.createElement("li"); li.className = "lbrow" + (p.you ? " you" : "") + (p.rank <= 3 ? " top" : "");
-      li.appendChild(Object.assign(document.createElement("span"), { className: "lbrank", textContent: medal[p.rank - 1] || p.rank }));
-      li.appendChild(personRow(p, `<b class="pts">${p.points}</b>`)); el.appendChild(li); });
-    if (r.mine) { const li = document.createElement("li"); li.className = "lbrow you"; li.appendChild(Object.assign(document.createElement("span"), { className: "lbrank", textContent: "…" })); li.appendChild(personRow(r.mine, `<b class="pts">${r.mine.points}</b>`)); el.appendChild(li); }
-    if (lbScope === "global" && !r.hasUsername) { const li = document.createElement("li"); li.className = "hint"; li.textContent = "Pick a username to show up on the global board."; el.appendChild(li); }
-  } catch (e) { el.innerHTML = `<li class="hint">${esc(e.message)}</li>`; }
-}
-
-/* ---------- battles ---------- */
-async function loadBattles() {
-  const el = $("bList");
-  try {
-    const r = await api("/api/battles"); el.innerHTML = "";
-    if (!r.battles.length) { el.innerHTML = `<div class="empty small"><div class="ch">${charSVG(3)}</div>No battles yet. Hit ⚔️ Battle next to a friend.</div>`; return; }
-    r.battles.forEach((b) => {
-      const tag = b.status === "done" ? (b.result === "win" ? `<span class="pill bg-t1">🏆 Won</span>` : b.result === "loss" ? `<span class="pill bg-t3">Lost</span>` : `<span class="pill bg-t2">Tie</span>`)
-        : b.yourTurn ? `<span class="pill bg-t4">Your turn</span>` : `<span class="hint">Waiting on them</span>`;
-      const row = personRow(b.them, `<span class="bp">${b.emoji}</span>${tag}`); row.classList.add("clickable");
-      row.onclick = (e) => { if (e.target.closest("a")) return; openBattle(b); }; el.appendChild(row);
-    });
-    if (battleOpen) { const fresh = r.battles.find((x) => x.id === battleOpen); if (fresh) openBattle(fresh, true); }
-  } catch (e) { el.innerHTML = `<p class="hint">${esc(e.message)}</p>`; }
-}
-async function startBattle(username) {
-  try { const r = await api("/api/battles", { body: { username } }); battleOpen = r.id; sfx("sparkle"); await loadBattles(); $("battleView").scrollIntoView({ behavior: "smooth", block: "center" }); }
-  catch (e) { $("fNote").textContent = e.message; }
-}
-function openBattle(b, quiet) {
-  battleOpen = b.id; const v = $("battleView"); v.hidden = false;
-  const side = (s, label) => `<div class="bside" style="--avc:${s.color}">${avatarHTML(s, 56)}<b>${esc(label)}</b>${s.score != null ? `<span class="pill bg-t${s.tier}">${TIERS[s.tier].n} ${s.score}</span>` : `<span class="hint">${s.submitted ? "✍️ Submitted" : "⏳ Not yet"}</span>`}${s.lines ? `<pre></pre>` : ""}</div>`;
-  const banner = b.status === "done" ? (b.result === "win" ? `<div class="bres win">${charSVG(0)}<b>You took the W! 🏆</b></div>` : b.result === "loss" ? `<div class="bres loss">${charSVG(4)}<b>They took this one. Run it back?</b></div>` : `<div class="bres tie">${charSVG(2)}<b>Dead heat. Respect.</b></div>`) : "";
-  v.innerHTML = `<div class="bhead"><span class="bemoji">${b.emoji}</span><div><span class="eyebrow">vs @${esc(b.them.username || "")}</span><h4>${esc(b.prompt)}</h4></div><button class="x" id="bClose" aria-label="Close">×</button></div>
-    ${banner}
-    <div class="bsides">${side(b.you, "You")}${side(b.them, b.them.name || "Them")}</div>
-    ${b.yourTurn ? `<textarea id="bLines" maxlength="600" placeholder="Write it blind. They can't see yours until you both submit."></textarea><div class="hint" id="bLive">Live meter: start writing</div><div class="row"><button class="btn bile" id="bSubmit">Lock it in</button>${!b.challengedByYou ? '<button class="btn" id="bDecline">Decline</button>' : ""}<span class="hint" id="bNote"></span></div>` : ""}
-    ${b.status === "done" ? `<div class="row"><button class="btn go" id="bShare">Share result</button><button class="btn" id="bAgain">⚔️ Rematch</button><span class="hint" id="bNote"></span></div>` : ""}
-    ${b.status === "open" && !b.yourTurn ? `<p class="penwait">⏳ Waiting on @${esc(b.them.username || "them")}. We'll show both verses the moment they lock in.</p>` : ""}`;
-  const pres = v.querySelectorAll(".bside pre"); let k = 0;
-  if (b.you.lines) pres[k++].textContent = b.you.lines; if (b.them.lines && pres[k]) pres[k].textContent = b.them.lines;
-  $("bClose").onclick = () => { v.hidden = true; battleOpen = null; };
-  if ($("bLines")) {
-    $("bLines").addEventListener("input", () => { const t = $("bLines").value, n = words(t).length; if (n < 4) { $("bLive").textContent = "Live meter: start writing"; return; } const sc = Math.round(analyze(t).raw); $("bLive").textContent = `Live meter: ${TIERS[tierOf(sc)].n} ${sc} · ${n} words`; });
-    $("bSubmit").onclick = async () => { const btn = $("bSubmit"); btn.disabled = true;
-      try { await api(`/api/battles/${b.id}/submit`, { body: { lines: $("bLines").value } }); sfx("sparkle"); await loadBattles(); }
-      catch (e) { $("bNote").textContent = e.message; btn.disabled = false; } };
-    if ($("bDecline")) $("bDecline").onclick = async () => { await api(`/api/battles/${b.id}/decline`, { body: {} }).catch(() => {}); v.hidden = true; battleOpen = null; loadBattles(); };
-  }
-  if ($("bShare")) $("bShare").onclick = () => { track("share_card"); const verdict = b.result === "win" ? "I took the W 🏆" : b.result === "loss" ? "they took this one 😤" : "dead heat 🤝";
-    shareLink(location.origin, `⚔️ Wackometer battle ${b.emoji}\nMe ${b.you.score} vs @${b.them.username} ${b.them.score}. ${verdict}\nThink you can out-write me?`, $("bNote")); };
-  if ($("bAgain")) $("bAgain").onclick = () => startBattle(b.them.username);
-  if (b.status === "done" && !quiet && b.result === "win") sfx("sparkle");
-}
-
-/* ---------- public profile ---------- */
-async function loadProfile(username) {
-  username = decodeURIComponent(username || "").toLowerCase();
-  try {
-    const p = await api("/api/u/" + encodeURIComponent(username));
-    document.title = `${p.name} (@${p.username}) · Wackometer`;
-    $("pBanner").style.setProperty("--pc", p.color);
-    $("pAvatar").innerHTML = charSVG(p.avatar, null, accFor(p.streak));
-    $("pName").textContent = p.name; $("pUser").textContent = "@" + p.username + (p.streak ? `  ·  🔥 ${p.streak}-day streak` : "");
-    $("pBio").textContent = p.bio || (p.you ? "Add a bio from Squad → Edit profile." : "");
-    $("pTags").innerHTML = (p.genre ? `<span class="tag2">🎵 ${esc(p.genre)}</span>` : "") + `<span class="tag2">👥 ${p.stats.friends} friend${p.stats.friends === 1 ? "" : "s"}</span><span class="tag2">⭐ ${p.stats.weekPoints} W Points this week</span>`;
-    $("pPin").hidden = !p.pinned; $("pPinText").textContent = "“" + p.pinned + "”";
-    const st = [["Daily Ws", p.stats.dailies, 0], ["Wicked scores", p.stats.wicked, 1], ["Battles", `${p.stats.wins}–${p.stats.losses}`, 3], ["Pen lines", p.stats.penLines, 2], ["Wall posts", p.stats.posts, 4]];
-    $("pStats").innerHTML = st.map(([l, n, t]) => `<div class="pst" style="--sc:var(--t${t})"><b>${n}</b><span>${l}</span></div>`).join("");
-    $("pUnlocks").innerHTML = UNLOCKS.map((u) => { const got = p.streak >= u.d; return `<div class="unl${got ? " got" : ""}"><span class="um">${charSVG(u.who, null, accFor(got ? 99 : 0))}</span><span>${got ? "Unlocked" : u.d + "-day streak"}<br><b>${u.name}</b></span></div>`; }).join("");
-    const L = { instagram: "📸 Instagram", tiktok: "🎬 TikTok", spotify: "🎧 Spotify", soundcloud: "☁️ SoundCloud", youtube: "▶️ YouTube" };
-    const links = Object.entries(p.links || {}); $("pLinksBox").hidden = !links.length;
-    $("pLinks").innerHTML = links.map(([k, u]) => `<a class="btn" href="${esc(u)}" target="_blank" rel="noopener noreferrer nofollow">${L[k]}</a>`).join("");
-    const ld = $("pLastDaily"); ld.hidden = !p.lastDaily;
-    if (p.lastDaily) { ld.innerHTML = `<h3>Latest Daily W</h3><span class="pill bg-t${p.lastDaily.tier}">${TIERS[p.lastDaily.tier].n} ${p.lastDaily.score}</span><pre class="dmine"></pre><span class="hint">${p.lastDaily.day}</span>`; ld.querySelector("pre").textContent = p.lastDaily.lines; }
-    const rc = $("pRecent"); rc.innerHTML = "";
-    if (!p.recent.length) rc.innerHTML = `<div class="empty small"><div class="ch">${charSVG(2)}</div>Nothing on the Wall yet.</div>`;
-    p.recent.forEach((r) => { const c = document.createElement("article"); c.className = "card"; c.innerHTML = `<div class="ch"><span class="ttl"></span><span class="pill bg-t${r.tier}">${TIERS[r.tier].n} ${r.score}</span></div><pre></pre>`; c.querySelector(".ttl").textContent = r.title || "Untitled"; c.querySelector("pre").textContent = r.excerpt; rc.appendChild(c); });
-    const act = $("pActions"); act.innerHTML = "";
-    const btn = (label, cls, fn) => { const b = document.createElement("button"); b.className = "btn " + cls; b.textContent = label; b.onclick = fn; act.appendChild(b); return b; };
-    if (p.you) btn("Edit profile", "bile", () => { show("squad"); setTimeout(openEditor, 400); });
-    else if (p.relation === "friends") { btn("Friends ✓", "", () => {}); btn("⚔️ Battle", "bile", () => { show("squad"); setTimeout(() => startBattle(p.username), 400); }); }
-    else if (p.relation === "requested") btn("Request sent", "", () => {}).disabled = true;
-    else if (p.relation === "incoming") btn("Accept friend request", "bile", async () => { await api("/api/friends/respond", { body: { username: p.username, accept: true } }); sfx("sparkle"); loadProfile(p.username); });
-    else btn("➕ Add friend", "bile", async (e) => { try { await api("/api/friends/request", { body: { username: p.username } }); sfx("pop"); loadProfile(p.username); } catch (err) { e.target.textContent = err.status === 409 ? "Pick your username first" : err.message; if (err.status === 409) { show("squad"); setTimeout(openEditor, 400); } } });
-    btn("Share", "", () => shareLink(location.href.split("#")[0], `${p.name} on Wackometer 👉`, $("pBio")));
-    if (!p.you) {
-      if (p.relation === "blocked") btn("Unblock", "", async () => { await api(`/api/u/${p.username}/unblock`, { body: {} }); loadProfile(p.username); });
-      else {
-        const more = document.createElement("details"); more.className = "pmore"; more.innerHTML = `<summary aria-label="More options">•••</summary><div class="pmenu"><button class="linkbtn" data-a="report">🚩 Report profile</button><button class="linkbtn" data-a="block">🚫 Block @${esc(p.username)}</button></div>`;
-        more.querySelector('[data-a="report"]').onclick = async (e) => { const t = e.target; if (!t.dataset.sure) { t.dataset.sure = 1; t.textContent = "Tap again to report (offensive or fake)"; return; } await api(`/api/u/${p.username}/report`, { body: { reason: "profile" } }).catch(() => {}); t.textContent = "Reported. Thanks."; t.disabled = true; };
-        more.querySelector('[data-a="block"]').onclick = async (e) => { const t = e.target; if (!t.dataset.sure) { t.dataset.sure = 1; t.textContent = "Tap again: they can't friend or battle you"; return; } await api(`/api/u/${p.username}/block`, { body: {} }).catch(() => {}); loadProfile(p.username); };
-        act.appendChild(more);
-      }
-    }
-  } catch (e) {
-    $("pName").textContent = "No writer here"; $("pUser").textContent = "@" + username; $("pBio").textContent = e.message; $("pActions").innerHTML = ""; $("pAvatar").innerHTML = charSVG(3);
-    ["pStats", "pTags", "pRecent", "pUnlocks"].forEach((i) => ($(i).innerHTML = "")); $("pPin").hidden = true; $("pLinksBox").hidden = true; $("pLastDaily").hidden = true;
-  }
-}
-
 /* ---------- account ---------- */
 function renderAccount() {
   const b = $("acctBtn");
-  b.textContent = ME && ME.username ? "👤 @" + ME.username : ME && ME.email ? "👤 " + ME.email.split("@")[0] : "Sign in";
+  b.textContent = S.ME && S.ME.username ? "👤 @" + S.ME.username : S.ME && S.ME.email ? "👤 " + S.ME.email.split("@")[0] : "Sign in";
 }
 function openLogin() {
   $("loginModal").hidden = false; $("loginChar").innerHTML = charSVG(1); $("loginNote").textContent = "";
-  const inn = !!(ME && ME.email);
-  $("loginForm").hidden = inn; $("loginOut").hidden = !inn; $("loginAge").parentElement.hidden = !!(ME && ME.ageOk); $("adminLink").hidden = !(ME && ME.admin);
-  const mp = $("myProfileLink"); mp.hidden = !(ME && ME.username); if (ME && ME.username) mp.href = "/u/" + ME.username;
+  const inn = !!(S.ME && S.ME.email);
+  $("loginForm").hidden = inn; $("loginOut").hidden = !inn; $("loginAge").parentElement.hidden = !!(S.ME && S.ME.ageOk); $("adminLink").hidden = !(S.ME && S.ME.admin);
+  const mp = $("myProfileLink"); mp.hidden = !(S.ME && S.ME.username); if (S.ME && S.ME.username) mp.href = "/u/" + S.ME.username;
   $("loginH").textContent = inn ? "You're signed in" : "Save your streak and songs";
-  $("loginSub").textContent = inn ? `Signed in as ${ME.email}. Your streak, Pro and songs follow you to any device.` : "Sign in with your email and we'll send you a link. No password. Your streak, Pro and songs follow you to any device.";
+  $("loginSub").textContent = inn ? `Signed in as ${S.ME.email}. Your streak, Pro and songs follow you to any device.` : "Sign in with your email and we'll send you a link. No password. Your streak, Pro and songs follow you to any device.";
   if (!inn) setTimeout(() => $("loginEmail").focus(), 50);
 }
 function closeLogin() { $("loginModal").hidden = true; }
@@ -1114,9 +440,10 @@ $("wipeBtn").onclick = wipe;
 document.querySelectorAll("[data-ex]").forEach((b) => (b.onclick = () => loadExample(b.dataset.ex)));
 $("lyrics").addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") renderReading(); });
 $("lyrics").addEventListener("input", () => { padIsExample = false; ls("wk-draft", $("lyrics").value); $("draftBack").hidden = true; });
-document.querySelectorAll("#mainNav button,#proBtn").forEach((b) => (b.onclick = () => show(b.dataset.v)));
+document.querySelectorAll("#mainNav button,#proBtn,.squadsw button").forEach((b) => (b.onclick = () => show(b.dataset.v)));
+document.querySelectorAll("#groupNav button").forEach((b) => (b.onclick = () => { const last = ls("wk-g-" + b.dataset.g); show(VIEWS.includes(last) && GROUP[last] === b.dataset.g ? last : GROUP_FIRST[b.dataset.g]); }));
 window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if (VIEWS.includes(h)) show(h); });
-$("toWing").onclick = () => { show("wingman"); if (words($("lyrics").value).length >= 8) { if (!last) renderReading(); ask("Make my lyrics less wack"); } };
+$("toWing").onclick = () => { show("wingman"); if (words($("lyrics").value).length >= 8) { if (!S.last) renderReading(); ask("Make my lyrics less wack"); } };
 $("whyList").innerHTML = METRICS.map((m) => `<dt>${m.n} <span class="hint">(${Math.round(m.w * 100)}%)</span></dt><dd>${m.d}</dd>`).join("");
 $("heroGo").onclick = () => { const t = $("lyrics"); t.scrollIntoView({ behavior: "smooth", block: "center" }); setTimeout(() => { t.focus(); t.select(); }, 350); };
 $("heroDare").onclick = () => loadExample("wack", true);
@@ -1134,9 +461,10 @@ const COACH_TIPS = {
   wasted: () => "Filler words are holding lines together. If a line needs a 'yeah' to fit, the line isn't finished yet.",
   wallpaper: () => "Whole lines repeat more than a hook needs. Keep the hook line, change what surrounds it each time.",
 };
-function renderCoach() {
-  if (!last) return;
-  const worst = METRICS.map((m) => [m.k, last.vals[m.k]]).sort((a, b) => b[1] - a[1])[0];
+async function renderCoach() {
+  if (!S.last) return;
+  const { LESSONS } = await lessonsM(); const wsDone = () => { try { return JSON.parse(ls("wk-ws") || "{}"); } catch (e) { return {}; } };
+  const worst = METRICS.map((m) => [m.k, S.last.vals[m.k]]).sort((a, b) => b[1] - a[1])[0];
   if (worst[1] < 25) {
     const extra = LESSONS.find((l) => !l.metric && !wsDone()[l.id]);
     if (!extra) { $("coach").hidden = true; return; }
@@ -1144,108 +472,29 @@ function renderCoach() {
     $("coachGo").textContent = `Train: ${extra.title}`; $("coachGo").onclick = () => openLesson(extra.id);
   } else {
     const l = LESSONS.find((x) => x.metric === worst[0]);
-    $("coachText").textContent = COACH_TIPS[worst[0]](last);
+    $("coachText").textContent = COACH_TIPS[worst[0]](S.last);
     $("coachGo").textContent = `Train: ${l.title} (+${l.xp} XP)`; $("coachGo").onclick = () => openLesson(l.id);
   }
   $("coachChar").innerHTML = charSVG(1); $("coach").hidden = false;
 }
-function getHist() { try { return JSON.parse(ls("wk-hist") || "[]"); } catch (e) { return []; } }
+const openLesson = async (id) => (await shopM()).openLesson(id);
 function saveHistory() {
-  const h = getHist(); const key = last.text.slice(0, 80);
+  const h = getHist(); const key = S.last.text.slice(0, 80);
   if (h.length && h[h.length - 1].k === key) h.pop(); // re-weighing the same draft replaces it
-  const worst = METRICS.map((m) => [m.k, last.vals[m.k]]).sort((a, b) => b[1] - a[1])[0][0];
-  h.push({ t: Date.now(), s: last.score, w: worst, k: key }); ls("wk-hist", JSON.stringify(h.slice(-40)));
+  const worst = METRICS.map((m) => [m.k, S.last.vals[m.k]]).sort((a, b) => b[1] - a[1])[0][0];
+  h.push({ t: Date.now(), s: S.last.score, w: worst, k: key }); ls("wk-hist", JSON.stringify(h.slice(-40)));
 }
+/* ---------- find friends (header button, Ctrl/Cmd K) ---------- */
+$("findBtn").onclick = async () => (await squadM()).openFind();
+document.addEventListener("keydown", async (e) => { if (e.key === "Escape") $("findModal").hidden = true; if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); (await squadM()).openFind(); } });
 
-/* ---------- Workshop ---------- */
-function wsDone() { try { return JSON.parse(ls("wk-ws") || "{}"); } catch (e) { return {}; } }
-let wsCur = null;
-function renderWorkshop() {
-  const done = wsDone(); const xp = LESSONS.reduce((a, l) => a + (done[l.id] ? l.xp : 0), 0); const r = rankOf(xp);
-  const pct = r.next ? Math.round(((xp - r.at) / (r.next[0] - r.at)) * 100) : 100;
-  $("wsRank").innerHTML = `<b>${esc(r.name)}</b><div class="xpbar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="Progress to next rank"><i style="width:${pct}%"></i></div><span class="hint">${xp} XP${r.next ? ` · ${r.next[0] - xp} to ${r.next[1]}` : " · top rank"}</span>`;
-  $("wsList").innerHTML = LESSONS.map((l) => `<button class="lcard${done[l.id] ? " done" : ""}" data-l="${l.id}" aria-pressed="${l.id === wsCur}"><b>${done[l.id] ? "✅ " : ""}${esc(l.title)}</b><small>${esc(l.sub)} · ${l.xp} XP</small></button>`).join("");
-  $("wsList").querySelectorAll("[data-l]").forEach((b) => (b.onclick = () => { wsCur = b.dataset.l; renderWorkshop(); if (innerWidth < 820) $("wsLesson").scrollIntoView({ behavior: "smooth" }); }));
-  if (!wsCur) wsCur = (LESSONS.find((l) => !done[l.id]) || LESSONS[0]).id;
-  const l = LESSONS.find((x) => x.id === wsCur);
-  $("wsLesson").innerHTML = `<h3>${esc(l.title)}</h3><p>${esc(l.why)}</p>
-    <div class="ba"><div class="bef"><small>🤢 Wack</small>${esc(l.before)}</div><div class="aft"><small>✨ Better</small>${esc(l.after)}</div></div>
-    <div class="drill"><b>🏋️ Drill${done[l.id] ? " (passed, practice anytime)" : ` · +${l.xp} XP`}</b><span>${esc(l.drill)}</span>
-    <label class="hint" for="wsIn">Your drill</label><textarea id="wsIn" spellcheck="false" placeholder="Write it here…"></textarea>
-    <div class="row"><button class="btn bile" id="wsCheck">Check my drill</button><button class="btn" id="wsAsk">Ask Wingman for an example</button></div>
-    <p id="wsOut" aria-live="polite" class="hint"></p></div>`;
-  $("wsIn").value = ls("wk-ws-" + l.id) || "";
-  $("wsIn").addEventListener("input", () => ls("wk-ws-" + l.id, $("wsIn").value));
-  $("wsCheck").onclick = () => {
-    const res = l.check($("wsIn").value);
-    if (res === true) {
-      const d = wsDone(); const first = !d[l.id]; d[l.id] = Date.now(); ls("wk-ws", JSON.stringify(d));
-      $("wsOut").innerHTML = `<span class="pass">Passed!${first ? ` +${l.xp} XP` : ""}</span> ${first ? "Habit unlocked." : "Still got it."}`;
-      sfx("sparkle"); if (first) { confetti(); track("lesson_pass"); setTimeout(renderWorkshop, 1400); }
-    } else { $("wsOut").innerHTML = `<span class="fail">Not yet.</span> ${esc(res)}`; sfx("pop"); }
-  };
-  $("wsAsk").onclick = () => { show("wingman"); ask(`Teach me "${l.title}". Give me two short original examples, then a tip for the drill: ${l.drill}`); };
-  renderProgress();
-}
-function openLesson(id) { wsCur = id; show("workshop"); }
-function renderProgress() {
-  const h = getHist();
-  if (h.length < 2) { $("wsHist").innerHTML = `<p class="hint">Weigh your own lyrics a couple of times and your trend shows up here.</p>`; return; }
-  const W = 600, H = 70, pts = h.map((x, i) => [(i / (h.length - 1)) * (W - 20) + 10, 10 + (x.s / 100) * (H - 20)]);
-  const counts = {}; h.slice(-10).forEach((x) => (counts[x.w] = (counts[x.w] || 0) + 1));
-  const habit = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0]; const hm = METRICS.find((m) => m.k === habit);
-  const first = h.slice(0, Math.ceil(h.length / 2)), second = h.slice(Math.ceil(h.length / 2));
-  const avg = (a) => Math.round(a.reduce((s, x) => s + x.s, 0) / a.length); const d = avg(first) - avg(second);
-  $("wsHist").innerHTML = `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Your last ${h.length} wack scores, lower is better"><polyline fill="none" stroke="var(--t0)" stroke-width="3" stroke-linejoin="round" points="${pts.map((p) => p.join(",")).join(" ")}"/>${pts.map((p, i) => `<circle cx="${p[0]}" cy="${p[1]}" r="4" fill="var(--t${tierOf(h[i].s)})"/>`).join("")}</svg>
-    <p>${h.length} weighs · lower line = less wack. ${d > 2 ? `You're <b>${d} points less wack</b> than when you started.` : d < -2 ? `Scores crept up ${-d} points. Time for a drill.` : "Holding steady."} Your most common habit lately: <b>${esc(hm.n.toLowerCase())}</b>.</p>`;
-}
-
-/* ---------- AI Wash ---------- */
-let washLast = null;
-function runWash() {
-  const t = $("washIn").value;
-  if (words(t).length < 8) { $("washVerdict").textContent = "Give it at least a couple of lines."; return; }
-  const r = washScan(t); washLast = r;
-  const [vt, ti] = washVerdict(r.score);
-  $("washScore").textContent = r.score + "% bot"; $("washVerdict").textContent = vt; $("washBar").style.left = `calc(${r.score}% - 3px)`;
-  $("washChar").innerHTML = charSVG(r.score >= 60 ? 4 : r.score >= 35 ? 2 : 1);
-  $("washMap").innerHTML = r.lines.map((line, li) => {
-    const hs = r.hits.filter((h) => h.li === li).sort((a, b) => a.s - b.s); let out = "", pos = 0;
-    hs.forEach((h) => { if (h.s < pos) return; out += esc(line.slice(pos, h.s)) + `<mark class="ai-t" title="${esc(h.t[1])}">${esc(line.slice(h.s, h.e))}</mark>`; pos = h.e; });
-    return `<div class="wln">${out + esc(line.slice(pos)) || "&nbsp;"}</div>`;
-  }).join("");
-  $("washMapBox").hidden = false;
-  const seen = new Set(); const tells = [];
-  r.hits.forEach((h) => { if (!seen.has(h.t[0])) { seen.add(h.t[0]); tells.push([`"${h.t[0]}"`, h.t[1], h.t[2]]); } });
-  const all = [...r.shape, ...tells];
-  $("washTells").innerHTML = all.length ? `<h3>What gave it away (${all.length})</h3>` + all.map((x) => `<div class="tell"><b>${esc(x[0])}</b><p>${esc(x[1])}</p><p class="fix">✍️ ${esc(x[2])}</p></div>`).join("") : `<div class="tell" style="border-left-color:var(--t1)"><b>No robot tells found</b><p>This reads like a person wrote it. Weigh it next to check for clichés.</p></div>`;
-  sfx(r.score >= 60 ? "gag" : "pop"); track("wash");
-}
-$("washBtn").onclick = runWash;
-$("washEx").onclick = () => { $("washIn").value = WASH_EXAMPLE; runWash(); };
-$("washWipe").onclick = () => { $("washIn").value = ""; $("washMapBox").hidden = true; $("washTells").innerHTML = ""; $("washAIBox").hidden = true; $("washScore").textContent = "–"; $("washVerdict").textContent = "Paste something and hit Wash it."; $("washBar").style.left = "0"; $("washIn").focus(); };
-$("washToWeigh").onclick = () => { $("lyrics").value = $("washIn").value; padIsExample = false; show("weigh"); renderReading(); };
-$("washIn").addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") runWash(); });
-$("washHuman").onclick = async () => {
-  const t = $("washIn").value; if (words(t).length < 8) { $("washVerdict").textContent = "Give Wingman at least a couple of lines."; return; }
-  if (!washLast) runWash();
-  const b = $("washHuman"); b.disabled = true; $("washAIBox").hidden = false; $("washAI").textContent = "Wingman is putting a person back in…";
-  try {
-    const tells = washLast ? [...washLast.shape.map((x) => x[0]), ...new Set(washLast.hits.map((h) => h.t[0]))].join(", ") : "";
-    const r = await api("/api/wingman", { body: { mode: "humanize", pad: t, message: tells } });
-    $("washAI").textContent = r.text; if (r.me) { ME = r.me; renderQuota(); } track("humanize");
-  } catch (e) { $("washAI").textContent = e.message; if (e.status === 402) addProLink($("washAI")); }
-  b.disabled = false;
-};
-$("washUse").onclick = () => { const txt = $("washAI").textContent; const lyr = txt.split(/\n\s*\n/)[0]; $("washIn").value = lyr.trim(); runWash(); };
-
-/* ---------- Wordstorm ---------- */
-const storm = initStorm({ ls, track, copyText });
+/* ---------- hooks the on-demand modules call back into ---------- */
+Object.assign(A, { show, ask, renderReading, loadMe, openLogin, renderQuota, addProLink, openLesson, notExample: () => (padIsExample = false) });
 
 /* ---------- first-visit tour ---------- */
 const TOUR = [
   ["weighBtn", 1, "Weigh your words", "Paste lyrics and hit Weigh it. The meter scores them from Wicked to Wack and circles exactly what's wack."],
-  ["mainNav", 3, "Tools for every part of writing", "Wash scrubs the robot out of AI-sounding lines. Wordstorm drops freestyle words on a beat. Workshop turns your bad habits into XP."],
+  ["groupNav", 3, "Write, Train, Play", "Write: weigh it, wash out the AI, get Wingman's help. Train: lessons and freestyle drills. Play: the Daily W, the Wall and battles with friends."],
   ["heroDare", 4, "Start with a wack one", "Not ready to share your own? Load a wack example and watch me gag. Each tap brings a new one."],
 ];
 let tourI = 0;

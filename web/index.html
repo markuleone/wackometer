@@ -31,16 +31,20 @@
   <a class="skip" href="#main">Skip to content</a>
   <header class="top">
     <a class="logo" href="/" aria-label="Wackometer home"><span class="w">W</span>ackometer</a>
-    <nav id="mainNav" aria-label="Tools">
-      <button data-v="weigh" aria-current="page"><span class="ni" aria-hidden="true">⚖️</span> Weigh</button>
-      <button data-v="wash"><span class="ni" aria-hidden="true">🫧</span> Wash</button>
-      <button data-v="storm"><span class="ni" aria-hidden="true">🎤</span> Wordstorm</button>
-      <button data-v="workshop"><span class="ni" aria-hidden="true">🏋️</span> Workshop</button>
-      <button data-v="wingman"><span class="ni" aria-hidden="true">🪽</span> Wingman</button>
-      <button data-v="daily"><span class="ni" aria-hidden="true">📅</span> Daily W</button>
-      <button data-v="pen"><span class="ni" aria-hidden="true">✍️</span> Pen</button>
-      <button data-v="wall"><span class="ni" aria-hidden="true">🧱</span> Wall</button>
-      <button data-v="squad"><span class="ni" aria-hidden="true">👯</span> Squad</button>
+    <nav id="groupNav" aria-label="Sections">
+      <button data-g="write" aria-current="true"><span class="ni" aria-hidden="true">✍️</span> Write</button>
+      <button data-g="train"><span class="ni" aria-hidden="true">🏋️</span> Train</button>
+      <button data-g="play"><span class="ni" aria-hidden="true">🎮</span> Play</button>
+    </nav>
+    <nav id="mainNav" aria-label="Tools" data-group="write">
+      <button data-v="weigh" data-g="write" aria-current="page">⚖️ Weigh</button>
+      <button data-v="wash" data-g="write">🫧 Wash</button>
+      <button data-v="wingman" data-g="write">🪽 Wingman</button>
+      <button data-v="workshop" data-g="train">🏋️ Workshop</button>
+      <button data-v="storm" data-g="train">🎤 Wordstorm</button>
+      <button data-v="daily" data-g="play">📅 Daily W</button>
+      <button data-v="wall" data-g="play">🧱 Wall</button>
+      <button data-v="squad" data-g="play">👯 Squad</button>
     </nav>
     <div class="util">
       <button class="ubtn ic" id="findBtn" aria-label="Find friends" title="Find friends (Ctrl K)">🔍</button>
@@ -175,6 +179,7 @@
 
   <!-- SQUAD -->
   <section id="v-squad" class="squadv" hidden>
+    <div class="seg squadsw" role="group" aria-label="Squad sections"><button data-v="squad" aria-pressed="true">👯 Friends &amp; battles</button><button data-v="pen" aria-pressed="false">✍️ Pass the Pen</button></div>
     <div class="squadgrid">
       <div class="scol">
         <div class="mecard" id="meCard"></div>
@@ -260,6 +265,7 @@
 
   <!-- PASS THE PEN -->
   <section id="v-pen" class="penv" hidden>
+    <div class="seg squadsw" role="group" aria-label="Squad sections"><button data-v="squad" aria-pressed="false">👯 Friends &amp; battles</button><button data-v="pen" aria-pressed="true">✍️ Pass the Pen</button></div>
     <div class="dhead">
       <div class="dtitle">
         <span class="eyebrow">Pass the Pen</span>
@@ -441,41 +447,50 @@
   <section id="v-pro" class="prov" hidden>
     <div class="prohead">
       <h2>Write Wicked, every time.</h2>
-      <p>The meter is free forever. Wingman Pro gives you unlimited writing help, full rewrites, and a private studio for songs you're not ready to show the Wall.</p>
+      <p>Weigh, Wash, Wordstorm, the Workshop, the Daily W and battles are free forever. Wingman Pro takes the limits off Wingman, the part that runs on AI.</p>
     </div>
     <div class="bill" role="group" aria-label="Billing period"><button id="billM" aria-pressed="true">Monthly</button><button id="billY" aria-pressed="false">Yearly, save 38%</button></div>
     <div class="plans">
       <div class="plan">
         <div class="pn">Free</div>
         <div class="price">$0</div>
-        <ul><li>Unlimited Weigh and Wack map</li><li>Post and vote on the Wall</li><li>Share cards</li><li>5 Wingman messages a day</li><li class="no">Private readings</li><li class="no">Score history</li></ul>
+        <ul><li>Unlimited Weigh, Wack map and cliché swaps</li><li>AI Wash, Wordstorm and every Workshop lesson</li><li>Daily W, the Wall, Squad and battles</li><li>Share cards and videos</li><li>5 Wingman messages a day (chat, Roast, Humanize)</li></ul>
         <button class="btn" data-plan="free">You're on Free</button>
       </div>
       <div class="plan star">
         <div class="pn">Wingman Pro <span class="badge">Most picked</span></div>
         <div class="price" id="proPrice">$7.99 <small>/ month</small></div>
-        <ul><li>Unlimited Wingman</li><li>"Make it Wicked" full rewrites</li><li>Private readings, never posted</li><li>Score history and draft-vs-draft</li><li>Clean share cards, no watermark</li><li>Early access to weekly challenges</li></ul>
+        <ul><li>Unlimited Wingman: chat, Roast, Humanize and emoji starters</li><li>Share cards and videos without the "free plan" tag</li><li>Support an indie tool built by a songwriter</li><li class="soon">🎛️ Coming to Pro: the Wackometer DAW plugin</li></ul>
         <button class="btn go" data-plan="pro">Start Wingman Pro</button>
       </div>
       <div class="plan">
         <div class="pn">Wingman Credits</div>
         <div class="price">$4.99 <small>/ 25 messages</small></div>
-        <ul><li>No subscription</li><li>Credits never expire</li><li>Same Wingman as Pro</li><li>Good for finishing one song</li><li class="no">Private readings</li></ul>
+        <ul><li>No subscription</li><li>Credits never expire</li><li>Same Wingman as Pro</li><li>Good for finishing one song</li></ul>
         <button class="btn" data-plan="credits">Buy 25 credits</button>
       </div>
-      <div class="plan">
-        <div class="pn">Wingman for Classrooms</div>
-        <div class="price">Custom</div>
-        <ul><li>Private class Wall</li><li>Teacher dashboard</li><li>Wack map as feedback tool</li><li>Seats for every student</li></ul>
-        <button class="btn" data-plan="class">Talk to us</button>
+    </div>
+    <div class="daw" id="dawBox">
+      <div class="dawart" aria-hidden="true"><span class="dch" data-ch="5"></span><span class="dknob"></span><span class="dknob"></span><span class="dmeter"><i></i></span></div>
+      <div class="dawtext">
+        <span class="eyebrow">Coming to Wingman Pro</span>
+        <h3>Wackometer in your DAW</h3>
+        <p>A plugin for FL Studio, Ableton Live and Logic Pro: your lyrics pad, the meter and Wordstorm right next to the session. Wordstorm locks to your project tempo and starts when you hit play. Lyrics save inside the project.</p>
+        <form class="row" id="dawForm" autocomplete="on">
+          <input type="email" id="dawEmail" placeholder="you@email.com" aria-label="Email for the plugin waitlist" required>
+          <select id="dawPick" aria-label="Which DAW do you use?"><option value="fl">FL Studio</option><option value="ableton">Ableton Live</option><option value="logic">Logic Pro</option><option value="other">Something else</option></select>
+          <button class="btn bile" type="submit">Join the waitlist</button>
+        </form>
+        <span class="hint" id="dawNote" aria-live="polite">One email when it's ready. Pro members get it first.</span>
       </div>
     </div>
     <div class="demo" id="demoNote">Payments run through Stripe. Cancel anytime from Manage billing.</div>
     <div class="faq">
-      <div><b>Why is the meter free?</b><p>Scoring runs right in your browser. Wingman runs on AI, which costs money per message, so that's the part Pro pays for.</p></div>
-      <div><b>Do my lyrics go public?</b><p>Only if you post them to the Wall. Pro adds private readings that never leave your account.</p></div>
+      <div><b>Why is so much free?</b><p>Weigh, Wash and Wordstorm run right in your browser and cost us nothing per use. Wingman runs on AI, which costs money per message, so that's the part Pro pays for.</p></div>
+      <div><b>Do my lyrics go public?</b><p>Only if you post them to the Wall, the Daily W or a battle. Weighing happens on your own device.</p></div>
       <div><b>Can I cancel?</b><p>Anytime. You keep Pro until the end of the period you paid for.</p></div>
       <div><b>Who owns what Wingman writes?</b><p>You do. Wingman writes original lines for your song.</p></div>
+      <div><b>Teaching songwriting?</b><p>Email <a href="mailto:hello@wackometer.com">hello@wackometer.com</a> about classroom access.</p></div>
     </div>
   </section>
 

@@ -100,10 +100,10 @@ function me(u, used, env) {
     billing: !!u.stripe_customer, checkout: !!env.STRIPE_SECRET_KEY };
 }
 const REACTIONS = ["🔥", "😭", "💀", "🤢"];
-const HUMAN_PATHS = [/^\/api\/wall$/, /^\/api\/daily$/, /^\/api\/pen$/, /^\/api\/pen\/[a-z0-9]+\/line$/, /^\/api\/login$/, /^\/api\/friends\/request$/, /^\/api\/battles$/, /^\/api\/profile$/, /^\/api\/report$/, /^\/api\/u\/[a-z0-9_.]+\/report$/];
+const HUMAN_PATHS = [/^\/api\/wall$/, /^\/api\/daily$/, /^\/api\/pen$/, /^\/api\/pen\/[a-z0-9]+\/line$/, /^\/api\/login$/, /^\/api\/friends\/request$/, /^\/api\/battles$/, /^\/api\/profile$/, /^\/api\/report$/, /^\/api\/u\/[a-z0-9_.]+\/report$/, /^\/api\/waitlist$/];
 const BLOCKED_MSG = "That includes language we don't allow on Wackometer. Try different words.";
 const PEN_MAX = 16;
-const EVENT_TYPES = ["share_card", "save_card", "save_video", "copy_caption", "copy_daily", "copy_roast", "pen_share", "pen_start", "swap_used", "emoji_starter", "best_line", "storm_start", "storm_done", "wash", "humanize", "lesson_pass", "install"];
+const EVENT_TYPES = ["share_card", "save_card", "save_video", "copy_caption", "copy_daily", "copy_roast", "pen_share", "pen_start", "swap_used", "emoji_starter", "best_line", "storm_start", "storm_done", "wash", "humanize", "lesson_pass", "install", "waitlist"];
 const cleanLine = (s) => { const t = String(s || "").replace(/\s+/g, " ").trim().slice(0, 140); return words(t).length >= 2 ? t : ""; };
 const cleanHandle = (h) => String(h || "").replace(/[^A-Za-z0-9_.\- ]/g, "").trim().slice(0, 20);
 
@@ -305,6 +305,16 @@ async function route(path, method, url, body, u, env, req, notify) {
     const ins = await DB.prepare("INSERT OR IGNORE INTO reports (reading_id,user_id,reason,created_at) VALUES (?,?,?,?)").bind(id, u.id, String(body.reason || "").slice(0, 100), now()).run();
     if (ins.meta.changes) await DB.prepare("UPDATE readings SET reports=reports+1, hidden=CASE WHEN reports+1>=3 THEN 1 ELSE hidden END WHERE id=?").bind(id).run();
     return json({ ok: true });
+  }
+
+  /* ----- DAW plugin waitlist ----- */
+  if (path === "/api/waitlist" && method === "POST") {
+    const email = String(body.email || "").trim().toLowerCase().slice(0, 200);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return bad("Enter a real email address.");
+    const daw = ["fl", "ableton", "logic", "other"].includes(body.daw) ? body.daw : "other";
+    await DB.prepare("INSERT INTO waitlist (email,daw,user_id,created_at) VALUES (?,?,?,?) ON CONFLICT(email) DO UPDATE SET daw=excluded.daw").bind(email, daw, u.id, now()).run();
+    const n = (await DB.prepare("SELECT COUNT(*) c FROM waitlist").first()).c;
+    return json({ ok: true, position: n });
   }
 
   /* ----- Wingman + Roast ----- */
@@ -544,7 +554,9 @@ async function route(path, method, url, body, u, env, req, notify) {
       const { results: events } = await DB.prepare("SELECT day, type, count FROM events ORDER BY day DESC LIMIT 200").all();
       const { results: flagged } = await DB.prepare("SELECT id, title, excerpt, score, tier, reports, hidden, created_at FROM readings WHERE reports>0 OR hidden=1 ORDER BY hidden DESC, reports DESC, created_at DESC LIMIT 100").all();
       const { results: profiles } = await DB.prepare(`SELECT us.username, us.display_name, us.bio, COUNT(*) reports, GROUP_CONCAT(pr.reason, ' · ') reasons FROM profile_reports pr JOIN users us ON us.id=pr.target GROUP BY pr.target ORDER BY reports DESC LIMIT 50`).all();
-      return json({ stats, events, flagged, profiles });
+      const { results: wl } = await DB.prepare("SELECT daw, COUNT(*) c FROM waitlist GROUP BY daw").all();
+      const { results: wlRecent } = await DB.prepare("SELECT email, daw, created_at FROM waitlist ORDER BY created_at DESC LIMIT 25").all();
+      return json({ stats, events, flagged, profiles, waitlist: { byDaw: wl, recent: wlRecent } });
     }
     if (path === "/api/admin/cleanup" && method === "POST") {
       // Removes visitor records that never did anything (no posts, votes, Daily W, songs, Wingman, sign-in, profile or payments).

@@ -186,3 +186,11 @@ CREATE TABLE IF NOT EXISTS notify_log (
   k   TEXT PRIMARY KEY,
   at  INTEGER NOT NULL
 );
+
+-- DAW plugin waitlist (Pro perk, not built yet)
+CREATE TABLE IF NOT EXISTS waitlist (
+  email      TEXT PRIMARY KEY,
+  daw        TEXT,
+  user_id    TEXT,
+  created_at INTEGER NOT NULL
+);

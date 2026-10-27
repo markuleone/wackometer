@@ -44,7 +44,7 @@ nav button[aria-selected="true"],nav button[aria-pressed="true"],#mainNav button
 .ubtn.ic{padding:4px 9px;font-size:15px}
 .ubtn.pro{color:var(--bile-ink);border-color:var(--bile)}
 .ubtn.pro[aria-current="page"]{background:var(--bile);color:#1D2013}
-@media (max-width:980px){header.top{flex-wrap:wrap;row-gap:8px}.logo{font-size:23px}.util{margin-left:auto}#mainNav{order:3;flex-basis:100%}}
+
 .skip{position:absolute;left:-9999px;top:8px;z-index:100;background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:999px}
 .skip:focus{left:16px}
 main{display:flex;flex-direction:column;gap:22px;outline:none}
@@ -196,7 +196,6 @@ nav{border:2px solid var(--line);box-shadow:0 3px 0 var(--line)}
 nav button{font-family:var(--display);font-weight:600;font-size:15px}
 #mainNav{box-shadow:none}
 #mainNav button{font-size:14.5px;padding:6px 9px}
-@media (max-width:1400px) and (min-width:981px){#mainNav button{padding:6px 9px}#mainNav .ni{display:none}}
 .btn{font-family:var(--display);font-weight:600;font-size:15px;border:2px solid var(--ink);box-shadow:0 3px 0 var(--ink);transition:transform .12s,box-shadow .12s;background:var(--surface)}
 .btn:hover{transform:translateY(-1px);box-shadow:0 4px 0 var(--ink);border-color:var(--ink)}
 .btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}
@@ -706,3 +705,34 @@ a.rchip:hover{border-color:var(--ink)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .chip{color:var(--t3)}}
 
 @media (max-width:480px){.logo{font-size:21px}.util{gap:4px}.ubtn{padding:3px 9px}.ubtn.ic{padding:3px 7px}#soundBtn{display:none}.toolhead{flex-wrap:nowrap;align-items:flex-start}.toolhead .hc{width:44px;height:44px}.toolhead h2{font-size:24px}.hero h1{font-size:36px}}
+
+/* three-group nav: Write / Train / Play, then the tools in that group */
+#groupNav{display:flex;gap:2px;background:var(--surface);border:2px solid var(--line);border-radius:999px;padding:3px;flex:none}
+#groupNav button{border:0;background:none;padding:6px 14px;border-radius:999px;font-family:var(--display);font-weight:700;font-size:15px;color:var(--muted);cursor:pointer;white-space:nowrap}
+#groupNav button:hover{color:var(--ink)}
+#groupNav button[aria-current="true"]{background:var(--ink);color:var(--bg)}
+#mainNav{background:none;border:0;padding:0;gap:6px}
+#mainNav[data-group="write"] button:not([data-g="write"]),#mainNav[data-group="train"] button:not([data-g="train"]),#mainNav[data-group="play"] button:not([data-g="play"]){display:none}
+#mainNav button{border:2px solid transparent;border-radius:999px;background:none;color:var(--muted)}
+#mainNav button:hover{color:var(--ink);border-color:var(--line)}
+#mainNav button[aria-current="page"]{background:var(--bile-wash);color:var(--ink);border-color:var(--bile)}
+.squadsw{align-self:flex-start;margin-bottom:4px}
+.squadsw button{font-size:14px;padding:6px 14px}
+@media (max-width:980px){header.top{flex-wrap:wrap;row-gap:8px}.logo{font-size:23px}.util{margin-left:auto}
+  #groupNav{order:3;flex-basis:100%}#groupNav button{flex:1}
+  #mainNav{order:4;flex-basis:100%;justify-content:center}}
+
+/* Pro: plugin waitlist */
+.plan li.soon{color:var(--bile-ink);font-weight:600}
+.plans{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.daw{display:grid;grid-template-columns:200px minmax(0,1fr);gap:22px;align-items:center;background:#1F2340;color:#F2F3FF;border-radius:28px;padding:22px;border:2px solid var(--line)}
+@media (max-width:640px){.daw{grid-template-columns:1fr}.dawart{display:none!important}}
+.daw h3{margin:2px 0 6px;font-size:26px;color:#fff}.daw p{margin:0 0 12px;color:#C9CCE6}.daw .eyebrow{color:#BCD83C}.daw .hint{color:#A4A8CC}
+.daw input[type=email]{flex:1;min-width:200px;background:#2A2E52;border:2px solid #3A3F6B;color:#fff;border-radius:999px;padding:9px 14px}
+.daw select{background:#2A2E52;border-color:#3A3F6B;color:#fff}
+.dawart{display:grid;grid-template-columns:1fr 1fr;gap:10px;background:#2A2E52;border-radius:20px;padding:14px;align-items:center;justify-items:center}
+.dawart .dch{grid-column:1/-1;width:90px;height:90px}
+.dknob{width:38px;height:38px;border-radius:50%;background:conic-gradient(#BCD83C 0 70%,#3A3F6B 70%);box-shadow:inset 0 0 0 7px #2A2E52}
+.dmeter{grid-column:1/-1;width:100%;height:10px;border-radius:999px;background:linear-gradient(90deg,#3D8BFF,#22C29B,#A9A2DA,#FF8A3D,#A8C42E);position:relative}
+.dmeter i{position:absolute;top:-4px;left:72%;width:5px;height:18px;border-radius:3px;background:#fff}
+.faq a{color:var(--bile-ink)}

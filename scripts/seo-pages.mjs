@@ -4,7 +4,8 @@
 //   /syllable-counter   a live syllable counter for lyrics
 // Each page is tiny, plain HTML with the shared stylesheet, so they load instantly and index well.
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { CLICHES, SWAPS } from "../web/js/score.js";
+import { CLICHES } from "../web/js/score.js";
+import { SWAPS } from "../web/js/swaps.js";
 
 const BASE = "https://wackometer.com";
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
