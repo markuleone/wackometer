@@ -29,7 +29,7 @@ You need Node 18+ and a Cloudflare account.
    npx wrangler login
    ```
 
-2. **Create the database** and paste the `database_id` it prints into `wrangler.toml`:
+2. **Database.** Already created (`wackometer`, id in `wrangler.toml`). The worker creates its tables on first request. To make a new one instead:
    ```
    npx wrangler d1 create wackometer
    npm run db:remote

@@ -1,5 +1,6 @@
 // Wackometer API — Cloudflare Worker.
 // Everything under /api/* lands here; Cloudflare serves the front end from /public.
+import { SCHEMA } from "./schema.js";
 import { analyze, tierOf, clamp, MID, TIERS, METRICS, words, dailyKey, dailyPrompt } from "../public/js/score.js";
 
 const json = (data, status = 200, headers = {}) =>
@@ -8,6 +9,13 @@ const bad = (msg, status = 400) => json({ error: msg }, status);
 const now = () => Date.now();
 const rid = () => crypto.randomUUID().replace(/-/g, "").slice(0, 16);
 const enc = new TextEncoder();
+
+/* ---------------- database setup ---------------- */
+let schemaReady = null;
+function ensureSchema(env) {
+  if (!schemaReady) schemaReady = env.DB.batch(SCHEMA.map((s) => env.DB.prepare(s))).catch((e) => { schemaReady = null; throw e; });
+  return schemaReady;
+}
 
 /* ---------------- sessions: anonymous account in a signed cookie ---------------- */
 async function hmac(secret, data) {
@@ -105,12 +113,12 @@ export default {
     const method = req.method;
 
     // Stripe calls this directly; no session cookie.
-    if (path === "/api/stripe/webhook" && method === "POST") return stripeWebhook(req, env);
+    if (path === "/api/stripe/webhook" && method === "POST") { await ensureSchema(env); return stripeWebhook(req, env); }
     if (!path.startsWith("/api/")) return env.ASSETS.fetch(req);
     if (method !== "GET" && req.headers.get("origin") && new URL(req.headers.get("origin")).host !== url.host) return bad("Wrong origin", 403);
 
     let s;
-    try { s = await session(req, env); } catch (e) { return bad("Database isn't set up yet. Run the schema (see README).", 500); }
+    try { await ensureSchema(env); s = await session(req, env); } catch (e) { return bad("Database isn't set up yet. Run the schema (see README).", 500); }
     const u = s.user;
     const body = method === "POST" ? await req.json().catch(() => ({})) : {};
     let res;

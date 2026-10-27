@@ -12,11 +12,10 @@ run_worker_first = ["/api/*"]
 [[d1_databases]]
 binding = "DB"
 database_name = "wackometer"
-# Replace with the id that `npx wrangler d1 create wackometer` prints.
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "45b8ce82-8a43-4e1f-ba85-d69c880c5ad5"
 
 [vars]
-APP_URL = "http://localhost:8787"
+APP_URL = "https://wackometer.com"
 WINGMAN_MODEL = "claude-sonnet-5-5"
 FREE_DAILY = "5"
 PRO_PRICE_MONTHLY = ""   # Stripe price id, e.g. price_123
