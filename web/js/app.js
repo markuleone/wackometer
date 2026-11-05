@@ -1,7 +1,7 @@
 // Wackometer front end: Weigh, Wingman and the app shell. Other tools load on demand.
 import { TIERS, METRICS, CLICHES, FILLER, WEIGHTLESS, tierOf, clamp, words, analyze, bestLine, lineSyllables } from "./score.js";
 import { $, esc, ls, CONTACT_EMAIL, S, A, api, isPro, copyText, CREW, QUIPS, charSVG, renderCrew, confetti, track, sfx, UNLOCK, UNLOCKS, getHist } from "./core.js";
-import { lazy } from "./core.js";
+import { lazy, sourceOf } from "./core.js";
 
 // Tools load the first time they're opened, so the first visit only downloads Weigh.
 const wallM = lazy(() => import("./wall.js"));
@@ -14,7 +14,7 @@ const washM = lazy(() => import("./washui.js"));
 const lessonsM = lazy(() => import("./workshop.js"));
 const swapsM = lazy(() => import("./swaps.js"));
 const stormM = lazy(() => import("./storm.js").then((m) => m.initStorm({ ls, track, copyText })));
-let stormOn = false;
+let stormOn = false, lastShown = "weigh";
 
 /* ---------- gauge ---------- */
 const cx=160,cy=166,R=128;
@@ -120,7 +120,7 @@ const exIdx = { wack: -1, wicked: -1 };
 function nextExample(kind) { const list = kind === "wicked" ? WICKED_EX : WACK_EX; exIdx[kind] = (exIdx[kind] + 1) % list.length; return list[exIdx[kind]]; }
 let padIsExample = false;
 function loadExample(kind, scroll) {
-  $("lyrics").value = nextExample(kind); padIsExample = true; renderReading();
+  $("lyrics").value = nextExample(kind); padIsExample = true; renderReading(); track("weigh_example");
   if (scroll) $("meter").scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
@@ -178,6 +178,7 @@ function show(v) {
   if (v !== "storm" && stormOn) stormM().then((st) => st.onHide());
   VIEWS.forEach((x) => ($("v-" + x).hidden = x !== v)); window.scrollTo(0, 0);
   if (v !== "profile") document.title = v === "weigh" ? "Wackometer · How wack are your lyrics?" : `${TITLES[v] || "Wackometer"} · Wackometer`;
+  if (v !== lastShown) { lastShown = v; track("tool:" + v); try { window.clarity && window.clarity("set", "tool", v); } catch (e) {} }
   if (v === "storm") { stormOn = true; stormM().then((st) => st.onShow()); }
   if (v === "workshop") shopM().then((m) => m.renderWorkshop());
   if (v === "wash") washM();
@@ -197,7 +198,7 @@ $("postBtn").onclick = async () => {
   if (!$("postAttest").checked) { $("postNote").textContent = "Tick the box to confirm these are your own lyrics."; return; }
   b.disabled = true; $("postNote").textContent = "Posting…";
   try { await api("/api/wall", { body: { text: S.last.text, title: $("postTitle").value.trim(), attest: true } });
-    $("postNote").innerHTML = 'Posted. <a href="#wall">See it on the Wall</a>'; $("postTitle").value = ""; }
+    track("wall_post"); $("postNote").innerHTML = 'Posted. <a href="#wall">See it on the Wall</a>'; $("postTitle").value = ""; }
   catch (e) { $("postNote").textContent = e.message; b.disabled = false; }
 };
 
@@ -208,7 +209,7 @@ $("roastBtn").onclick = async () => {
   const box = $("roast"); box.hidden = false; $("roastText").textContent = "Wretch is reading… 🤢";
   $("roastChar").innerHTML = charSVG(4); box.scrollIntoView({ behavior: "smooth", block: "nearest" });
   sfx("gag");
-  try { const r = await api("/api/wingman", { body: { mode: "roast", pad: $("lyrics").value } }); $("roastText").textContent = r.text; S.ME = r.me; renderQuota(); }
+  track("roast"); try { const r = await api("/api/wingman", { body: { mode: "roast", pad: $("lyrics").value } }); $("roastText").textContent = r.text; S.ME = r.me; renderQuota(); }
   catch (e) { $("roastText").textContent = e.status === 402 ? e.message : e.message || "Wretch couldn't keep it down. Try again."; if (e.status === 402) addProLink($("roastText")); }
 };
 $("copyRoast").onclick = () => track("copy_roast") || copyText($("roastText").textContent + "\n\nRoasted by Wretch on the Wackometer", $("copyRoast"), "Copy roast");
@@ -227,7 +228,7 @@ async function ask(q) {
   q = q.trim(); if (!q || busy) return; busy = true; $("sendBtn").disabled = true;
   bubble("me", q); const out = bubble("wm", "Thinking…");
   try {
-    const r = await api("/api/wingman", { body: { mode: "chat", message: q, pad: $("lyrics").value.trim(), history: history_.slice(-10) } });
+    track("wingman_msg"); const r = await api("/api/wingman", { body: { mode: "chat", message: q, pad: $("lyrics").value.trim(), history: history_.slice(-10) } });
     out._t.textContent = r.text; history_.push({ role: "user", content: q }, { role: "assistant", content: r.text }); S.ME = r.me; renderQuota();
   } catch (e) { out._t.textContent = e.message; if (e.status === 402) addProLink(out._t); }
   busy = false; $("sendBtn").disabled = false; $("log").scrollTop = $("log").scrollHeight;
@@ -428,7 +429,7 @@ $("acctBtn").onclick = openLogin; $("loginX").onclick = closeLogin; $("loginX2")
 $("loginModal").addEventListener("click", (e) => { if (e.target.id === "loginModal") closeLogin(); });
 $("loginGo").onclick = async () => {
   const b = $("loginGo"); b.disabled = true; $("loginNote").textContent = "Sending…";
-  try { await api("/api/login", { body: { email: $("loginEmail").value, age13: $("loginAge").checked } }); $("loginNote").textContent = "Check your email for the sign-in link. It works for 20 minutes."; }
+  try { await api("/api/login", { body: { email: $("loginEmail").value, age13: $("loginAge").checked } }); $("loginNote").textContent = "Check your email for the sign-in link. It works for 20 minutes."; track("signup_sent"); }
   catch (e) { $("loginNote").textContent = e.message; }
   b.disabled = false;
 };
@@ -437,7 +438,7 @@ $("logoutBtn").onclick = async () => { await api("/api/logout", { body: {} }).ca
 
 /* ---------- wiring ---------- */
 // On phones the meter sits below the pad, so bring it into view after weighing.
-$("weighBtn").onclick = () => { renderReading(); if (S.last && innerWidth < 820) $("meter").scrollIntoView({ behavior: "smooth", block: "start" }); };
+$("weighBtn").onclick = () => { renderReading(); if (S.last) track(padIsExample ? "weigh_example" : "weigh"); if (S.last && innerWidth < 820) $("meter").scrollIntoView({ behavior: "smooth", block: "start" }); };
 $("wipeBtn").onclick = wipe;
 document.querySelectorAll("[data-ex]").forEach((b) => (b.onclick = () => loadExample(b.dataset.ex)));
 $("lyrics").addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") renderReading(); });
@@ -532,6 +533,15 @@ if ("serviceWorker" in navigator && location.hostname !== "localhost") window.ad
 { const d = ls("wk-draft"); if (d && d.trim()) { $("draftBack").hidden = false; $("draftBtn").onclick = () => { $("lyrics").value = d; $("draftBack").hidden = true; renderReading(); }; } }
 loadTune();
 loadMe();
+// Count the visit once per tab session: a view, where it landed, and where it came from.
+try {
+  if (!sessionStorage.getItem("wk-v")) {
+    sessionStorage.setItem("wk-v", "1"); const src = sourceOf();
+    track("view"); if (src) track("src:" + src);
+    const pth = location.pathname; track("land:" + (pth.startsWith("/u/") ? "profile" : pth.startsWith("/pen/") ? "pen" : "home"));
+    if (window.clarity && src) window.clarity("set", "source", src);
+  }
+} catch (e) {}
 {
   const h = location.hash.slice(1), path = location.pathname.replace(/\/+$/, "") || "/";
   if (path.startsWith("/pen/")) show("pen");

@@ -65,7 +65,7 @@ $("dSubmit").onclick = async () => {
   b.disabled = true; note.textContent = "Weighing…";
   try {
     const lines = $("dLines").value;
-    const r = await api("/api/daily", { body: { lines, attest: true, handle: $("dHandle").value.trim() } });
+    const r = await api("/api/daily", { body: { lines, attest: true, handle: $("dHandle").value.trim() } }); track("daily_submit");
     note.textContent = ""; await loadDaily();
     if (r.tier === 0) { /* party */ }
   } catch (e) { note.textContent = e.message; b.disabled = false; }

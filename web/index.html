@@ -23,6 +23,7 @@
 <link rel="stylesheet" href="/css/site.css">
 <script>try{var t=localStorage.getItem("wk-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<script>(function(c,l,a,r,i,t,y){if(navigator.webdriver||/bot|crawl|spider|slurp|headless|lighthouse/i.test(navigator.userAgent))return;c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y)})(window,document,"clarity","script","z8yr2p57ys");</script>
 </head>
 <body>
 
@@ -67,7 +68,7 @@
       </div>
       <div class="crew" id="crew" aria-label="The Wackometer crew"></div>
     </div>
-    <div class="pad">
+    <div class="pad" data-clarity-mask="True">
       <label for="lyrics">Your words</label>
       <textarea id="lyrics" spellcheck="false" placeholder="Paste a verse, a hook, a poem…"></textarea>
       <div class="buddy" id="buddy" hidden><span class="bch" id="buddyChar"></span><span class="btxt" id="buddyText"></span></div>
@@ -85,7 +86,7 @@
       </div>
     </div>
 
-    <div class="reading">
+    <div class="reading" data-clarity-mask="True">
       <div class="meter" id="meter">
         <svg viewBox="0 0 320 186" role="img" aria-labelledby="gTitle">
           <title id="gTitle">Wack gauge</title>
@@ -153,7 +154,7 @@
       </div>
     </div>
     <div class="dgrid">
-      <div class="dleft">
+      <div class="dleft" data-clarity-mask="True">
         <div class="dcompose" id="dCompose">
           <label for="dLines" class="hint">Your lines (4 is the sweet spot, 8 max)</label>
           <textarea id="dLines" maxlength="600" placeholder="Write it here. Make the crew proud."></textarea>
@@ -232,7 +233,7 @@
         <div class="panel">
           <h3>⚔️ Battles</h3>
           <p class="hint">Challenge a friend. You both get the same random prompt and write blind. Lowest wack score takes the W.</p>
-          <div class="battle" id="battleView" hidden></div>
+          <div class="battle" id="battleView" hidden data-clarity-mask="True"></div>
           <div class="frlist" id="bList"></div>
         </div>
       </div>
@@ -275,7 +276,7 @@
       <div class="penchars" id="penChars"></div>
     </div>
     <div class="dgrid">
-      <div class="dleft">
+      <div class="dleft" data-clarity-mask="True">
         <div class="dcompose" id="penNew">
           <label for="penTitle" class="hint">Song title (optional)</label>
           <input type="text" id="penTitle" maxlength="60" placeholder="Untitled banger">
@@ -338,7 +339,7 @@
 
   <!-- WINGMAN -->
   <section id="v-wingman" class="wing" hidden>
-    <div class="chat">
+    <div class="chat" data-clarity-mask="True">
       <div class="log" id="log" aria-live="polite" aria-label="Conversation with Wingman">
         <div class="msg wm"><span class="who"><span data-wing></span>WINGMAN</span>What's good. I'm Wingman. Bring me a verse, a vibe, or a blank page and we'll write something nobody can call wack. Whatever's in the Weigh pad, I can see it.</div>
       </div>
@@ -369,8 +370,8 @@
   <!-- WASH: de-AI -->
   <section id="v-wash" class="washv" hidden>
     <div class="toolhead"><span class="hc" data-ch="2"></span><div><h2>🫧 AI Wash</h2><p class="tag">Sounds like a robot wrote it? Paste lyrics or a poem. Wash circles the AI tells, explains each one, and helps you put yourself back in.</p></div></div>
-    <div class="washgrid">
-      <div class="pad">
+    <div class="washgrid" data-clarity-mask="True">
+      <div class="pad" data-clarity-mask="True">
         <label for="washIn">Lines to wash</label>
         <textarea id="washIn" spellcheck="false" placeholder="Paste the lines that feel a little too… generated."></textarea>
         <div class="row"><button class="btn go" id="washBtn">Wash it</button><button class="btn bile" id="washHuman">✨ Humanize with Wingman</button><button class="btn" id="washToWeigh">Weigh it</button><button class="btn" id="washWipe">Wipe</button></div>
@@ -420,7 +421,7 @@
       <div class="rank" id="wsRank"></div></div>
     <div class="shopgrid">
       <div class="lessons" id="wsList"></div>
-      <div class="panel lesson" id="wsLesson"></div>
+      <div class="panel lesson" id="wsLesson" data-clarity-mask="True"></div>
     </div>
     <div class="panel"><h3>Your progress</h3><div id="wsHist"></div><p class="hint">Every time you weigh your own lyrics, the score lands here. <a href="/#why">How the meter scores</a></p></div>
   </section>

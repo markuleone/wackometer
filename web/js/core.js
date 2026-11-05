@@ -96,7 +96,23 @@ export function confetti(){
 }
 
 /* ---------- analytics ---------- */
-export function track(type) { try { fetch("/api/event", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ type }), keepalive: true }); } catch (e) {} }
+// First-party counters (stored per day, never tied to a person) + the same event in Microsoft Clarity.
+export const IS_BOT = navigator.webdriver || /bot|crawl|spider|slurp|headless|lighthouse|preview/i.test(navigator.userAgent);
+export function track(type) {
+  if (IS_BOT) return;
+  try { fetch("/api/event", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ type }), keepalive: true }); } catch (e) {}
+  try { window.clarity && window.clarity("event", type); } catch (e) {}
+}
+// Where a visit came from: utm_source wins, otherwise the referring site, otherwise "direct".
+const SOURCE_MAP = [["google", "google"], ["bing", "bing"], ["duckduckgo", "duckduckgo"], ["yahoo", "yahoo"], ["instagram", "instagram"], ["ig", "instagram"], ["tiktok", "tiktok"], ["tt", "tiktok"], ["facebook", "facebook"], ["fb", "facebook"], ["t.co", "x"], ["twitter", "x"], ["x.com", "x"], ["reddit", "reddit"], ["youtube", "youtube"], ["youtu.be", "youtube"], ["discord", "discord"], ["linkedin", "linkedin"], ["pinterest", "pinterest"], ["snapchat", "snapchat"], ["threads", "threads"], ["whatsapp", "whatsapp"], ["chatgpt", "chatgpt"], ["openai", "chatgpt"], ["perplexity", "perplexity"], ["email", "email"], ["newsletter", "email"], ["mail", "email"]];
+export function sourceOf() {
+  const utm = (new URLSearchParams(location.search).get("utm_source") || "").toLowerCase();
+  let host = ""; try { host = document.referrer ? new URL(document.referrer).hostname.replace(/^www\./, "") : ""; } catch (e) {}
+  if (!utm && host.includes("wackometer")) return null; // moving around inside the site
+  const key = utm || host; if (!key) return "direct";
+  const hit = SOURCE_MAP.find(([k]) => (utm ? key === k || key.startsWith(k) : key.includes(k)));
+  return hit ? hit[1] : "other";
+}
 
 /* ---------- sound ---------- */
 let soundOn = ls("wk-sound") === "1", actx = null;

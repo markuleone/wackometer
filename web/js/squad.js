@@ -95,7 +95,7 @@ function friendButton(p, noteEl) {
     b.disabled = true;
     try {
       if (p.relation === "incoming") { await api("/api/friends/respond", { body: { username: p.username, accept: true } }); set("friends"); sfx("sparkle"); }
-      else { const r = await api("/api/friends/request", { body: { username: p.username } }); set(r.status === "friends" ? "friends" : "requested"); sfx("pop"); }
+      else { const r = await api("/api/friends/request", { body: { username: p.username } }); track("friend_add"); set(r.status === "friends" ? "friends" : "requested"); sfx("pop"); }
       if (!$("v-squad").hidden) loadSquad();
     } catch (err) {
       b.disabled = false; noteEl.textContent = err.message;
@@ -171,7 +171,7 @@ async function loadBattles() {
   } catch (e) { el.innerHTML = `<p class="hint">${esc(e.message)}</p>`; }
 }
 export async function startBattle(username) {
-  try { const r = await api("/api/battles", { body: { username } }); battleOpen = r.id; sfx("sparkle"); await loadBattles(); $("battleView").scrollIntoView({ behavior: "smooth", block: "center" }); }
+  try { const r = await api("/api/battles", { body: { username } }); track("battle_start"); battleOpen = r.id; sfx("sparkle"); await loadBattles(); $("battleView").scrollIntoView({ behavior: "smooth", block: "center" }); }
   catch (e) { $("fNote").textContent = e.message; }
 }
 function openBattle(b, quiet) {

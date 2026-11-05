@@ -104,6 +104,9 @@ const HUMAN_PATHS = [/^\/api\/wall$/, /^\/api\/daily$/, /^\/api\/pen$/, /^\/api\
 const BLOCKED_MSG = "That includes language we don't allow on Wackometer. Try different words.";
 const PEN_MAX = 16;
 const EVENT_TYPES = ["share_card", "save_card", "save_video", "copy_caption", "copy_daily", "copy_roast", "pen_share", "pen_start", "swap_used", "emoji_starter", "best_line", "storm_start", "storm_done", "wash", "humanize", "lesson_pass", "install", "waitlist"];
+EVENT_TYPES.push("view", "weigh", "weigh_example", "signup_sent", "wall_post", "roast", "wingman_msg", "daily_submit", "battle_start", "friend_add");
+// Prefixed counters: where visits come from, which page they land on, which tools get opened. Fixed lists only.
+const EVENT_PREFIXED = /^(src:(google|bing|duckduckgo|yahoo|instagram|tiktok|facebook|x|reddit|youtube|discord|linkedin|pinterest|snapchat|threads|whatsapp|chatgpt|perplexity|email|direct|other)|land:(home|profile|pen|rhymes|cliches|syllables)|tool:(weigh|wash|storm|workshop|daily|pen|squad|wall|wingman|why|pro|lost|profile))$/;
 const cleanLine = (s) => { const t = String(s || "").replace(/\s+/g, " ").trim().slice(0, 140); return words(t).length >= 2 ? t : ""; };
 const cleanHandle = (h) => String(h || "").replace(/[^A-Za-z0-9_.\- ]/g, "").trim().slice(0, 20);
 
@@ -529,7 +532,7 @@ async function route(path, method, url, body, u, env, req, notify) {
   /* ----- Analytics ----- */
   if (path === "/api/event" && method === "POST") {
     const type = String(body.type || "");
-    if (!EVENT_TYPES.includes(type)) return bad("Unknown event.");
+    if (!EVENT_TYPES.includes(type) && !EVENT_PREFIXED.test(type)) return bad("Unknown event.");
     await DB.prepare("INSERT INTO events (day,type,count) VALUES (?,?,1) ON CONFLICT(day,type) DO UPDATE SET count=count+1").bind(dailyKey(), type).run();
     return json({ ok: true });
   }
@@ -551,12 +554,14 @@ async function route(path, method, url, body, u, env, req, notify) {
         dailyToday: await c("SELECT COUNT(*) c FROM daily_entries WHERE day=?", day), pens: await c("SELECT COUNT(*) c FROM pens"),
         penLines: await c("SELECT COUNT(*) c FROM pen_lines"), wingmanToday: (await DB.prepare("SELECT COALESCE(SUM(wingman),0) c FROM usage WHERE day=?").bind(day).first()).c,
       };
-      const { results: events } = await DB.prepare("SELECT day, type, count FROM events ORDER BY day DESC LIMIT 200").all();
+      const { results: events } = await DB.prepare("SELECT day, type, count FROM events ORDER BY day DESC LIMIT 400").all();
+      const since = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+      const { results: totals30 } = await DB.prepare("SELECT type, SUM(count) c FROM events WHERE day >= ? GROUP BY type ORDER BY c DESC").bind(since).all();
       const { results: flagged } = await DB.prepare("SELECT id, title, excerpt, score, tier, reports, hidden, created_at FROM readings WHERE reports>0 OR hidden=1 ORDER BY hidden DESC, reports DESC, created_at DESC LIMIT 100").all();
       const { results: profiles } = await DB.prepare(`SELECT us.username, us.display_name, us.bio, COUNT(*) reports, GROUP_CONCAT(pr.reason, ' · ') reasons FROM profile_reports pr JOIN users us ON us.id=pr.target GROUP BY pr.target ORDER BY reports DESC LIMIT 50`).all();
       const { results: wl } = await DB.prepare("SELECT daw, COUNT(*) c FROM waitlist GROUP BY daw").all();
       const { results: wlRecent } = await DB.prepare("SELECT email, daw, created_at FROM waitlist ORDER BY created_at DESC LIMIT 25").all();
-      return json({ stats, events, flagged, profiles, waitlist: { byDaw: wl, recent: wlRecent } });
+      return json({ stats, events, totals30, flagged, profiles, waitlist: { byDaw: wl, recent: wlRecent } });
     }
     if (path === "/api/admin/cleanup" && method === "POST") {
       // Removes visitor records that never did anything (no posts, votes, Daily W, songs, Wingman, sign-in, profile or payments).
