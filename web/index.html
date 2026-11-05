@@ -34,23 +34,17 @@
     <a class="logo" href="/" aria-label="Wackometer home"><span class="w">W</span>ackometer</a>
     <nav id="groupNav" aria-label="Sections">
       <button data-g="write" aria-current="true"><span class="ni" aria-hidden="true">✍️</span> Write</button>
-      <button data-g="train"><span class="ni" aria-hidden="true">🏋️</span> Train</button>
-      <button data-g="play"><span class="ni" aria-hidden="true">🎮</span> Play</button>
+      <button data-g="practice"><span class="ni" aria-hidden="true">🏋️</span> Practice</button>
     </nav>
     <nav id="mainNav" aria-label="Tools" data-group="write">
       <button data-v="weigh" data-g="write" aria-current="page">⚖️ Weigh</button>
-      <button data-v="wash" data-g="write">🫧 Wash</button>
       <button data-v="wingman" data-g="write">🪽 Wingman</button>
-      <button data-v="workshop" data-g="train">🏋️ Workshop</button>
-      <button data-v="storm" data-g="train">🎤 Wordstorm</button>
-      <button data-v="daily" data-g="play">📅 Daily W</button>
-      <button data-v="wall" data-g="play">🧱 Wall</button>
-      <button data-v="squad" data-g="play">👯 Squad</button>
+      <button data-v="community" data-g="write">🌍 Community</button>
+      <button data-v="workshop" data-g="practice">🏋️ Workshop</button>
+      <button data-v="storm" data-g="practice">🎤 Wordstorm</button>
     </nav>
     <div class="util">
-      <button class="ubtn ic" id="findBtn" aria-label="Find friends" title="Find friends (Ctrl K)">🔍</button>
       <button class="ubtn ic" id="themeBtn" aria-label="Theme: auto" title="Light or dark mode">🖥️</button>
-      <button class="ubtn ic" id="soundBtn" aria-pressed="false" aria-label="Sound effects" title="Sound effects">🔈</button>
       <button class="ubtn pro" id="proBtn" data-v="pro" title="Wingman Pro">W+</button>
       <button class="ubtn" id="acctBtn" aria-label="Sign in"><span aria-hidden="true">👤</span><span class="albl"> Sign in</span></button>
       <button class="ubtn ic" id="installBtn" hidden aria-label="Install the app" title="Install the app">📲</button>
@@ -75,8 +69,8 @@
       <div class="row">
         <button class="btn go" id="weighBtn">Weigh it</button>
         <button class="btn" id="wipeBtn">Wipe</button>
-        <button class="btn" id="toWing">Wingman, fix it</button>
-        <button class="btn" id="roastBtn">🤢 Roast me</button>
+        <button class="btn" id="toWing" data-ai>Wingman, fix it</button>
+        <button class="btn" id="roastBtn" data-ai>🤢 Roast me</button>
       </div>
       <div class="ex">Try one: <button data-ex="wack">🤢 a wack one</button> · <button data-ex="wicked">✨ a wicked one</button><span id="draftBack" hidden> · <button id="draftBtn">↩ bring back my last draft</button></span></div>
       <div class="map" id="map" hidden>
@@ -115,6 +109,13 @@
         <div class="cch" id="coachChar"></div>
         <div><b>📋 Coach's note</b><p id="coachText"></p><div class="row"><button class="btn bile" id="coachGo">Train it in the Workshop</button></div></div>
       </div>
+      <div class="robo" id="robot" hidden aria-live="polite">
+        <div class="robohead"><span class="rch" id="robotChar"></span><div><b class="robt">🤖 Robot check</b><div class="rverd"><span id="robotScore">–</span> · <span id="robotVerdict"></span></div></div></div>
+        <div class="rbar"><i id="robotBar"></i></div><div class="rscale"><span>All you</span><span>Half bot</span><span>Full robot</span></div>
+        <div id="robotTells"></div>
+        <div class="row"><button class="btn bile" id="humanizeBtn" data-ai>✨ Humanize with Wingman</button></div>
+        <div class="roast" id="humanBox" hidden><div class="rchar" data-wing></div><div class="rtext"><b>Wingman's human pass</b><p id="humanText"></p><div class="row"><button class="btn" id="humanUse">Use this version</button></div></div></div>
+      </div>
       <div class="metrics" id="metrics"></div>
       <div class="post" id="post" hidden>
         <p><b>Let's see if we're on the same wavelength.</b> Post this to the Wall and the crowd votes on it. Their votes tune the meter for everyone.</p>
@@ -138,8 +139,9 @@
     </div>
   </section>
 
-  <!-- DAILY W -->
-  <section id="v-daily" class="dailyv" hidden>
+  <!-- COMMUNITY: today's prompt + the crowd feed -->
+  <section id="v-community" class="commv" hidden>
+    <div class="dailyv">
     <div class="dhead">
       <div class="dtitle">
         <span class="eyebrow" id="dNum">Daily W</span>
@@ -176,13 +178,29 @@
         <div id="dBoard" class="board"></div>
       </div>
     </div>
+  </div>
+    <div class="wallv" id="wallBox">
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="wallhead">
+        <div class="headch"><span class="hc" data-ch="1"></span><div><h2>The Wall</h2><p class="tag">Crowd verdicts. Vote what you think each one really is.</p></div></div>
+        <div class="stats">
+          <div class="stat"><div class="n" id="sWave">–</div><div class="l">Wavelength (crowd agrees with meter)</div></div>
+          <div class="stat"><div class="n" id="sTune">0</div><div class="l">Crowd tune on new scores</div></div>
+          <div class="stat"><div class="n" id="sVotes">0</div><div class="l">Votes cast</div></div>
+        </div>
+      </div>
+      <div class="row">
+        <nav style="display:inline-flex" aria-label="Wall feed"><button id="feedFresh" data-f="fresh" aria-pressed="true">Fresh</button><button id="feedFeat" data-f="featured" aria-pressed="false">Featured</button></nav>
+        <span class="hint" id="feedHint">Everything new, newest first. Posts with 5+ votes get Featured.</span>
+      </div>
+      <div class="cards" id="cards"></div>
+    </div>
+  </div>
   </section>
 
-  <!-- SQUAD -->
-  <section id="v-squad" class="squadv" hidden>
-    <div class="seg squadsw" role="group" aria-label="Squad sections"><button data-v="squad" aria-pressed="true">👯 Friends &amp; battles</button><button data-v="pen" aria-pressed="false">✍️ Pass the Pen</button></div>
-    <div class="squadgrid">
-      <div class="scol">
+  <!-- YOUR PROFILE + ACCOUNT -->
+  <section id="v-me" class="mev" hidden>
+    <div class="meone">
         <div class="mecard" id="meCard"></div>
         <form class="pedit" id="pEdit" hidden autocomplete="off">
           <h3>Edit your profile</h3>
@@ -210,33 +228,6 @@
           <label class="attest" id="pfAgeRow" hidden><input type="checkbox" id="pfAge"> I'm 13 or older</label>
           <div class="row"><button type="submit" class="btn bile" id="pfSave">Save profile</button><button type="button" class="btn" id="pfCancel">Cancel</button><span class="hint" id="pfNote"></span></div>
         </form>
-        <div class="panel">
-          <h3>Add friends</h3>
-          <div class="atfield"><span aria-hidden="true">🔍</span><input type="search" id="fSearch" maxlength="30" placeholder="Search names or @usernames" aria-label="Search for friends by name or username"></div>
-          <div class="frlist" id="fResults"></div>
-          <div class="suggest" id="fSuggestBox" hidden><span class="hint sh">People you may know</span><div class="frlist" id="fSuggest"></div></div>
-          <button type="button" class="btn" id="fInvite">📨 Invite friends to Wackometer</button>
-          <span class="hint" id="fNote"></span>
-        </div>
-        <div class="panel" id="fIncomingBox" hidden><h3>Friend requests</h3><div class="frlist" id="fIncoming"></div></div>
-        <div class="panel"><h3>Your squad <span class="hint" id="fCount"></span></h3><div class="frlist" id="fList"></div></div>
-      </div>
-      <div class="scol">
-        <div class="panel lb">
-          <div class="lbhead"><h3>🏆 Leaderboard</h3>
-            <div class="seg" id="lbScope"><button data-s="friends" aria-pressed="true">Squad</button><button data-s="global" aria-pressed="false">Everyone</button></div>
-            <div class="seg" id="lbPeriod"><button data-p="week" aria-pressed="true">This week</button><button data-p="today" aria-pressed="false">Today</button></div>
-          </div>
-          <ol class="lbrows" id="lbRows"></ol>
-          <details class="rules"><summary>How W Points work</summary><ul id="lbRules"></ul></details>
-        </div>
-        <div class="panel">
-          <h3>⚔️ Battles</h3>
-          <p class="hint">Challenge a friend. You both get the same random prompt and write blind. Lowest wack score takes the W.</p>
-          <div class="battle" id="battleView" hidden data-clarity-mask="True"></div>
-          <div class="frlist" id="bList"></div>
-        </div>
-      </div>
     </div>
   </section>
 
@@ -264,51 +255,6 @@
     </div>
   </section>
 
-  <!-- PASS THE PEN -->
-  <section id="v-pen" class="penv" hidden>
-    <div class="seg squadsw" role="group" aria-label="Squad sections"><button data-v="squad" aria-pressed="false">👯 Friends &amp; battles</button><button data-v="pen" aria-pressed="true">✍️ Pass the Pen</button></div>
-    <div class="dhead">
-      <div class="dtitle">
-        <span class="eyebrow">Pass the Pen</span>
-        <h2>Write a song one line at a time, with your friends.</h2>
-        <p class="tag">Start it with one line. Send the link to the group chat. Everyone adds the next line, but nobody goes twice in a row. Up to 16 lines.</p>
-      </div>
-      <div class="penchars" id="penChars"></div>
-    </div>
-    <div class="dgrid">
-      <div class="dleft" data-clarity-mask="True">
-        <div class="dcompose" id="penNew">
-          <label for="penTitle" class="hint">Song title (optional)</label>
-          <input type="text" id="penTitle" maxlength="60" placeholder="Untitled banger">
-          <label for="penFirst" class="hint">First line</label>
-          <input type="text" id="penFirst" maxlength="140" placeholder="The first line sets the vibe…">
-          <input type="text" id="penHandle" maxlength="20" placeholder="Your name (optional)">
-          <div class="row"><button class="btn bile" id="penStart">Start the song</button><span class="hint" id="penNote"></span></div>
-        </div>
-        <div class="pensong" id="penSong" hidden>
-          <div class="penhead"><h3 id="penSongTitle">Untitled</h3><span class="pill" id="penTier"></span></div>
-          <ol class="penlines" id="penLines"></ol>
-          <div class="penadd" id="penAdd">
-            <input type="text" id="penLine" maxlength="140" placeholder="Write the next line…">
-            <input type="text" id="penLineHandle" maxlength="20" placeholder="Your name (optional)">
-            <div class="row"><button class="btn bile" id="penAddBtn">Add my line</button><span class="hint" id="penAddNote"></span></div>
-          </div>
-          <div class="penwait" id="penWait" hidden></div>
-          <div class="row">
-            <button class="btn go" id="penShare">📨 Pass the pen</button>
-            <button class="btn" id="penWeigh">Weigh the whole song</button>
-            <button class="btn" id="penClose" hidden>Finish the song</button>
-            <button class="btn" id="penNewBtn">Start another</button>
-          </div>
-          <span class="hint" id="penShareNote"></span>
-        </div>
-      </div>
-      <div class="boards">
-        <h3 class="sideh">Your songs</h3>
-        <div id="penList" class="board"></div>
-      </div>
-    </div>
-  </section>
 
   <!-- 404 -->
   <section id="v-lost" class="lostv" hidden>
@@ -318,24 +264,6 @@
     <a class="btn bile" href="/">Take me home</a>
   </section>
 
-  <!-- WALL -->
-  <section id="v-wall" hidden>
-    <div style="display:flex;flex-direction:column;gap:16px">
-      <div class="wallhead">
-        <div class="headch"><span class="hc" data-ch="1"></span><div><h2>The Wall</h2><p class="tag">Crowd verdicts. Vote what you think each one really is.</p></div></div>
-        <div class="stats">
-          <div class="stat"><div class="n" id="sWave">–</div><div class="l">Wavelength (crowd agrees with meter)</div></div>
-          <div class="stat"><div class="n" id="sTune">0</div><div class="l">Crowd tune on new scores</div></div>
-          <div class="stat"><div class="n" id="sVotes">0</div><div class="l">Votes cast</div></div>
-        </div>
-      </div>
-      <div class="row">
-        <nav style="display:inline-flex" aria-label="Wall feed"><button id="feedFresh" data-f="fresh" aria-pressed="true">Fresh</button><button id="feedFeat" data-f="featured" aria-pressed="false">Featured</button></nav>
-        <span class="hint" id="feedHint">Everything new, newest first. Posts with 5+ votes get Featured.</span>
-      </div>
-      <div class="cards" id="cards"></div>
-    </div>
-  </section>
 
   <!-- WINGMAN -->
   <section id="v-wingman" class="wing" hidden>
@@ -343,6 +271,7 @@
       <div class="log" id="log" aria-live="polite" aria-label="Conversation with Wingman">
         <div class="msg wm"><span class="who"><span data-wing></span>WINGMAN</span>What's good. I'm Wingman. Bring me a verse, a vibe, or a blank page and we'll write something nobody can call wack. Whatever's in the Weigh pad, I can see it.</div>
       </div>
+      <div class="wlock" id="wingLock" hidden><span class="lch" data-wing></span><div><b>Wingman is part of Pro</b><p>Chat, rewrites, Roasts and Humanize run on AI, which costs money per message, so they come with Wingman Pro. Everything else on Wackometer stays free.</p><button class="btn bile" data-v="pro" id="wingLockGo">See Wingman Pro</button></div></div>
       <form class="compose" id="compose">
         <textarea id="ask" placeholder="Ask Wingman…" aria-label="Message Wingman"></textarea>
         <button class="btn go" id="sendBtn" type="submit">Send</button>
@@ -350,10 +279,6 @@
     </div>
     <aside class="panel">
       <div class="wingbig" data-wingbig></div>
-      <h3>Emoji starter</h3>
-      <p class="ctx">Pick up to 3 emojis. Wingman turns them into the first two lines of a song.</p>
-      <div class="epick" id="epick"></div>
-      <div class="row"><span class="echosen" id="echosen">_ _ _</span><button class="btn bile" id="eGo" disabled>Write my starter</button></div>
       <h3>Quick asks</h3>
       <div class="chips" id="chips">
         <button>Make my lyrics less wack</button>
@@ -367,24 +292,6 @@
     </aside>
   </section>
 
-  <!-- WASH: de-AI -->
-  <section id="v-wash" class="washv" hidden>
-    <div class="toolhead"><span class="hc" data-ch="2"></span><div><h2>🫧 AI Wash</h2><p class="tag">Sounds like a robot wrote it? Paste lyrics or a poem. Wash circles the AI tells, explains each one, and helps you put yourself back in.</p></div></div>
-    <div class="washgrid" data-clarity-mask="True">
-      <div class="pad" data-clarity-mask="True">
-        <label for="washIn">Lines to wash</label>
-        <textarea id="washIn" spellcheck="false" placeholder="Paste the lines that feel a little too… generated."></textarea>
-        <div class="row"><button class="btn go" id="washBtn">Wash it</button><button class="btn bile" id="washHuman">✨ Humanize with Wingman</button><button class="btn" id="washToWeigh">Weigh it</button><button class="btn" id="washWipe">Wipe</button></div>
-        <div class="ex">Try one: <button id="washEx">🤖 a robot-written verse</button></div>
-      </div>
-      <div class="washout" aria-live="polite">
-        <div class="robo" id="washMeter"><div class="robohead"><span class="rch" id="washChar"></span><div><div class="rscore" id="washScore">–</div><div class="rverd" id="washVerdict">Paste something and hit Wash it.</div></div></div><div class="rbar"><i id="washBar"></i></div><div class="rscale"><span>All you</span><span>Half bot</span><span>Full robot</span></div></div>
-        <div class="map" id="washMapBox" hidden><h3>Robot map</h3><div id="washMap"></div></div>
-        <div id="washTells"></div>
-        <div class="roast" id="washAIBox" hidden><div class="rchar" data-wing></div><div class="rtext"><b>Wingman's human pass</b><p id="washAI"></p><div class="row"><button class="btn" id="washUse">Use this version</button></div></div></div>
-      </div>
-    </div>
-  </section>
 
   <!-- WORDSTORM: freestyle words -->
   <section id="v-storm" class="stormv" hidden>
@@ -429,7 +336,7 @@
   <!-- WHY -->
   <section id="v-why" class="whyv" hidden>
     <h2>Why it's wack</h2>
-    <p>The meter reads six W-metrics from your words and blends them into one wack score from 0 to 100. Then the crowd on the Wall votes on posted lyrics. When the crowd keeps scoring higher or lower than the meter, that gap becomes the crowd tune and shifts every new score.</p>
+    <p>The meter reads six W-metrics from your words and blends them into one wack score from 0 to 100. Then the crowd in Community votes on posted lyrics. When the crowd keeps scoring higher or lower than the meter, that gap becomes the crowd tune and shifts every new score.</p>
     <div class="scale">
       <div class="bg-t0"><b>Wicked</b><span>0–19</span></div>
       <div class="bg-t1"><b>Well put</b><span>20–39</span></div>
@@ -448,27 +355,21 @@
   <section id="v-pro" class="prov" hidden>
     <div class="prohead">
       <h2>Write Wicked, every time.</h2>
-      <p>Weigh, Wash, Wordstorm, the Workshop, the Daily W and battles are free forever. Wingman Pro takes the limits off Wingman, the part that runs on AI.</p>
+      <p>Weigh, the robot check, Wordstorm, the Workshop and Community are free forever. Wingman Pro unlocks Wingman, the part that runs on AI.</p>
     </div>
     <div class="bill" role="group" aria-label="Billing period"><button id="billM" aria-pressed="true">Monthly</button><button id="billY" aria-pressed="false">Yearly, save 38%</button></div>
     <div class="plans">
       <div class="plan">
         <div class="pn">Free</div>
         <div class="price">$0</div>
-        <ul><li>Unlimited Weigh, Wack map and cliché swaps</li><li>AI Wash, Wordstorm and every Workshop lesson</li><li>Daily W, the Wall, Squad and battles</li><li>Share cards and videos</li><li>5 Wingman messages a day (chat, Roast, Humanize)</li></ul>
+        <ul><li>Unlimited Weigh, Wack map and cliché swaps</li><li>Robot check: spot AI-sounding lines</li><li>Wordstorm and every Workshop lesson</li><li>Daily W and the Community feed</li><li>Share cards and videos</li><li class="no">Wingman, Roast and Humanize</li></ul>
         <button class="btn" data-plan="free">You're on Free</button>
       </div>
       <div class="plan star">
         <div class="pn">Wingman Pro <span class="badge">Most picked</span></div>
         <div class="price" id="proPrice">$7.99 <small>/ month</small></div>
-        <ul><li>Unlimited Wingman: chat, Roast, Humanize and emoji starters</li><li>Share cards and videos without the "free plan" tag</li><li>Support an indie tool built by a songwriter</li><li class="soon">🎛️ Coming to Pro: the Wackometer DAW plugin</li></ul>
+        <ul><li>Wingman: rewrites, hooks, rhymes, second verses</li><li>Wretch's Roasts and the Humanize pass</li><li>Share cards and videos without the "free plan" tag</li><li>Support an indie tool built by a songwriter</li><li class="soon">🎛️ Coming to Pro: the Wackometer DAW plugin</li></ul>
         <button class="btn go" data-plan="pro">Start Wingman Pro</button>
-      </div>
-      <div class="plan">
-        <div class="pn">Wingman Credits</div>
-        <div class="price">$4.99 <small>/ 25 messages</small></div>
-        <ul><li>No subscription</li><li>Credits never expire</li><li>Same Wingman as Pro</li><li>Good for finishing one song</li></ul>
-        <button class="btn" data-plan="credits">Buy 25 credits</button>
       </div>
     </div>
     <div class="daw" id="dawBox">
@@ -487,8 +388,8 @@
     </div>
     <div class="demo" id="demoNote">Payments run through Stripe. Cancel anytime from Manage billing.</div>
     <div class="faq">
-      <div><b>Why is so much free?</b><p>Weigh, Wash and Wordstorm run right in your browser and cost us nothing per use. Wingman runs on AI, which costs money per message, so that's the part Pro pays for.</p></div>
-      <div><b>Do my lyrics go public?</b><p>Only if you post them to the Wall, the Daily W or a battle. Weighing happens on your own device.</p></div>
+      <div><b>Why is so much free?</b><p>Weigh, the robot check and Wordstorm run right in your browser and cost us nothing per use. Wingman runs on AI, which costs money per message, so that's the part Pro pays for.</p></div>
+      <div><b>Do my lyrics go public?</b><p>Only if you post them to Community or the Daily W. Weighing happens on your own device.</p></div>
       <div><b>Can I cancel?</b><p>Anytime. You keep Pro until the end of the period you paid for.</p></div>
       <div><b>Who owns what Wingman writes?</b><p>You do. Wingman writes original lines for your song.</p></div>
       <div><b>Teaching songwriting?</b><p>Email <a href="mailto:hello@wackometer.com">hello@wackometer.com</a> about classroom access.</p></div>
@@ -503,21 +404,11 @@
 <div class="swappop" id="swapPop" hidden role="dialog" aria-label="Swap this cliché">
   <div class="swaph"><span id="swapFrom"></span><button class="x" id="swapX" aria-label="Close">×</button></div>
   <div class="swapopts" id="swapOpts"></div>
-  <button class="swapmore" id="swapMore">✨ Ask Wingman for more</button>
+  <button class="swapmore" id="swapMore" data-ai>✨ Ask Wingman for more</button>
 </div>
 
 <div class="tour" id="tour" hidden role="dialog" aria-labelledby="tourH" aria-modal="true">
   <div class="tbox"><div class="tch" id="tourChar"></div><div><h3 id="tourH"></h3><p id="tourText"></p><div class="row"><button class="btn bile" id="tourNext">Next</button><button class="btn" id="tourSkip">Skip</button><span class="hint" id="tourStep"></span></div></div></div>
-</div>
-
-<div class="modal" id="findModal" hidden role="dialog" aria-labelledby="findH">
-  <div class="mbox wide">
-    <div class="findhead"><h3 id="findH">🔍 Find friends</h3><button class="x" id="findX" aria-label="Close">×</button></div>
-    <div class="atfield"><span aria-hidden="true">🔍</span><input type="search" id="findQ" maxlength="30" placeholder="Search names or @usernames" aria-label="Search for writers by name or username"></div>
-    <div class="frlist" id="findResults" aria-live="polite"></div>
-    <div class="suggest" id="findSuggestBox"><span class="hint sh">People you may know</span><div class="frlist" id="findSuggest"></div></div>
-    <div class="row"><button class="btn" id="findInvite">📨 Invite friends</button><span class="hint" id="findNote"></span></div>
-  </div>
 </div>
 
 <div class="modal" id="humanModal" hidden role="dialog" aria-labelledby="humanH">
@@ -533,12 +424,13 @@
 <div class="modal" id="loginModal" hidden role="dialog" aria-labelledby="loginH">
   <div class="mbox">
     <div class="mch" id="loginChar"></div>
-    <h3 id="loginH">Save your streak and songs</h3>
-    <p class="tag" id="loginSub">Sign in with your email and we'll send you a link. No password. Your streak, Pro and songs follow you to any device.</p>
+    <h3 id="loginH">Save your streak and lyrics</h3>
+    <p class="tag" id="loginSub">Sign in with your email and we'll send you a link. No password. Your streak, Pro and profile follow you to any device.</p>
     <div id="loginForm"><input type="email" id="loginEmail" inputmode="email" autocomplete="email" placeholder="you@email.com" aria-label="Email address">
     <label class="attest"><input type="checkbox" id="loginAge"> I'm 13 or older</label>
-    <div class="row"><button class="btn bile" id="loginGo">Email me a link</button><button class="btn" id="loginX">Not now</button></div></div>
-    <div id="loginOut" hidden><div class="row"><button class="btn" id="logoutBtn">Sign out</button><a class="btn" id="myProfileLink" href="/u/" hidden>My profile</a><a class="btn" id="adminLink" href="/admin" hidden>Admin</a><button class="btn" id="loginX2">Close</button></div></div>
+    <div class="row"><button class="btn bile" id="loginGo">Email me a link</button><button class="btn" id="loginX">Not now</button></div>
+    <button class="linkbtn" id="meNoEmail" type="button">Or set up your profile without signing in</button></div>
+    <div id="loginOut" hidden><div class="row"><button class="btn" id="logoutBtn">Sign out</button><button class="btn" id="myProfileLink" data-v="me">My profile &amp; settings</button><a class="btn" id="adminLink" href="/admin" hidden>Admin</a><button class="btn" id="loginX2">Close</button></div></div>
     <span class="hint" id="loginNote"></span>
   </div>
 </div>

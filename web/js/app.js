@@ -1,16 +1,13 @@
 // Wackometer front end: Weigh, Wingman and the app shell. Other tools load on demand.
 import { TIERS, METRICS, CLICHES, FILLER, WEIGHTLESS, tierOf, clamp, words, analyze, bestLine, lineSyllables } from "./score.js";
-import { $, esc, ls, CONTACT_EMAIL, S, A, api, isPro, copyText, CREW, QUIPS, charSVG, renderCrew, confetti, track, sfx, UNLOCK, UNLOCKS, getHist } from "./core.js";
-import { lazy, sourceOf } from "./core.js";
+import { $, esc, ls, S, A, api, copyText, CREW, QUIPS, charSVG, renderCrew, confetti, track, UNLOCK, UNLOCKS, getHist, lazy, sourceOf, canAI } from "./core.js";
 
 // Tools load the first time they're opened, so the first visit only downloads Weigh.
-const wallM = lazy(() => import("./wall.js"));
-const dailyM = lazy(() => import("./daily.js"));
-const penM = lazy(() => import("./pen.js"));
-const squadM = lazy(() => import("./squad.js"));
+const communityM = lazy(() => import("./community.js"));
+const meM = lazy(() => import("./me.js"));
 const shareM = lazy(() => import("./share.js"));
 const shopM = lazy(() => import("./shop.js"));
-const washM = lazy(() => import("./washui.js"));
+const robotM = lazy(() => import("./robot.js"));
 const lessonsM = lazy(() => import("./workshop.js"));
 const swapsM = lazy(() => import("./swaps.js"));
 const stormM = lazy(() => import("./storm.js").then((m) => m.initStorm({ ls, track, copyText })));
@@ -30,7 +27,6 @@ function pt(a,r){const t=Math.PI*(1-a/100);return [cx+r*Math.cos(t),cy-r*Math.si
 })();
 function setNeedle(v){document.getElementById("needle").style.transform=`rotate(${(v/100*180-90).toFixed(1)}deg)`}
 setNeedle(50);
-
 
 // Example verses: original lines written for the Wackometer. "Show me a wack one" cycles through them.
 const WACK_EX = [
@@ -124,8 +120,8 @@ function loadExample(kind, scroll) {
   if (scroll) $("meter").scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
-
 async function loadMe() { try { S.ME = await api("/api/me"); } catch (e) { S.ME = null; } if (S.ME && S.ME.email && !$("dawEmail").value) $("dawEmail").value = S.ME.email; renderQuota(); renderPro(); renderAccount(); applyUnlocks(); }
+
 /* ---------- Weigh ---------- */
 function renderReading() {
   const t = $("lyrics").value;
@@ -136,9 +132,9 @@ function renderReading() {
   $("score").textContent = score;
   const v = $("verdict"); v.textContent = TIERS[S.last.tier].n; v.className = `verdict bg-t${S.last.tier} t${S.last.tier}`;
   $("blurb").textContent = TIERS[S.last.tier].blurb;
-  $("tune").textContent = S.tuneN ? `Crowd-tuned ${S.crowdTune >= 0 ? "+" : ""}${S.crowdTune} from ${S.tuneN} Wall posts. Raw meter: ${Math.round(S.last.raw)}.` : "Raw meter score. The crowd tune kicks in once the Wall has enough votes.";
+  $("tune").textContent = S.tuneN ? `Crowd-tuned ${S.crowdTune >= 0 ? "+" : ""}${S.crowdTune} from ${S.tuneN} community posts. Raw meter: ${Math.round(S.last.raw)}.` : "Raw meter score. The crowd tune kicks in once Community has enough votes.";
   const m = $("meter"); m.classList.remove("wack-now", "wicked-now"); void m.offsetWidth; m.style.setProperty("--tint", `var(--t${S.last.tier})`);
-  if (S.last.tier === 4) { m.classList.add("wack-now"); sfx("gag"); } else if (S.last.tier === 0) { m.classList.add("wicked-now"); confetti(); sfx("sparkle"); } else sfx("pop");
+  if (S.last.tier === 4) m.classList.add("wack-now"); else if (S.last.tier === 0) { m.classList.add("wicked-now"); confetti(); }
   S.last.best = bestLine(t);
   if (S.last.best) { $("bestPick").hidden = false; $("bestChar").innerHTML = charSVG(0); $("bestText").textContent = "“" + S.last.best.line + "”"; }
   else $("bestPick").hidden = true;
@@ -148,49 +144,49 @@ function renderReading() {
   $("metrics").innerHTML = METRICS.map((mm) => { const val = Math.round(S.last.vals[mm.k]); const ti = tierOf(val);
     return `<div class="m"><div class="top"><b>${mm.n}</b><span class="v">${val}</span></div><div class="bar"><i class="bg-t${ti}" style="width:${Math.max(val, 2)}%"></i></div><small>${esc(S.last.notes[mm.k])}</small></div>`; }).join("");
   renderMap();
-  if (S.last.found.length && !swapsCache) swapsM().then((m) => (swapsCache = m.SWAPS)); // ready before the first tap
+  if (S.last.found.length && !swapsCache) swapsM().then((mod) => (swapsCache = mod.SWAPS)); // ready before the first tap
+  robotM().then((mod) => mod.renderRobot(t));
   renderCoach();
   if (!padIsExample) saveHistory();
   $("post").hidden = false; $("postNote").textContent = ""; $("postBtn").disabled = false;
   $("roast").hidden = true;
   updateWingCtx();
-  shareM().then((m) => m.freshCard());
+  shareM().then((mod) => mod.freshCard());
 }
 function wipe() {
   $("lyrics").value = ""; try { localStorage.removeItem("wk-draft"); } catch (e) {}
   $("map").hidden = true; $("post").hidden = true; $("roast").hidden = true; $("bestPick").hidden = true; $("metrics").innerHTML = ""; $("score").textContent = "–";
   const v = $("verdict"); v.textContent = "Waiting"; v.className = "verdict bg-t2 t2"; $("blurb").textContent = "Paste some lines and hit Weigh it."; $("tune").textContent = "";
-  setNeedle(50); S.last = null; $("share").hidden = true; $("coach").hidden = true; padIsExample = false; renderCrew(null); $("mchar").innerHTML = charSVG(5); $("quip").textContent = "The crew is ready. Paste something."; updateWingCtx(); $("lyrics").focus();
+  setNeedle(50); S.last = null; $("share").hidden = true; $("coach").hidden = true; $("robot").hidden = true; padIsExample = false;
+  renderCrew(null); $("mchar").innerHTML = charSVG(5); $("quip").textContent = "The crew is ready. Paste something."; updateWingCtx(); $("lyrics").focus();
 }
 
 /* ---------- tabs ---------- */
-// Write / Train / Play: each tool belongs to one group. Pass the Pen and profiles live under Squad.
-const GROUP = { weigh: "write", wash: "write", wingman: "write", workshop: "train", storm: "train", daily: "play", wall: "play", squad: "play", pen: "play", profile: "play" };
-const TITLES = { wash: "AI Wash", wingman: "Wingman", workshop: "Workshop", storm: "Wordstorm", daily: "Daily W", wall: "The Wall", squad: "Squad", pen: "Pass the Pen", why: "Why it's wack", pro: "Wingman Pro", lost: "Page not found" };
-const GROUP_FIRST = { write: "weigh", train: "workshop", play: "daily" };
-const VIEWS = ["weigh", "wash", "storm", "workshop", "daily", "pen", "squad", "wall", "wingman", "why", "pro", "lost", "profile"];
+// Write (Weigh, Wingman, Community) and Practice (Workshop, Wordstorm). Profiles sit under Community.
+const GROUP = { weigh: "write", wingman: "write", community: "write", profile: "write", me: "write", workshop: "practice", storm: "practice" };
+const TAB = { profile: "community", me: "community" };
+const TITLES = { wingman: "Wingman", community: "Community", workshop: "Workshop", storm: "Wordstorm", why: "Why it's wack", pro: "Wingman Pro", lost: "Page not found", me: "Your profile" };
+const GROUP_FIRST = { write: "weigh", practice: "workshop" };
+const VIEWS = ["weigh", "wingman", "community", "workshop", "storm", "why", "pro", "lost", "profile", "me"];
+// Old links (before the tools were merged) still land somewhere sensible.
+const ALIASES = { wash: "weigh", daily: "community", wall: "community", squad: "me", pen: "community", train: "workshop" };
 function show(v) {
-  const g = GROUP[v], tab = v === "pen" || v === "profile" ? "squad" : v;
-  if (g) { $("mainNav").dataset.group = g; ls("wk-g-" + g, v === "profile" ? "squad" : v); }
+  v = ALIASES[v] || v;
+  const g = GROUP[v], tab = TAB[v] || v;
+  if (g) { $("mainNav").dataset.group = g; ls("wk-g-" + g, tab); }
   document.querySelectorAll("#groupNav button").forEach((b) => (b.dataset.g === g ? b.setAttribute("aria-current", "true") : b.removeAttribute("aria-current")));
   document.querySelectorAll("#mainNav button,#proBtn").forEach((b) => (b.dataset.v === tab ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current")));
-  document.querySelectorAll(".squadsw button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.v === v));
   if (v !== "storm" && stormOn) stormM().then((st) => st.onHide());
   VIEWS.forEach((x) => ($("v-" + x).hidden = x !== v)); window.scrollTo(0, 0);
   if (v !== "profile") document.title = v === "weigh" ? "Wackometer · How wack are your lyrics?" : `${TITLES[v] || "Wackometer"} · Wackometer`;
   if (v !== lastShown) { lastShown = v; track("tool:" + v); try { window.clarity && window.clarity("set", "tool", v); } catch (e) {} }
   if (v === "storm") { stormOn = true; stormM().then((st) => st.onShow()); }
-  if (v === "workshop") shopM().then((m) => m.renderWorkshop());
-  if (v === "wash") washM();
-  if (v === "pen") { if (!location.pathname.startsWith("/pen/")) history.replaceState(null, "", "/#pen"); }
-  else if (v === "profile") { /* path is /u/<name> */ }
-  else if (v !== "lost" && (location.pathname !== "/" || location.hash !== "#" + v)) history.replaceState(null, "", "/#" + v);
-  if (v === "wall") wallM().then((m) => m.loadWall());
-  if (v === "daily") dailyM().then((m) => m.loadDaily());
+  if (v === "workshop") shopM().then((mod) => mod.renderWorkshop());
+  if (v !== "profile" && v !== "lost" && (location.pathname !== "/" || location.hash !== "#" + v)) history.replaceState(null, "", "/#" + v);
+  if (v === "community") communityM().then((mod) => mod.loadCommunity());
   if (v === "pro") loadMe();
-  if (v === "pen") penM().then((m) => m.loadPenView());
-  if (v === "squad") squadM().then((m) => m.loadSquad());
-  if (v === "profile") squadM().then((m) => m.loadProfile(location.pathname.slice(3)));
+  if (v === "me") meM().then((mod) => mod.loadMe());
+  if (v === "profile") meM().then((mod) => mod.loadProfile(location.pathname.slice(3)));
 }
 async function loadTune() { try { const t = await api("/api/tune"); S.crowdTune = t.tune; S.tuneN = t.n; } catch (e) {} }
 $("postBtn").onclick = async () => {
@@ -198,19 +194,28 @@ $("postBtn").onclick = async () => {
   if (!$("postAttest").checked) { $("postNote").textContent = "Tick the box to confirm these are your own lyrics."; return; }
   b.disabled = true; $("postNote").textContent = "Posting…";
   try { await api("/api/wall", { body: { text: S.last.text, title: $("postTitle").value.trim(), attest: true } });
-    track("wall_post"); $("postNote").innerHTML = 'Posted. <a href="#wall">See it on the Wall</a>'; $("postTitle").value = ""; }
+    track("wall_post"); $("postNote").innerHTML = 'Posted. <a href="#community">See it in Community</a>'; $("postTitle").value = ""; }
   catch (e) { $("postNote").textContent = e.message; b.disabled = false; }
 };
 
+/* ---------- Pro gate: AI features never call the API for free accounts ---------- */
+function needsPro() { if (canAI()) return false; track("ai_locked"); show("pro"); return true; }
+function renderLocks() {
+  const on = canAI();
+  document.querySelectorAll("[data-ai]").forEach((b) => b.classList.toggle("locked", !on));
+  $("wingLock").hidden = on; $("compose").hidden = !on;
+  $("chips").classList.toggle("locked", !on);
+}
+
 /* ---------- Roast ---------- */
 $("roastBtn").onclick = async () => {
+  if (needsPro()) return;
   if (words($("lyrics").value).length < 8) { $("blurb").textContent = "Give Wretch at least eight words to roast."; return; }
   if (!S.last) renderReading();
   const box = $("roast"); box.hidden = false; $("roastText").textContent = "Wretch is reading… 🤢";
   $("roastChar").innerHTML = charSVG(4); box.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  sfx("gag");
   track("roast"); try { const r = await api("/api/wingman", { body: { mode: "roast", pad: $("lyrics").value } }); $("roastText").textContent = r.text; S.ME = r.me; renderQuota(); }
-  catch (e) { $("roastText").textContent = e.status === 402 ? e.message : e.message || "Wretch couldn't keep it down. Try again."; if (e.status === 402) addProLink($("roastText")); }
+  catch (e) { $("roastText").textContent = e.message || "Wretch couldn't keep it down. Try again."; if (e.status === 402) addProLink($("roastText")); }
 };
 $("copyRoast").onclick = () => track("copy_roast") || copyText($("roastText").textContent + "\n\nRoasted by Wretch on the Wackometer", $("copyRoast"), "Copy roast");
 
@@ -223,9 +228,11 @@ function bubble(cls, text) {
   else d.textContent = text;
   $("log").appendChild(d); $("log").scrollTop = $("log").scrollHeight; return d;
 }
-function addProLink(el) { const b = document.createElement("button"); b.className = "btn bile"; b.style.marginTop = "8px"; b.style.display = "block"; b.textContent = "See Wingman Pro"; b.onclick = () => show("pro"); el.after ? el.parentNode.appendChild(b) : el.appendChild(b); }
+function addProLink(el) { const b = document.createElement("button"); b.className = "btn bile"; b.style.marginTop = "8px"; b.style.display = "block"; b.textContent = "See Wingman Pro"; b.onclick = () => show("pro"); el.parentNode.appendChild(b); }
 async function ask(q) {
-  q = q.trim(); if (!q || busy) return; busy = true; $("sendBtn").disabled = true;
+  q = q.trim(); if (!q || busy) return;
+  if (needsPro()) return;
+  busy = true; $("sendBtn").disabled = true;
   bubble("me", q); const out = bubble("wm", "Thinking…");
   try {
     track("wingman_msg"); const r = await api("/api/wingman", { body: { mode: "chat", message: q, pad: $("lyrics").value.trim(), history: history_.slice(-10) } });
@@ -237,10 +244,12 @@ $("compose").addEventListener("submit", (e) => { e.preventDefault(); const q = $
 $("ask").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("compose").requestSubmit(); } });
 $("chips").querySelectorAll("button").forEach((b) => (b.onclick = () => ask(b.textContent)));
 function renderQuota() {
+  renderLocks();
   const q = $("quota"); if (!q) return;
   if (!S.ME) { q.textContent = ""; return; }
-  if (S.ME.pro) q.innerHTML = 'Wingman Pro is on. Unlimited messages. <a href="#pro">Manage</a>';
-  else { const left = Math.max(0, S.ME.freeDaily - S.ME.usedToday); q.innerHTML = `${left} of ${S.ME.freeDaily} free messages left today${S.ME.credits ? ` · ${S.ME.credits} credits` : ""}. <a href="#pro">Go unlimited</a>`; }
+  if (S.ME.pro) q.innerHTML = 'Wingman Pro is on. <a href="#pro">Manage</a>';
+  else if (S.ME.ai) q.textContent = `${S.ME.credits} Wingman credit${S.ME.credits === 1 ? "" : "s"} left.`;
+  else q.innerHTML = 'Wingman is a Pro feature. <a href="#pro">See Pro</a>';
 }
 
 /* ---------- Pro ---------- */
@@ -255,22 +264,22 @@ function renderPro() {
     $("demoNote").textContent = "Payments run through Stripe. Cancel anytime from Manage billing."; }
 }
 async function checkout(plan, btn) {
-  const was = btn.textContent; btn.disabled = true; btn.textContent = "Opening checkout…";
+  const was = btn.textContent; btn.disabled = true; btn.textContent = "Opening checkout…"; track("pro_click");
   try { const r = await api("/api/checkout", { body: { plan } }); location.href = r.url; }
   catch (e) { $("demoNote").textContent = e.message; btn.textContent = was; btn.disabled = false; }
 }
 document.querySelector('[data-plan="pro"]').onclick = (e) => checkout(yearly ? "yearly" : "monthly", e.currentTarget);
-document.querySelector('[data-plan="credits"]').onclick = (e) => checkout("credits", e.currentTarget);
 document.querySelector('[data-plan="free"]').onclick = async (e) => {
   const b = e.currentTarget; b.disabled = true;
   try { const r = await api("/api/portal", { body: {} }); location.href = r.url; } catch (err) { $("demoNote").textContent = err.message; b.disabled = false; }
 };
 $("dawForm").addEventListener("submit", async (e) => {
   e.preventDefault(); const b = e.submitter || $("dawForm").querySelector("button"); b.disabled = true;
-  try { const r = await api("/api/waitlist", { body: { email: $("dawEmail").value, daw: $("dawPick").value } }); $("dawNote").textContent = `You're on the list (#${r.position}). We'll email you when the plugin is ready.`; sfx("sparkle"); track("waitlist"); }
+  try { const r = await api("/api/waitlist", { body: { email: $("dawEmail").value, daw: $("dawPick").value } }); $("dawNote").textContent = `You're on the list (#${r.position}). We'll email you when the plugin is ready.`; track("waitlist"); }
   catch (err) { $("dawNote").textContent = err.message; b.disabled = false; }
 });
 
+/* ---------- Wack map ---------- */
 function renderMap(){
   const syl = S.last.real.map(lineSyllables), sorted = [...syl].sort((a, b) => a - b), med = sorted[Math.floor(sorted.length / 2)] || 0;
   let ri=-1;const out=S.last.lines.map((l, li)=>{
@@ -288,8 +297,9 @@ function renderMap(){
       + `<span class="syl${off ? " off" : ""}" title="${off ? (n > med ? "Wobbles: this line runs long. It may rush when you sing it." : "Wobbles: this line is short next to the others.") : "Syllables"}">${off ? "🌀 " : ""}${n}</span>`;
     return `<div class="ln${S.last.best && S.last.best.i === ri ? " best" : ""}"><span class="t">${res}</span><span class="lchips">${chips}</span></div>`});
   $("mapLines").innerHTML=out.join("");$("map").hidden=false;
-  $("mapLines").querySelectorAll(".wk-c").forEach((b) => (b.onclick = (e) => openSwap(b, b.dataset.c, +b.dataset.line)));
+  $("mapLines").querySelectorAll(".wk-c").forEach((b) => (b.onclick = () => openSwap(b, b.dataset.c, +b.dataset.line)));
 }
+
 /* ---------- live buddy: the crew reacts while you type ---------- */
 let buddyT = null, lastFound = new Set();
 const HYPE = ["Keep going, this is cooking.", "Ooh, I'm listening.", "Don't stop now.", "Say more. Be specific.", "What does it smell like? Put that in."];
@@ -320,7 +330,7 @@ function openSwap(el, cliche, lineIdx) {
   pop.style.width = w + "px";
   pop.style.left = Math.max(12, Math.min(window.innerWidth - w - 12, r.left + window.scrollX - 10)) + "px";
   pop.style.top = r.bottom + window.scrollY + 8 + "px";
-  sfx("pop"); pop.querySelector(".swapopt")?.focus();
+  pop.querySelector(".swapopt")?.focus();
 }
 function closeSwap() { $("swapPop").hidden = true; swapCtx = null; }
 function doSwap(alt) {
@@ -334,10 +344,10 @@ function doSwap(alt) {
     return m[0] === m[0].toUpperCase() && m[0] !== m[0].toLowerCase() ? rep[0].toUpperCase() + rep.slice(1) : rep;
   });
   $("lyrics").value = lines.join("\n"); ls("wk-draft", $("lyrics").value);
-  closeSwap(); sfx("swap"); track("swap_used"); renderReading();
+  closeSwap(); track("swap_used"); renderReading();
 }
 $("swapX").onclick = closeSwap;
-$("swapMore").onclick = () => { const c = swapCtx && swapCtx.cliche; closeSwap(); if (c) { show("wingman"); ask(`Give me 5 fresh, specific replacements for the cliché "${c}" that fit my lyrics.`); } };
+$("swapMore").onclick = () => { const c = swapCtx && swapCtx.cliche; closeSwap(); if (!c || needsPro()) return; show("wingman"); ask(`Give me 5 fresh, specific replacements for the cliché "${c}" that fit my lyrics.`); };
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeSwap(); closeLogin(); if (!$("tour").hidden) { tourI = TOUR.length; tourStep(); } } });
 document.addEventListener("click", (e) => { if (!$("swapPop").hidden && !e.target.closest("#swapPop") && !e.target.closest(".wk-c")) closeSwap(); });
 
@@ -347,26 +357,7 @@ function applyUnlocks() {
   UNLOCKS.forEach((u) => (UNLOCK[u.k] = st >= u.d));
   if (JSON.stringify(UNLOCK) !== before) { renderCrew(S.last ? S.last.tier : null); if (S.last) $("mchar").innerHTML = charSVG(S.last.tier); }
 }
-/* ---------- emoji starter ---------- */
-const EMOJI_BANK = ["🌧️", "🚗", "🌙", "🍕", "📱", "💔", "🔥", "🌊", "🎢", "🕯️", "🏙️", "🌵", "🎈", "🧊", "🪐", "🐍", "🎧", "🌻", "🛹", "🍒", "⛈️", "🗝️", "🪞", "🦋"];
-let picked = [];
-function renderEmojiPick() {
-  $("epick").innerHTML = EMOJI_BANK.map((e) => `<button class="eb${picked.includes(e) ? " on" : ""}" data-e="${e}" aria-pressed="${picked.includes(e)}">${e}</button>`).join("");
-  $("epick").querySelectorAll(".eb").forEach((b) => (b.onclick = () => { const e = b.dataset.e; picked = picked.includes(e) ? picked.filter((x) => x !== e) : picked.length < 3 ? [...picked, e] : picked; sfx("pop"); renderEmojiPick(); }));
-  $("echosen").textContent = picked.length ? picked.join(" ") : "_ _ _"; $("eGo").disabled = !picked.length;
-}
-renderEmojiPick();
-$("eGo").onclick = async () => {
-  if (busy) return; busy = true; $("eGo").disabled = true;
-  bubble("me", "Emoji starter: " + picked.join(" ")); const out = bubble("wm", "Cooking up a starter…");
-  try { const r = await api("/api/wingman", { body: { mode: "emoji", emojis: picked.join("") } }); out._t.textContent = r.text; S.ME = r.me; renderQuota(); track("emoji_starter");
-    const use = document.createElement("button"); use.className = "btn"; use.style.marginTop = "8px"; use.style.display = "block"; use.textContent = "Put it in my Weigh pad";
-    use.onclick = () => { const lyric = r.text.split("\n").filter((l) => l.trim()).slice(0, 2).join("\n"); $("lyrics").value = lyric; ls("wk-draft", lyric); show("weigh"); $("lyrics").focus(); }; out.appendChild(use);
-  } catch (e) { out._t.textContent = e.message; if (e.status === 402) addProLink(out._t); }
-  busy = false; $("eGo").disabled = !picked.length;
-};
-window.addEventListener("popstate", () => { if (/^\/pen\/[a-z0-9]+/.test(location.pathname)) show("pen"); else if (location.pathname.startsWith("/u/")) show("profile"); });
-
+window.addEventListener("popstate", () => { if (location.pathname.startsWith("/u/")) show("profile"); else { const h = location.hash.slice(1); show(VIEWS.includes(h) || ALIASES[h] ? h : "weigh"); } });
 
 /* ---------- theme ---------- */
 const THEMES = ["auto", "light", "dark"];
@@ -378,7 +369,7 @@ function applyTheme() {
   const dark = theme === "dark" || (theme === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
   document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#13152A" : "#FBFCFF");
 }
-$("themeBtn").onclick = () => { theme = THEMES[(THEMES.indexOf(theme) + 1) % 3]; ls("wk-theme", theme); applyTheme(); sfx("pop"); };
+$("themeBtn").onclick = () => { theme = THEMES[(THEMES.indexOf(theme) + 1) % 3]; ls("wk-theme", theme); applyTheme(); };
 matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", applyTheme);
 applyTheme();
 
@@ -405,10 +396,11 @@ const CREW_JOBS = [
   ["Wally", "The filler police. Spots the yeahs, oohs and babys.", 2],
   ["Wobbles", "The rhythm checker. Flags lines that rush or drag.", 3],
   ["Wretch", "The roaster. Gags at clichés so you don't have to.", 4],
-  ["Wingman", "Your co-writer. Rewrites, rhymes and emoji starters.", 5],
+  ["Wingman", "Your co-writer on Pro. Rewrites, hooks, rhymes and the Humanize pass.", 5],
 ];
 $("crewGrid").innerHTML = CREW_JOBS.map(([n, d, i]) => `<div class="crewcard" style="--cc:${CREW[i].col === "#FFFFFF" ? "#A8C42E" : CREW[i].col}"><div class="cch">${charSVG(i)}</div><b>${n}</b><p>${d}</p></div>`).join("");
 document.querySelectorAll("[data-ch]").forEach((e) => (e.innerHTML = charSVG(+e.dataset.ch)));
+
 /* ---------- account ---------- */
 function renderAccount() {
   const b = $("acctBtn");
@@ -419,13 +411,13 @@ function openLogin() {
   $("loginModal").hidden = false; $("loginChar").innerHTML = charSVG(1); $("loginNote").textContent = "";
   const inn = !!(S.ME && S.ME.email);
   $("loginForm").hidden = inn; $("loginOut").hidden = !inn; $("loginAge").parentElement.hidden = !!(S.ME && S.ME.ageOk); $("adminLink").hidden = !(S.ME && S.ME.admin);
-  const mp = $("myProfileLink"); mp.hidden = !(S.ME && S.ME.username); if (S.ME && S.ME.username) mp.href = "/u/" + S.ME.username;
-  $("loginH").textContent = inn ? "You're signed in" : "Save your streak and songs";
-  $("loginSub").textContent = inn ? `Signed in as ${S.ME.email}. Your streak, Pro and songs follow you to any device.` : "Sign in with your email and we'll send you a link. No password. Your streak, Pro and songs follow you to any device.";
+  $("loginH").textContent = inn ? "You're signed in" : "Save your streak and lyrics";
+  $("loginSub").textContent = inn ? `Signed in as ${S.ME.email}. Your streak, Pro and profile follow you to any device.` : "Sign in with your email and we'll send you a link. No password. Your streak, Pro and profile follow you to any device.";
   if (!inn) setTimeout(() => $("loginEmail").focus(), 50);
 }
 function closeLogin() { $("loginModal").hidden = true; }
 $("acctBtn").onclick = openLogin; $("loginX").onclick = closeLogin; $("loginX2").onclick = closeLogin;
+$("myProfileLink").onclick = $("meNoEmail").onclick = () => { closeLogin(); show("me"); };
 $("loginModal").addEventListener("click", (e) => { if (e.target.id === "loginModal") closeLogin(); });
 $("loginGo").onclick = async () => {
   const b = $("loginGo"); b.disabled = true; $("loginNote").textContent = "Sending…";
@@ -443,17 +435,16 @@ $("wipeBtn").onclick = wipe;
 document.querySelectorAll("[data-ex]").forEach((b) => (b.onclick = () => loadExample(b.dataset.ex)));
 $("lyrics").addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") renderReading(); });
 $("lyrics").addEventListener("input", () => { padIsExample = false; ls("wk-draft", $("lyrics").value); $("draftBack").hidden = true; });
-document.querySelectorAll("#mainNav button,#proBtn,.squadsw button").forEach((b) => (b.onclick = () => show(b.dataset.v)));
-document.querySelectorAll("#groupNav button").forEach((b) => (b.onclick = () => { const last = ls("wk-g-" + b.dataset.g); show(VIEWS.includes(last) && GROUP[last] === b.dataset.g ? last : GROUP_FIRST[b.dataset.g]); }));
-window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if (VIEWS.includes(h)) show(h); });
-$("toWing").onclick = () => { show("wingman"); if (words($("lyrics").value).length >= 8) { if (!S.last) renderReading(); ask("Make my lyrics less wack"); } };
+document.querySelectorAll("#mainNav button,#proBtn,#wingLockGo").forEach((b) => (b.onclick = () => show(b.dataset.v)));
+document.querySelectorAll("#groupNav button").forEach((b) => (b.onclick = () => { const prev = ls("wk-g-" + b.dataset.g); show(VIEWS.includes(prev) && GROUP[prev] === b.dataset.g ? prev : GROUP_FIRST[b.dataset.g]); }));
+window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if (VIEWS.includes(h) || ALIASES[h]) show(h); });
+$("toWing").onclick = () => { show("wingman"); if (!canAI()) { track("ai_locked"); return; } if (words($("lyrics").value).length >= 8) { if (!S.last) renderReading(); ask("Make my lyrics less wack"); } };
 $("whyList").innerHTML = METRICS.map((m) => `<dt>${m.n} <span class="hint">(${Math.round(m.w * 100)}%)</span></dt><dd>${m.d}</dd>`).join("");
 $("heroGo").onclick = () => { const t = $("lyrics"); t.scrollIntoView({ behavior: "smooth", block: "center" }); setTimeout(() => { t.focus(); t.select(); }, 350); };
 $("heroDare").onclick = () => loadExample("wack", true);
 document.querySelectorAll("[data-wing],[data-wingbig]").forEach((e) => (e.innerHTML = charSVG(5)));
 $("mchar").innerHTML = charSVG(5); renderCrew(null);
 if (ls("wk-seen") !== "1") { document.body.classList.add("first"); ls("wk-seen", "1"); }
-
 
 /* ---------- Coach + progress ---------- */
 const COACH_TIPS = {
@@ -487,17 +478,14 @@ function saveHistory() {
   const worst = METRICS.map((m) => [m.k, S.last.vals[m.k]]).sort((a, b) => b[1] - a[1])[0][0];
   h.push({ t: Date.now(), s: S.last.score, w: worst, k: key }); ls("wk-hist", JSON.stringify(h.slice(-40)));
 }
-/* ---------- find friends (header button, Ctrl/Cmd K) ---------- */
-$("findBtn").onclick = async () => (await squadM()).openFind();
-document.addEventListener("keydown", async (e) => { if (e.key === "Escape") $("findModal").hidden = true; if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); (await squadM()).openFind(); } });
 
 /* ---------- hooks the on-demand modules call back into ---------- */
 Object.assign(A, { show, ask, renderReading, loadMe, openLogin, renderQuota, addProLink, openLesson, notExample: () => (padIsExample = false) });
 
 /* ---------- first-visit tour ---------- */
 const TOUR = [
-  ["weighBtn", 1, "Weigh your words", "Paste lyrics and hit Weigh it. The meter scores them from Wicked to Wack and circles exactly what's wack."],
-  ["groupNav", 3, "Write, Train, Play", "Write: weigh it, wash out the AI, get Wingman's help. Train: lessons and freestyle drills. Play: the Daily W, the Wall and battles with friends."],
+  ["weighBtn", 1, "Weigh your words", "Paste lyrics and hit Weigh it. The meter scores them from Wicked to Wack, circles what's wack, and checks if it sounds like a robot wrote it."],
+  ["groupNav", 3, "Write and Practice", "Write: weigh it, get Wingman's help, share it in Community. Practice: short lessons and freestyle drills on a beat."],
   ["heroDare", 4, "Start with a wack one", "Not ready to share your own? Load a wack example and watch me gag. Each tap brings a new one."],
 ];
 let tourI = 0;
@@ -531,6 +519,7 @@ if ("serviceWorker" in navigator && location.hostname !== "localhost") window.ad
 /* ---------- boot ---------- */
 // Start with a clean pad. A saved draft is one tap away instead of preloaded.
 { const d = ls("wk-draft"); if (d && d.trim()) { $("draftBack").hidden = false; $("draftBtn").onclick = () => { $("lyrics").value = d; $("draftBack").hidden = true; renderReading(); }; } }
+renderLocks();
 loadTune();
 loadMe();
 // Count the visit once per tab session: a view, where it landed, and where it came from.
@@ -538,22 +527,21 @@ try {
   if (!sessionStorage.getItem("wk-v")) {
     sessionStorage.setItem("wk-v", "1"); const src = sourceOf();
     track("view"); if (src) track("src:" + src);
-    const pth = location.pathname; track("land:" + (pth.startsWith("/u/") ? "profile" : pth.startsWith("/pen/") ? "pen" : "home"));
+    track("land:" + (location.pathname.startsWith("/u/") ? "profile" : "home"));
     if (window.clarity && src) window.clarity("set", "source", src);
   }
 } catch (e) {}
 {
   const h = location.hash.slice(1), path = location.pathname.replace(/\/+$/, "") || "/";
-  if (path.startsWith("/pen/")) show("pen");
-  else if (path.startsWith("/u/")) show("profile");
+  if (path.startsWith("/u/")) show("profile");
+  else if (path.startsWith("/pen/")) show("community"); // old Pass the Pen links
   else if (path !== "/" && path !== "/index.html") { show("lost"); $("lostChar").innerHTML = charSVG(3); }
-  else if (VIEWS.includes(h) && h !== "weigh" && h !== "lost") show(h);
+  else if ((VIEWS.includes(h) || ALIASES[h]) && h !== "weigh" && h !== "lost") show(h);
   const qs0 = new URLSearchParams(location.search);
-  if (qs0.get("unsubscribed")) { history.replaceState(null, "", "/#weigh"); setTimeout(() => { $("quip").textContent = "Wally: Done. No more emails from us. You can turn them back on in Squad → Account settings."; $("mchar").innerHTML = charSVG(2); }, 300); }
+  if (qs0.get("unsubscribed")) { history.replaceState(null, "", "/#weigh"); setTimeout(() => { $("quip").textContent = "Wally: Done. No more emails from us."; $("mchar").innerHTML = charSVG(2); }, 300); }
   if (qs0.get("deleted")) { history.replaceState(null, "", "/#weigh"); setTimeout(() => { $("quip").textContent = "Wendy: Your account is gone. Sad to see you go. The door's always open."; $("mchar").innerHTML = charSVG(1); }, 300); }
-  const si = new URLSearchParams(location.search).get("signin");
-  if (si) { history.replaceState(null, "", "/#weigh"); if (si === "ok") { setTimeout(() => { $("quip").textContent = "Wendy: You're signed in! Your streak and songs are safe now."; $("mchar").innerHTML = charSVG(1); }, 300); } else { openLogin(); $("loginNote").textContent = "That link expired. Send a new one."; } }
+  const si = qs0.get("signin");
+  if (si) { history.replaceState(null, "", "/#weigh"); if (si === "ok") { setTimeout(() => { $("quip").textContent = "Wendy: You're signed in! Your streak and profile are safe now."; $("mchar").innerHTML = charSVG(1); }, 300); } else { openLogin(); $("loginNote").textContent = "That link expired. Send a new one."; } }
   if (ls("wk-tour") !== "1" && path === "/" && (!h || h === "weigh") && !qs0.toString()) setTimeout(tourStep, 1200);
-  const paid = new URLSearchParams(location.search).get("paid");
-  if (paid) { show("pro"); setTimeout(() => ($("demoNote").textContent = paid === "credits" ? "Payment received. 25 credits are on their way to your account." : "Welcome to Wingman Pro. It can take a few seconds to switch on."), 600); history.replaceState(null, "", "/#pro"); }
+  if (qs0.get("paid")) { show("pro"); setTimeout(() => ($("demoNote").textContent = "Welcome to Wingman Pro. It can take a few seconds to switch on."), 600); history.replaceState(null, "", "/#pro"); }
 }

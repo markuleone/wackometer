@@ -1,6 +1,6 @@
 // Workshop UI. Lessons live in workshop.js.
 import { METRICS, tierOf } from "./score.js";
-import { $, esc, ls, A, confetti, track, sfx, getHist } from "./core.js";
+import { $, esc, ls, A, confetti, track, getHist, canAI } from "./core.js";
 import { LESSONS, rankOf } from "./workshop.js";
 
 /* ---------- Workshop ---------- */
@@ -18,7 +18,7 @@ export function renderWorkshop() {
     <div class="ba"><div class="bef"><small>🤢 Wack</small>${esc(l.before)}</div><div class="aft"><small>✨ Better</small>${esc(l.after)}</div></div>
     <div class="drill"><b>🏋️ Drill${done[l.id] ? " (passed, practice anytime)" : ` · +${l.xp} XP`}</b><span>${esc(l.drill)}</span>
     <label class="hint" for="wsIn">Your drill</label><textarea id="wsIn" spellcheck="false" placeholder="Write it here…"></textarea>
-    <div class="row"><button class="btn bile" id="wsCheck">Check my drill</button><button class="btn" id="wsAsk">Ask Wingman for an example</button></div>
+    <div class="row"><button class="btn bile" id="wsCheck">Check my drill</button><button class="btn${canAI() ? "" : " locked"}" id="wsAsk" data-ai>Ask Wingman for an example</button></div>
     <p id="wsOut" aria-live="polite" class="hint"></p></div>`;
   $("wsIn").value = ls("wk-ws-" + l.id) || "";
   $("wsIn").addEventListener("input", () => ls("wk-ws-" + l.id, $("wsIn").value));
@@ -27,10 +27,10 @@ export function renderWorkshop() {
     if (res === true) {
       const d = wsDone(); const first = !d[l.id]; d[l.id] = Date.now(); ls("wk-ws", JSON.stringify(d));
       $("wsOut").innerHTML = `<span class="pass">Passed!${first ? ` +${l.xp} XP` : ""}</span> ${first ? "Habit unlocked." : "Still got it."}`;
-      sfx("sparkle"); if (first) { confetti(); track("lesson_pass"); setTimeout(renderWorkshop, 1400); }
-    } else { $("wsOut").innerHTML = `<span class="fail">Not yet.</span> ${esc(res)}`; sfx("pop"); }
+      if (first) { confetti(); track("lesson_pass"); setTimeout(renderWorkshop, 1400); }
+    } else { $("wsOut").innerHTML = `<span class="fail">Not yet.</span> ${esc(res)}`; }
   };
-  $("wsAsk").onclick = () => { A.show("wingman"); A.ask(`Teach me "${l.title}". Give me two short original examples, then a tip for the drill: ${l.drill}`); };
+  $("wsAsk").onclick = () => { if (!canAI()) { track("ai_locked"); A.show("pro"); return; } A.show("wingman"); A.ask(`Teach me "${l.title}". Give me two short original examples, then a tip for the drill: ${l.drill}`); };
   renderProgress();
 }
 export function openLesson(id) { wsCur = id; A.show("workshop"); }

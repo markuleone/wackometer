@@ -13,10 +13,6 @@ run_worker_first = ["/api/*", "/u/*", "/sitemap.xml"]
 [observability]
 enabled = true
 
-# Weekly squad digest email: Mondays 14:00 UTC (10am Eastern)
-[triggers]
-crons = ["0 14 * * 1"]
-
 [[d1_databases]]
 binding = "DB"
 database_name = "wackometer"
@@ -24,11 +20,9 @@ database_id = "45b8ce82-8a43-4e1f-ba85-d69c880c5ad5"
 
 [vars]
 APP_URL = "https://wackometer.com"
-WINGMAN_MODEL = "claude-sonnet-5-5"
-FREE_DAILY = "5"
+WINGMAN_MODEL = "claude-haiku-5-5"   # cheapest Claude model; Wingman, Roast and Humanize are Pro-only
 PRO_PRICE_MONTHLY = ""   # Stripe price id, e.g. price_123
 PRO_PRICE_YEARLY = ""
-CREDITS_PRICE = ""
 ADMIN_EMAILS = "info@donebyverde.com"          # who can open /admin (comma-separated)
 EMAIL_FROM = "Wackometer <hello@wackometer.com>" # sender for sign-in emails
 TURNSTILE_SITE_KEY = "0x4AAAAAAFoKvh8oQOnhX6zJ"                         # public Turnstile site key (bot check); pair with the TURNSTILE_SECRET secret

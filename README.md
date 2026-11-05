@@ -91,41 +91,41 @@ Open http://localhost:8787.
 
 ## How it works
 
-- **Accounts.** Each visitor gets an anonymous account in a signed cookie, so there's no sign-up wall. Pro, credits, streaks and leaderboard names attach to that account.
-- **Scoring** runs in the browser for instant results. When someone posts to the Wall or enters the Daily W, the server re-scores the text itself so nobody can fake a number.
+- **Accounts.** Each visitor gets an anonymous account in a signed cookie, so there's no sign-up wall. Pro, streaks and profiles attach to that account.
+- **Scoring** runs in the browser for instant results. When someone posts to Community or enters the Daily W, the server re-scores the text itself so nobody can fake a number.
 - **Crowd tune.** Once 3 posts have 3+ votes each, the average gap between the crowd and the meter shifts every new score, capped at ±15.
-- **Featured.** Wall posts with 5+ votes move to Featured.
-- **Wingman limit.** 5 messages a day free, counted on the server. Roasts count as a message. Pro is unlimited; credits are used after the free 5 run out.
+- **Featured.** Community posts with 5+ votes move to Featured.
+- **AI is Pro-only.** Wingman chat, Roast, Humanize, swap ideas and lesson examples call Claude Haiku 5.5 (`WINGMAN_MODEL`), and only for Pro accounts (or old credit balances). The server refuses AI calls from free accounts with a 402, so free users never cost API money.
 - **Daily W.** One prompt per day for everyone (rolls over at midnight Eastern, list in `score.js`). One entry per person. Crew board ranks by lowest score; Crowd board ranks by 🔥.
-- **Safety.** Posting needs a "these are my own lyrics" checkbox. Three reports hide a post. Max 10 Wall posts per person per day. Daily W rejects keyboard-mash entries.
+- **Safety.** Posting needs a "these are my own lyrics" checkbox. Three reports hide a post. Max 10 posts per person per day. Daily W rejects keyboard-mash entries.
 
 ## Features
 
-The header groups every tool into **Write** (Weigh, Wash, Wingman), **Train** (Workshop, Wordstorm) and **Play** (Daily W, Wall, Squad; Pass the Pen lives inside Squad).
+**Loading:** the first visit downloads only Weigh and the app shell (about 20 KB of compressed JavaScript). Every other tool is its own file in `public/js/` and loads the first time it's opened. The source is split the same way: `core.js` (shared helpers and state), `app.js` (Weigh, Wingman, nav), and `community.js` (+ `daily.js`, `wall.js`), `me.js` (profiles), `robot.js` (+ `wash.js`), `share.js`, `shop.js`, `storm.js`, `swaps.js`.
 
-**Loading:** the first visit downloads only Weigh and the app shell (about 20 KB of compressed JavaScript). Every other tool is its own file in `public/js/` and loads the first time it's opened. The source is split the same way: `core.js` (shared helpers and state), `app.js` (Weigh, Wingman, nav), and `wall.js`, `daily.js`, `pen.js`, `squad.js`, `share.js`, `shop.js`, `washui.js`, `storm.js`, `swaps.js`.
+The nav has two groups: **Write** (Weigh, Wingman, Community) and **Practice** (Workshop, Wordstorm). Your profile and settings live at `#me`; public profiles at `/u/<username>`.
 
-- **Weigh** with the crew, the Wack map, tap-to-swap clichés, Wiz's best-line pick, Wobbles' syllable check, live reactions while you type, Roast mode, share images and 6-second share videos.
-- **Daily W** with emoji prompts, streaks, unlockable crew outfits (3, 7 and 30 days), Crew and Crowd boards.
-- **Pass the Pen**: `/pen/<id>` songs written one line at a time by different people (16 lines max, nobody twice in a row).
-- **Wall** with tier votes, 🔥😭💀🤢 reactions, Featured, reports.
-- **Wingman** chat, emoji starters, Pro and credits.
-- **Squad**: customizable profiles at `/u/<username>` (crew avatar, color, bio, genre, signature line, music links, stats, unlocks), friend requests and search, W Points leaderboards (squad or everyone, week or today) and blind head-to-head battles between friends.
-- **AI Wash** (`#wash`): flags phrases and habits that make lyrics read machine-written (neon, echoes, tapestry, every line the same length, no contractions, nothing specific), explains each one, and offers a Wingman "humanize" pass that asks the writer for real details. Detection runs in the browser; the rewrite uses a Wingman message.
+- **Weigh** with the crew, the Wack map, tap-to-swap clichés, Wiz's best-line pick, Wobbles' syllable check, live reactions while you type, a **robot check** under every reading (flags AI-sounding lines, free, runs in the browser), share images and 6-second share videos. Roast and Humanize are Pro.
+- **Community** (`#community`): today's Daily W (emoji prompts, streaks, unlockable crew outfits, Crew and Crowd boards) on top, the crowd feed of posted lyrics (tier votes, 🔥😭💀🤢 reactions, Featured, reports) below.
+- **Wingman** (`#wingman`): Pro-only chat co-writer. Free users see what it does and a link to Pro.
+- **Profiles**: crew avatar, color, bio, genre, signature line, music links, stats and streak unlocks. Report button on other people's pages.
 - **Wordstorm** (`#storm`): freestyle word generator. A synthesized boom-bap beat (or your own, with tap tempo), a new word every 1, 2 or 4 bars, rhymes underneath, 8 word packs, and optional mic scoring through the browser's speech recognition.
 - **Workshop** (`#workshop`): 10 lessons, each with a before/after and a drill the scoring engine checks. XP and ranks (Wannabe to Wicked Writer), plus a trend line of your own weighs. The Coach's note on every reading links to the lesson for your worst habit.
 - **Search pages** built at deploy time: `/rhymes/<word>` (404 words, perfect and slant rhymes, lazy rhymes flagged), `/cliches/<phrase>` (every cliché with fresh swaps), `/syllable-counter`. All listed in `/sitemap.xml`. Word data comes from `scripts/gen-words.py` (run it only if you change the word pool; its output is committed).
 - **Installable app**: `manifest.webmanifest` + `sw.js` (offline shell, never caches `/api`). Chrome and Android show an install button in the header; on iPhone it's Share → Add to Home Screen.
 - **First-visit tour**: three quick steps, shown once.
 - **Bot check**: Cloudflare Turnstile on public posts, once a month per person, only when `TURNSTILE_SECRET` and `TURNSTILE_SITE_KEY` are set.
-- **Email notifications**: friend requests, battles, Pen lines and a Monday squad digest (cron in `wrangler.toml`), with one-click unsubscribe. Needs `SENDGRID_API_KEY`.
-- **Safety**: slur filter everywhere, profanity filter on names and bios, profile reports and blocking, 13+ check, self-serve account deletion.
+- **Safety**: slur filter everywhere, profanity filter on names and bios, profile reports, 13+ check, self-serve account deletion.
+- **Analytics**: Microsoft Clarity (lyric areas masked) plus first-party daily counters shown in the admin's Traffic panel.
 - **Light and dark mode**: follows the device by default, with a toggle in the header.
 - **DAW plugin waitlist** on the Pro page (`POST /api/waitlist`, stored in the `waitlist` table). The plugin itself isn't built yet; it's planned as a Wingman Pro perk.
 - **Admin** at `/admin`: totals, plugin waitlist by DAW, share/save counts by day, reported profiles, reported posts to hide, restore or delete.
 
+## Removed in the November 2026 simplification
+Pass the Pen, friends, friend search, battles, the W Points leaderboard, email notifications and the weekly digest, the emoji starter, sound effects, the credits plan, and AI Wash as its own tab (now the robot check inside Weigh). Their database tables are left in place (unused) so nothing is lost; old links like `/#wash`, `/#daily`, `/#squad` and `/pen/...` redirect to the matching new screen.
+
 ## Known gaps before a big launch
 
 - **Email sign-in needs SendGrid.** Until `SENDGRID_API_KEY` is set, accounts live in one browser's cookie.
-- **Famous-lyric filter.** The checkbox and reports are the only guard against people posting copyrighted songs on the Wall. Watch reports closely at launch.
+- **Famous-lyric filter.** The checkbox and reports are the only guard against people posting copyrighted songs to Community. Watch reports closely at launch.
 - **The link preview image** (`og.png`) was rendered without the Fredoka font. Retake it from the live site for a sharper version.

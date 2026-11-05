@@ -41,7 +41,7 @@ ${ld ? `<script type="application/ld+json">${JSON.stringify(ld)}</script>` : ""}
 <body>
 <div class="wrap seo">
 <header class="top"><a class="logo" href="/" aria-label="Wackometer home"><span class="w">W</span>ackometer</a>
-<nav id="mainNav" aria-label="Tools"><a href="/">⚖️ Weigh</a><a href="/#wash">🫧 Wash</a><a href="/#storm">🎤 Wordstorm</a><a href="/#workshop">🏋️ Workshop</a><a href="/rhymes/">Rhymes</a><a href="/cliches/">Clichés</a><a href="/syllable-counter">Syllables</a></nav></header>
+<nav id="mainNav" aria-label="Tools"><a href="/">⚖️ Weigh</a><a href="/#community">🌍 Community</a><a href="/#storm">🎤 Wordstorm</a><a href="/#workshop">🏋️ Workshop</a><a href="/rhymes/">Rhymes</a><a href="/cliches/">Clichés</a><a href="/syllable-counter">Syllables</a></nav></header>
 <main id="main">
 ${body}
 <div class="cta"><b>How wack are your lyrics?</b><p>Paste a verse into the Wackometer. It scores it from Wicked to Wack, circles the clichés and lazy rhymes, and shows you how to fix them.</p><a class="btn bile" href="/">Weigh my lyrics, free</a></div>

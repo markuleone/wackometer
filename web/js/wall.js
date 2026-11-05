@@ -1,6 +1,6 @@
-// The Wall: crowd votes and reactions. Loaded when the Wall tab opens.
+// The crowd feed (bottom half of Community): votes and reactions on posted lyrics.
 import { TIERS, MID, tierOf } from "./score.js";
-import { $, esc, S, api, charSVG, sfx, goProfile } from "./core.js";
+import { $, esc, S, api, charSVG, goProfile } from "./core.js";
 
 const REACTS = ["🔥", "😭", "💀", "🤢"];
 
@@ -10,7 +10,7 @@ export async function loadWall() {
   clearTimeout(wallTimer);
   try { wall = await api("/api/wall?feed=" + feed); S.crowdTune = wall.stats.tune; S.tuneN = wall.stats.tuneN; renderWall(); }
   catch (e) { $("cards").innerHTML = `<div class="empty"><div class="ch">${charSVG(3)}</div>The Wall didn't load. ${esc(e.message)}</div>`; }
-  if (!$("v-wall").hidden) wallTimer = setTimeout(loadWall, 20000);
+  if (!$("v-community").hidden) wallTimer = setTimeout(loadWall, 20000);
 }
 function renderWall() {
   const st = wall.stats || {};
@@ -20,7 +20,7 @@ function renderWall() {
   const el = $("cards"), list = wall.readings || [];
   if (!list.length) {
     el.innerHTML = feed === "fresh"
-      ? `<div class="empty"><div class="ch">${charSVG(2)}</div>The Wall is empty. Weigh your lyrics and post them to be the first one the crowd votes on.</div>`
+      ? `<div class="empty"><div class="ch">${charSVG(2)}</div>Nothing posted yet. Weigh your lyrics and post them to be the first one the crowd votes on.</div>`
       : `<div class="empty"><div class="ch">${charSVG(2)}</div>Nothing Featured yet. Vote on Fresh posts. Once one hits ${FEAT} votes, it shows up here.</div>`;
     return;
   }
@@ -41,7 +41,7 @@ function renderWall() {
     card.querySelectorAll(".votes button").forEach((b) => (b.onclick = () => castVote(r, +b.dataset.i, b)));
     const foot = card.querySelector(".cfoot");
     card.querySelectorAll(".react").forEach((b) => (b.onclick = async () => {
-      const on = b.classList.contains("on"); b.disabled = true; sfx("pop");
+      const on = b.classList.contains("on"); b.disabled = true;
       try { await api("/api/react", { body: { id: r.id, emoji: b.dataset.e, off: on } }); await loadWall(); } catch (e) { b.disabled = false; }
     }));
     const act = document.createElement("button"); act.className = "del";

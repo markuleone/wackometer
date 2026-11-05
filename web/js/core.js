@@ -114,25 +114,9 @@ export function sourceOf() {
   return hit ? hit[1] : "other";
 }
 
-/* ---------- sound ---------- */
-let soundOn = ls("wk-sound") === "1", actx = null;
-function renderSound() { const b = $("soundBtn"); b.textContent = soundOn ? "🔊" : "🔈"; b.setAttribute("aria-pressed", soundOn); b.title = soundOn ? "Sound on" : "Sound off"; }
-$("soundBtn").onclick = () => { soundOn = !soundOn; ls("wk-sound", soundOn ? "1" : "0"); renderSound(); if (soundOn) sfx("sparkle"); };
-renderSound();
-function tone(f0, f1, dur, type = "sine", vol = 0.12, delay = 0) {
-  const t = actx.currentTime + delay, o = actx.createOscillator(), g = actx.createGain();
-  o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(30, f1), t + dur);
-  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur + 0.05);
-}
-export function sfx(name) {
-  if (!soundOn) return;
-  try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === "suspended") actx.resume(); } catch (e) { return; }
-  if (name === "pop") tone(520, 880, 0.12, "sine", 0.14);
-  if (name === "sparkle") [0, 0.08, 0.16, 0.24].forEach((d, i) => tone(880 + i * 220, 1400 + i * 260, 0.18, "triangle", 0.08, d));
-  if (name === "gag") { tone(200, 90, 0.35, "sawtooth", 0.07); tone(140, 60, 0.4, "square", 0.04, 0.12); }
-  if (name === "swap") { tone(660, 990, 0.1, "triangle", 0.1); tone(990, 1320, 0.12, "triangle", 0.08, 0.08); }
-}
+/* ---------- Pro gate for AI features ---------- */
+// Wingman, Roast, Humanize and swap ideas run on a paid AI model, so only Pro accounts can use them.
+export const canAI = () => !!(S.ME && S.ME.ai);
 
 export const UNLOCK = { chain: false, crown: false, hat: false };
 export const UNLOCKS = [{ k: "crown", d: 3, who: 1, name: "Wendy's flower crown" }, { k: "chain", d: 7, who: 0, name: "Wiz's gold chain" }, { k: "hat", d: 30, who: 4, name: "Wretch's bucket hat" }];
@@ -141,13 +125,6 @@ export const UNLOCKS = [{ k: "crown", d: 3, who: 1, name: "Wendy's flower crown"
 export const accFor = (streak) => ({ crown: streak >= 3, chain: streak >= 7, hat: streak >= 30 });
 export function avatarHTML(p, size = 44) {
   return `<span class="av" style="--avc:${p.color || "#3D8BFF"};width:${size}px;height:${size}px">${charSVG(p.avatar ?? 5, null, accFor(p.streak || 0))}</span>`;
-}
-export function personRow(p, extra = "") {
-  const d = document.createElement("div"); d.className = "frow";
-  d.innerHTML = `${avatarHTML(p)}<a class="fname" ${p.username ? `href="/u/${p.username}"` : ""}><b></b><span></span></a><span class="fextra">${extra}</span>`;
-  d.querySelector(".fname b").textContent = p.name; d.querySelector(".fname span").textContent = p.username ? "@" + p.username + (p.streak ? ` · 🔥${p.streak}` : "") : "";
-  const a = d.querySelector(".fname"); if (p.username) a.onclick = (e) => { e.preventDefault(); goProfile(p.username); };
-  return d;
 }
 export function goProfile(username) { history.pushState(null, "", "/u/" + username); A.show("profile"); }
 
