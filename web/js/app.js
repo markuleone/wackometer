@@ -132,7 +132,7 @@ function renderReading() {
   $("score").textContent = score;
   const v = $("verdict"); v.textContent = TIERS[S.last.tier].n; v.className = `verdict bg-t${S.last.tier} t${S.last.tier}`;
   $("blurb").textContent = TIERS[S.last.tier].blurb;
-  $("tune").textContent = S.tuneN ? `Crowd-tuned ${S.crowdTune >= 0 ? "+" : ""}${S.crowdTune} from ${S.tuneN} community posts. Raw meter: ${Math.round(S.last.raw)}.` : "Raw meter score. The crowd tune kicks in once Community has enough votes.";
+  $("tune").textContent = S.tuneN ? `Crowd-tuned ${S.crowdTune >= 0 ? "+" : ""}${S.crowdTune} from ${S.tuneN} Wall posts. Raw meter: ${Math.round(S.last.raw)}.` : "Raw meter score. The crowd tune kicks in once the Wall has enough votes.";
   const m = $("meter"); m.classList.remove("wack-now", "wicked-now"); void m.offsetWidth; m.style.setProperty("--tint", `var(--t${S.last.tier})`);
   if (S.last.tier === 4) m.classList.add("wack-now"); else if (S.last.tier === 0) { m.classList.add("wicked-now"); confetti(); }
   S.last.best = bestLine(t);
@@ -165,7 +165,7 @@ function wipe() {
 // Write (Weigh, Wingman, Community) and Practice (Workshop, Wordstorm). Profiles sit under Community.
 const GROUP = { weigh: "write", wingman: "write", community: "write", profile: "write", me: "write", workshop: "practice", storm: "practice" };
 const TAB = { profile: "community", me: "community" };
-const TITLES = { wingman: "Wingman", community: "Community", workshop: "Workshop", storm: "Wordstorm", why: "Why it's wack", pro: "Wingman Pro", lost: "Page not found", me: "Your profile" };
+const TITLES = { wingman: "Wingman", community: "The Wall", workshop: "Workshop", storm: "Wordstorm", why: "Why it's wack", pro: "Wingman Pro", lost: "Page not found", me: "Your profile" };
 const GROUP_FIRST = { write: "weigh", practice: "workshop" };
 const VIEWS = ["weigh", "wingman", "community", "workshop", "storm", "why", "pro", "lost", "profile", "me"];
 // Old links (before the tools were merged) still land somewhere sensible.
@@ -194,7 +194,7 @@ $("postBtn").onclick = async () => {
   if (!$("postAttest").checked) { $("postNote").textContent = "Tick the box to confirm these are your own lyrics."; return; }
   b.disabled = true; $("postNote").textContent = "Posting…";
   try { await api("/api/wall", { body: { text: S.last.text, title: $("postTitle").value.trim(), attest: true } });
-    track("wall_post"); $("postNote").innerHTML = 'Posted. <a href="#community">See it in Community</a>'; $("postTitle").value = ""; }
+    track("wall_post"); $("postNote").innerHTML = 'Posted. <a href="#community">See it on the Wall</a>'; $("postTitle").value = ""; }
   catch (e) { $("postNote").textContent = e.message; b.disabled = false; }
 };
 
@@ -407,12 +407,25 @@ function renderAccount() {
   const label = S.ME && S.ME.username ? "@" + S.ME.username : S.ME && S.ME.email ? S.ME.email.split("@")[0] : "Sign in";
   b.innerHTML = `<span aria-hidden="true">👤</span><span class="albl"> ${esc(label)}</span>`; b.setAttribute("aria-label", label === "Sign in" ? "Sign in" : "Account: " + label);
 }
+function loginStep(code) { $("loginForm").hidden = code; $("loginCode").hidden = !code; $("loginNote").textContent = ""; }
 function openLogin() {
   $("loginModal").hidden = false; $("loginChar").innerHTML = charSVG(1); $("loginNote").textContent = "";
-  const inn = !!(S.ME && S.ME.email);
-  $("loginForm").hidden = inn; $("loginOut").hidden = !inn; $("loginAge").parentElement.hidden = !!(S.ME && S.ME.ageOk); $("adminLink").hidden = !(S.ME && S.ME.admin);
-  $("loginH").textContent = inn ? "You're signed in" : "Save your streak and lyrics";
-  $("loginSub").textContent = inn ? `Signed in as ${S.ME.email}. Your streak, Pro and profile follow you to any device.` : "Sign in with your email and we'll send you a link. No password. Your streak, Pro and profile follow you to any device.";
+  const me = S.ME || {}, inn = !!me.email;
+  $("loginOut").hidden = !inn; $("loginCode").hidden = true; $("loginForm").hidden = inn;
+  $("loginAgeRow").hidden = !!me.ageOk; $("adminLink").hidden = !me.admin;
+  $("meNoEmail").hidden = !!me.username; $("loginX").hidden = !!me.username;
+  if (inn) {
+    $("loginH").textContent = "You're signed in";
+    $("loginSub").textContent = `Signed in as ${me.email}. Your streak, Pro and profile follow you to any device.`;
+  } else if (me.username) {
+    $("loginH").textContent = `You're @${me.username} on this device`;
+    $("loginSub").textContent = "Add your email to keep it. We send a 6-digit code, no password, and your profile and streak come with you to any device.";
+    $("loginOut").hidden = false; $("logoutBtn").hidden = true;
+  } else {
+    $("loginH").textContent = "Welcome in";
+    $("loginSub").textContent = "Just your email. No password, ever. We send a 6-digit code.";
+  }
+  if (inn) $("logoutBtn").hidden = false;
   if (!inn) setTimeout(() => $("loginEmail").focus(), 50);
 }
 function closeLogin() { $("loginModal").hidden = true; }
@@ -421,11 +434,31 @@ $("myProfileLink").onclick = $("meNoEmail").onclick = () => { closeLogin(); show
 $("loginModal").addEventListener("click", (e) => { if (e.target.id === "loginModal") closeLogin(); });
 $("loginGo").onclick = async () => {
   const b = $("loginGo"); b.disabled = true; $("loginNote").textContent = "Sending…";
-  try { await api("/api/login", { body: { email: $("loginEmail").value, age13: $("loginAge").checked } }); $("loginNote").textContent = "Check your email for the sign-in link. It works for 20 minutes."; track("signup_sent"); }
-  catch (e) { $("loginNote").textContent = e.message; }
+  try {
+    await api("/api/login", { body: { email: $("loginEmail").value, age13: $("loginAge").checked } });
+    track("signup_sent"); loginStep(true); $("loginOut").hidden = true;
+    $("loginNote").textContent = `Sent to ${$("loginEmail").value.trim()}. The code works for 20 minutes.`;
+    $("loginCodeIn").value = ""; setTimeout(() => $("loginCodeIn").focus(), 50);
+  } catch (e) { $("loginNote").textContent = e.message; }
   b.disabled = false;
 };
 $("loginEmail").addEventListener("keydown", (e) => { if (e.key === "Enter") $("loginGo").click(); });
+$("loginBack").onclick = () => { loginStep(false); $("loginEmail").focus(); };
+$("loginCodeIn").addEventListener("input", (e) => {
+  e.target.value = e.target.value.replace(/\D/g, "").slice(0, 6);
+  if (e.target.value.length === 6) $("loginCodeGo").click();
+});
+$("loginCodeIn").addEventListener("keydown", (e) => { if (e.key === "Enter") $("loginCodeGo").click(); });
+$("loginCodeGo").onclick = async () => {
+  const b = $("loginCodeGo"), code = $("loginCodeIn").value.trim();
+  if (code.length !== 6 || b.disabled) { $("loginNote").textContent = "Enter all 6 digits."; return; }
+  b.disabled = true; $("loginNote").textContent = "Checking…";
+  try {
+    const r = await api("/api/login/code", { body: { email: $("loginEmail").value, code } });
+    S.ME = r.me; await loadMe(); renderLocks(); track("signup_done"); closeLogin();
+  } catch (e) { $("loginNote").textContent = e.message; $("loginCodeIn").select(); }
+  b.disabled = false;
+};
 $("logoutBtn").onclick = async () => { await api("/api/logout", { body: {} }).catch(() => {}); location.href = "/"; };
 
 /* ---------- wiring ---------- */
@@ -485,7 +518,7 @@ Object.assign(A, { show, ask, renderReading, loadMe, openLogin, renderQuota, add
 /* ---------- first-visit tour ---------- */
 const TOUR = [
   ["weighBtn", 1, "Weigh your words", "Paste lyrics and hit Weigh it. The meter scores them from Wicked to Wack, circles what's wack, and checks if it sounds like a robot wrote it."],
-  ["groupNav", 3, "Write and Practice", "Write: weigh it, get Wingman's help, share it in Community. Practice: short lessons and freestyle drills on a beat."],
+  ["groupNav", 3, "Write and Workout", "Write: weigh it, get Wingman's help, put it on the Wall. Workout: short lessons and freestyle drills on a beat."],
   ["heroDare", 4, "Start with a wack one", "Not ready to share your own? Load a wack example and watch me gag. Each tap brings a new one."],
 ];
 let tourI = 0;

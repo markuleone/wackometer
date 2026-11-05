@@ -20,7 +20,7 @@
 <meta property="og:site_name" content="Wackometer">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Wackometer","url":"https://wackometer.com/","applicationCategory":"MusicApplication","operatingSystem":"Any","description":"Paste your lyrics and the Wackometer crew grades how wack they are, from Wicked to Wack. Take the Daily W, write songs with friends, get roasted by Wretch and write with Wingman.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"creator":{"@type":"Organization","name":"donebyverde","url":"https://donebyverde.com"}}</script>
 <link rel="preload" href="/fonts/fredoka.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/css/site.b2826da26b.css">
+<link rel="stylesheet" href="/css/site.67c6dd7640.css">
 <script>try{var t=localStorage.getItem("wk-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <script>(function(c,l,a,r,i,t,y){if(navigator.webdriver||/bot|crawl|spider|slurp|headless|lighthouse/i.test(navigator.userAgent))return;c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y)})(window,document,"clarity","script","z8yr2p57ys");</script>
@@ -32,12 +32,12 @@
 <a class="logo" href="/" aria-label="Wackometer home"><span class="w">W</span>ackometer</a>
 <nav id="groupNav" aria-label="Sections">
 <button data-g="write" aria-current="true"><span class="ni" aria-hidden="true">✍️</span> Write</button>
-<button data-g="practice"><span class="ni" aria-hidden="true">🏋️</span> Practice</button>
+<button data-g="practice"><span class="ni" aria-hidden="true">🏋️</span> Workout</button>
 </nav>
 <nav id="mainNav" aria-label="Tools" data-group="write">
 <button data-v="weigh" data-g="write" aria-current="page">⚖️ Weigh</button>
 <button data-v="wingman" data-g="write">🪽 Wingman</button>
-<button data-v="community" data-g="write">🌍 Community</button>
+<button data-v="community" data-g="write">🧱 Wall</button>
 <button data-v="workshop" data-g="practice">🏋️ Workshop</button>
 <button data-v="storm" data-g="practice">🎤 Wordstorm</button>
 </nav>
@@ -53,7 +53,7 @@
 <section id="v-weigh" class="weigh">
 <div class="hero">
 <div class="hero-copy">
-<h1>How <span class="hwrap"><em id="heroWord" class="hw tw4">wack</em></span> are your lyrics?</h1>
+<h1>How <span class="hwrap"><em id="heroWord" class="hw tw4">wack</em></span><br>are your lyrics?</h1>
 <p>Paste a verse. The crew weighs it, shows you why, and teaches you how to write it better.</p>
 <div class="row"><button class="btn bile" id="heroGo">Weigh my lyrics</button><button class="btn" id="heroDare">Show me a wack one</button></div>
 </div>
@@ -103,10 +103,10 @@
 </div>
 <div class="coach" id="coach" hidden>
 <div class="cch" id="coachChar"></div>
-<div><b>📋 Coach's note</b><p id="coachText"></p><div class="row"><button class="btn bile" id="coachGo">Train it in the Workshop</button></div></div>
+<div><b>📋 Word to the wise</b><p id="coachText"></p><div class="row"><button class="btn bile" id="coachGo">Train it in the Workshop</button></div></div>
 </div>
 <div class="robo" id="robot" hidden aria-live="polite">
-<div class="robohead"><span class="rch" id="robotChar"></span><div><b class="robt">🤖 Robot check</b><div class="rverd"><span id="robotScore">–</span> · <span id="robotVerdict"></span></div></div></div>
+<div class="robohead"><span class="rch" id="robotChar"></span><div><b class="robt">🤖 Written by a robot?</b><div class="rverd"><span id="robotScore">–</span> · <span id="robotVerdict"></span></div></div></div>
 <div class="rbar"><i id="robotBar"></i></div><div class="rscale"><span>All you</span><span>Half bot</span><span>Full robot</span></div>
 <div id="robotTells"></div>
 <div class="row"><button class="btn bile" id="humanizeBtn" data-ai>✨ Humanize with Wingman</button></div>
@@ -321,7 +321,7 @@
 <!-- WHY -->
 <section id="v-why" class="whyv" hidden>
 <h2>Why it's wack</h2>
-<p>The meter reads six W-metrics from your words and blends them into one wack score from 0 to 100. Then the crowd in Community votes on posted lyrics. When the crowd keeps scoring higher or lower than the meter, that gap becomes the crowd tune and shifts every new score.</p>
+<p>The meter reads six W-metrics from your words and blends them into one wack score from 0 to 100. Then the crowd on the Wall votes on posted lyrics. When the crowd keeps scoring higher or lower than the meter, that gap becomes the crowd tune and shifts every new score.</p>
 <div class="scale">
 <div class="bg-t0"><b>Wicked</b><span>0–19</span></div>
 <div class="bg-t1"><b>Well put</b><span>20–39</span></div>
@@ -339,14 +339,14 @@
 <section id="v-pro" class="prov" hidden>
 <div class="prohead">
 <h2>Write Wicked, every time.</h2>
-<p>Weigh, the robot check, Wordstorm, the Workshop and Community are free forever. Wingman Pro unlocks Wingman, the part that runs on AI.</p>
+<p>Weigh, the robot check, Wordstorm, the Workshop and the Wall are free forever. Wingman Pro unlocks Wingman, the part that runs on AI.</p>
 </div>
 <div class="bill" role="group" aria-label="Billing period"><button id="billM" aria-pressed="true">Monthly</button><button id="billY" aria-pressed="false">Yearly, save 38%</button></div>
 <div class="plans">
 <div class="plan">
 <div class="pn">Free</div>
 <div class="price">$0</div>
-<ul><li>Unlimited Weigh, Wack map and cliché swaps</li><li>Robot check: spot AI-sounding lines</li><li>Wordstorm and every Workshop lesson</li><li>Daily W and the Community feed</li><li>Share cards and videos</li><li class="no">Wingman, Roast and Humanize</li></ul>
+<ul><li>Unlimited Weigh, Wack map and cliché swaps</li><li>Written-by-a-robot check: spot AI-sounding lines</li><li>Wordstorm and every Workshop lesson</li><li>Daily W and the Wall</li><li>Share cards and videos</li><li class="no">Wingman, Roast and Humanize</li></ul>
 <button class="btn" data-plan="free">You're on Free</button>
 </div>
 <div class="plan star">
@@ -373,7 +373,7 @@
 <div class="demo" id="demoNote">Payments run through Stripe. Cancel anytime from Manage billing.</div>
 <div class="faq">
 <div><b>Why is so much free?</b><p>Weigh, the robot check and Wordstorm run right in your browser and cost us nothing per use. Wingman runs on AI, which costs money per message, so that's the part Pro pays for.</p></div>
-<div><b>Do my lyrics go public?</b><p>Only if you post them to Community or the Daily W. Weighing happens on your own device.</p></div>
+<div><b>Do my lyrics go public?</b><p>Only if you post them to the Wall or the Daily W. Weighing happens on your own device.</p></div>
 <div><b>Can I cancel?</b><p>Anytime. You keep Pro until the end of the period you paid for.</p></div>
 <div><b>Who owns what Wingman writes?</b><p>You do. Wingman writes original lines for your song.</p></div>
 <div><b>Teaching songwriting?</b><p>Email <a href="mailto:hello@wackometer.com">hello@wackometer.com</a> about classroom access.</p></div>
@@ -403,17 +403,21 @@
 <div class="modal" id="loginModal" hidden role="dialog" aria-labelledby="loginH">
 <div class="mbox">
 <div class="mch" id="loginChar"></div>
-<h3 id="loginH">Save your streak and lyrics</h3>
-<p class="tag" id="loginSub">Sign in with your email and we'll send you a link. No password. Your streak, Pro and profile follow you to any device.</p>
+<h3 id="loginH">Welcome in</h3>
+<p class="tag" id="loginSub">Just your email. No password, ever. We send a 6-digit code.</p>
 <div id="loginForm"><input type="email" id="loginEmail" inputmode="email" autocomplete="email" placeholder="you@email.com" aria-label="Email address">
-<label class="attest"><input type="checkbox" id="loginAge"> I'm 13 or older</label>
-<div class="row"><button class="btn bile" id="loginGo">Email me a link</button><button class="btn" id="loginX">Not now</button></div>
-<button class="linkbtn" id="meNoEmail" type="button">Or set up your profile without signing in</button></div>
+<label class="attest" id="loginAgeRow"><input type="checkbox" id="loginAge"> I'm 13 or older</label>
+<div class="row"><button class="btn bile" id="loginGo">Send my code</button><button class="btn" id="loginX">Not now</button></div>
+<button class="linkbtn" id="meNoEmail" type="button">Skip for now: just set up my profile</button></div>
+<div id="loginCode" hidden><label class="hint" for="loginCodeIn" id="loginCodeL">Enter the 6-digit code we emailed you</label>
+<input type="text" id="loginCodeIn" class="codein" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••" aria-describedby="loginCodeL">
+<div class="row"><button class="btn bile" id="loginCodeGo">Sign in</button><button class="btn" id="loginBack">Use a different email</button></div>
+<span class="hint">Can't find it? Check spam, or tap the button in the email instead.</span></div>
 <div id="loginOut" hidden><div class="row"><button class="btn" id="logoutBtn">Sign out</button><button class="btn" id="myProfileLink" data-v="me">My profile &amp; settings</button><a class="btn" id="adminLink" href="/admin" hidden>Admin</a><button class="btn" id="loginX2">Close</button></div></div>
 <span class="hint" id="loginNote"></span>
 </div>
 </div>
 </div>
-<link rel="modulepreload" href="/js/chunk-JYPCMTI4.js"><link rel="modulepreload" href="/js/chunk-C3NV5Z7Q.js"><script type="module" src="/js/app.4ae57414f3.js"></script>
+<link rel="modulepreload" href="/js/chunk-JYPCMTI4.js"><link rel="modulepreload" href="/js/chunk-C3NV5Z7Q.js"><script type="module" src="/js/app.1de8d1718a.js"></script>
 </body>
 </html>

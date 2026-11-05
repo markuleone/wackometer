@@ -105,7 +105,7 @@ const REACTIONS = ["🔥", "😭", "💀", "🤢"];
 const HUMAN_PATHS = [/^\/api\/wall$/, /^\/api\/daily$/, /^\/api\/login$/, /^\/api\/profile$/, /^\/api\/report$/, /^\/api\/u\/[a-z0-9_.]+\/report$/, /^\/api\/waitlist$/];
 const BLOCKED_MSG = "That includes language we don't allow on Wackometer. Try different words.";
 const EVENT_TYPES = ["share_card", "save_card", "save_video", "copy_caption", "copy_daily", "copy_roast", "pen_share", "pen_start", "swap_used", "emoji_starter", "best_line", "storm_start", "storm_done", "wash", "humanize", "lesson_pass", "install", "waitlist"];
-EVENT_TYPES.push("view", "weigh", "weigh_example", "signup_sent", "wall_post", "roast", "wingman_msg", "daily_submit", "ai_locked", "pro_click");
+EVENT_TYPES.push("view", "weigh", "weigh_example", "signup_sent", "signup_done", "wall_post", "roast", "wingman_msg", "daily_submit", "ai_locked", "pro_click");
 // Prefixed counters: where visits come from, which page they land on, which tools get opened. Fixed lists only.
 const EVENT_PREFIXED = /^(src:(google|bing|duckduckgo|yahoo|instagram|tiktok|facebook|x|reddit|youtube|discord|linkedin|pinterest|snapchat|threads|whatsapp|chatgpt|perplexity|email|direct|other)|land:(home|profile|rhymes|cliches|syllables)|tool:(weigh|community|storm|workshop|wingman|why|pro|lost|profile))$/;
 const cleanHandle = (h) => String(h || "").replace(/[^A-Za-z0-9_.\- ]/g, "").trim().slice(0, 20);
@@ -190,30 +190,62 @@ export default {
   },
 };
 
+// Attach the email to this device's account, or merge this device into the account that already owns the email.
+async function finishSignIn(DB, row) {
+  await DB.prepare("DELETE FROM login_tokens WHERE email=?").bind(row.email).run();
+  const existing = await DB.prepare("SELECT * FROM users WHERE lower(email)=?").bind(row.email).first();
+  if (!existing) {
+    await DB.prepare("UPDATE users SET email=? WHERE id=?").bind(row.email, row.user_id).run();
+    return row.user_id;
+  }
+  if (existing.id !== row.user_id) {
+    const device = await DB.prepare("SELECT * FROM users WHERE id=?").bind(row.user_id).first();
+    const moves = [
+      // Bring this device's posts, votes and Daily Ws into the account they signed in to.
+      DB.prepare("UPDATE readings SET user_id=? WHERE user_id=?").bind(existing.id, row.user_id),
+      DB.prepare("UPDATE OR IGNORE daily_entries SET user_id=? WHERE user_id=?").bind(existing.id, row.user_id),
+      DB.prepare("UPDATE OR IGNORE votes SET user_id=? WHERE user_id=?").bind(existing.id, row.user_id),
+    ];
+    // A profile made on this device before signing in moves over if the account doesn't have one yet.
+    if (device && device.username && !existing.username) {
+      moves.push(DB.prepare("UPDATE users SET username=NULL WHERE id=?").bind(device.id));
+      moves.push(DB.prepare("UPDATE users SET username=?, display_name=?, bio=?, avatar=?, color=?, genre=?, links=?, pinned=?, age_ok=MAX(COALESCE(age_ok,0),?) WHERE id=?")
+        .bind(device.username, device.display_name, device.bio, device.avatar, device.color, device.genre, device.links, device.pinned, device.age_ok || 0, existing.id));
+    }
+    if (device && (device.streak || 0) > (existing.streak || 0)) moves.push(DB.prepare("UPDATE users SET streak=?, last_daily=? WHERE id=?").bind(device.streak, device.last_daily, existing.id));
+    await DB.batch(moves);
+  }
+  return existing.id;
+}
+
 async function route(path, method, url, body, u, env, req) {
   const DB = env.DB;
 
+  // Sign in with the emailed link...
   if (path === "/api/login/verify" && method === "GET") {
     const t = url.searchParams.get("t") || "";
     const row = await DB.prepare("SELECT * FROM login_tokens WHERE token=?").bind(t).first();
     const go = (q) => new Response(null, { status: 302, headers: { location: `/?${q}#weigh` } });
     if (!row || row.expires_at < now()) return go("signin=expired");
-    await DB.prepare("DELETE FROM login_tokens WHERE token=?").bind(t).run();
-    const existing = await DB.prepare("SELECT id FROM users WHERE lower(email)=?").bind(row.email).first();
-    let target = row.user_id;
-    if (existing) {
-      target = existing.id;
-      if (existing.id !== row.user_id) {
-        // Bring this device's posts, songs and Daily W into the account they signed in to.
-        await DB.batch([
-          DB.prepare("UPDATE readings SET user_id=? WHERE user_id=?").bind(target, row.user_id),
-          DB.prepare("UPDATE OR IGNORE daily_entries SET user_id=? WHERE user_id=?").bind(target, row.user_id),
-        ]);
-      }
-    } else {
-      await DB.prepare("UPDATE users SET email=? WHERE id=?").bind(row.email, row.user_id).run();
-    }
+    const target = await finishSignIn(DB, row);
     const res = go("signin=ok");
+    res.headers.append("set-cookie", await cookieFor(new Request(url), env, target));
+    return res;
+  }
+  // ...or with the 6-digit code from the same email, typed right into the sign-in box.
+  if (path === "/api/login/code" && method === "POST") {
+    const email = String(body.email || "").trim().toLowerCase(), code = String(body.code || "").replace(/\D/g, "");
+    if (code.length !== 6) return bad("Enter the 6-digit code from the email.");
+    const row = await DB.prepare("SELECT * FROM login_tokens WHERE email=? AND expires_at>? ORDER BY expires_at DESC LIMIT 1").bind(email, now()).first();
+    if (!row || !row.code) return bad("That code expired. Send a new one.", 410);
+    if (row.tries >= 5) return bad("Too many tries. Send a new code.", 429);
+    if (!safeEqual(row.code, code)) {
+      await DB.prepare("UPDATE login_tokens SET tries=tries+1 WHERE token=?").bind(row.token).run();
+      return bad("That code isn't right. Check the email and try again.", 401);
+    }
+    const target = await finishSignIn(DB, row);
+    const fresh = await DB.prepare("SELECT * FROM users WHERE id=?").bind(target).first();
+    const res = json({ ok: true, me: me(fresh, await usedToday(env, target), env) });
     res.headers.append("set-cookie", await cookieFor(new Request(url), env, target));
     return res;
   }
@@ -422,17 +454,18 @@ async function route(path, method, url, body, u, env, req) {
     const sent = await DB.prepare("SELECT COUNT(*) c FROM login_tokens WHERE (email=? OR user_id=?) AND expires_at>?").bind(email, u.id, now()).first();
     if (sent.c >= 5) return bad("We've sent a few links already. Check your inbox and spam folder.", 429);
     const token = crypto.randomUUID().replace(/-/g, "") + rid();
-    await DB.prepare("INSERT INTO login_tokens (token,email,user_id,expires_at) VALUES (?,?,?,?)").bind(token, email, u.id, now() + 20 * 60000).run();
+    const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, "0");
+    await DB.prepare("INSERT INTO login_tokens (token,email,user_id,expires_at,code) VALUES (?,?,?,?,?)").bind(token, email, u.id, now() + 20 * 60000, code).run();
     const link = `${env.APP_URL || url.origin}/api/login/verify?t=${token}`;
     const fromRaw = env.EMAIL_FROM || "Wackometer <hello@wackometer.com>";
     const fm = fromRaw.match(/^\s*(.*?)\s*<([^>]+)>\s*$/), from = fm ? { name: fm[1] || "Wackometer", email: fm[2] } : { email: fromRaw.trim() };
-    const html = `<div style="font-family:Arial,sans-serif;font-size:16px;color:#1F2340"><p>Tap to sign in to Wackometer. The link works for 20 minutes.</p><p><a href="${link}" style="display:inline-block;background:#A8C42E;color:#1F2340;padding:12px 20px;border-radius:999px;font-weight:bold;text-decoration:none">Sign in to Wackometer</a></p><p style="color:#646A8C;font-size:13px">Didn't ask for this? Ignore it and nothing happens.</p></div>`;
+    const html = `<div style="font-family:Arial,sans-serif;font-size:16px;color:#1F2340"><p>Your Wackometer code:</p><p style="font-size:34px;font-weight:bold;letter-spacing:6px;margin:6px 0 14px">${code}</p><p>Type it into the sign-in box, or just tap the button. Both work for 20 minutes.</p><p><a href="${link}" style="display:inline-block;background:#A8C42E;color:#1F2340;padding:12px 20px;border-radius:999px;font-weight:bold;text-decoration:none">Sign in to Wackometer</a></p><p style="color:#646A8C;font-size:13px">No password needed, ever. Didn't ask for this? Ignore it and nothing happens.</p></div>`;
     let res;
     try { res = await fetch("https://api.sendgrid.com/v3/mail/send", {
       method: "POST", headers: { authorization: `Bearer ${env.SENDGRID_API_KEY}`, "content-type": "application/json" },
       body: JSON.stringify({
-        personalizations: [{ to: [{ email }] }], from, subject: "Your Wackometer sign-in link",
-        content: [{ type: "text/plain", value: `Sign in to Wackometer (link works for 20 minutes): ${link}` }, { type: "text/html", value: html }],
+        personalizations: [{ to: [{ email }] }], from, subject: `${code} is your Wackometer code`,
+        content: [{ type: "text/plain", value: `Your Wackometer code: ${code}\n\nOr sign in with this link (works for 20 minutes): ${link}` }, { type: "text/html", value: html }],
         tracking_settings: { click_tracking: { enable: false, enable_text: false } },
       }),
     }); } catch (e) { console.error("sendgrid fetch", e); return bad("The email didn't send. Try again in a minute.", 502); }

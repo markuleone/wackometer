@@ -118,7 +118,9 @@ CREATE TABLE IF NOT EXISTS login_tokens (
   token       TEXT PRIMARY KEY,
   email       TEXT NOT NULL,
   user_id     TEXT NOT NULL,
-  expires_at  INTEGER NOT NULL
+  expires_at  INTEGER NOT NULL,
+  code        TEXT,              -- 6-digit code sent with the link
+  tries       INTEGER NOT NULL DEFAULT 0
 );
 
 -- simple daily counters for what people do (shares, saves, swaps)

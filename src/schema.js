@@ -43,5 +43,8 @@ export const MIGRATIONS = [
   "ALTER TABLE users ADD COLUMN age_ok INTEGER",
   "ALTER TABLE users ADD COLUMN human_until INTEGER",
   "ALTER TABLE users ADD COLUMN notify INTEGER NOT NULL DEFAULT 1",
-  "CREATE UNIQUE INDEX IF NOT EXISTS users_username ON users(username)"
+  "CREATE UNIQUE INDEX IF NOT EXISTS users_username ON users(username)",
+  // 6-digit sign-in codes (sent in the same email as the link) and a wrong-guess counter
+  "ALTER TABLE login_tokens ADD COLUMN code TEXT",
+  "ALTER TABLE login_tokens ADD COLUMN tries INTEGER NOT NULL DEFAULT 0"
 ];
