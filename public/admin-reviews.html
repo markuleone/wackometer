@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Review editor · Wackometer</title><meta name="robots" content="noindex,nofollow"><link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/site.ae04f12e2b.css">
+<style>
+body{margin:0}[hidden]{display:none!important}
+.doc{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.doc h1{font-family:var(--display);font-size:38px;margin:0}.doc h2{font-family:var(--display);font-size:21px;margin:14px 0 0}
+.back{font-family:var(--display);font-weight:600;text-decoration:none;color:var(--ink)}
+.ed{display:grid;grid-template-columns:1fr 1fr;gap:12px 18px;background:var(--surface);border:2px solid var(--ink);box-shadow:0 5px 0 var(--ink);border-radius:22px;padding:18px}
+.ed label{display:flex;flex-direction:column;gap:4px;font-weight:600;font-size:14px}
+.ed .full{grid-column:1/-1}
+.ed input,.ed select,.ed textarea{width:100%;background:var(--bg);border:2px solid var(--line);border-radius:12px;padding:9px 11px;font-weight:400;min-height:0}
+.ed textarea{min-height:90px}#fBody{min-height:260px;line-height:1.6}
+.ed .hint{font-weight:400}
+.scoreRow{display:flex;align-items:center;gap:14px}.scoreRow input[type=range]{flex:1;accent-color:var(--bile-deep);padding:0;border:0;background:none}
+#scoreOut{font-family:var(--display);font-weight:700;border-radius:999px;padding:4px 14px;min-width:150px;text-align:center}
+.lookup{display:flex;gap:8px}.lookup input{flex:1}
+#coverPrev{width:88px;height:88px;border-radius:12px;object-fit:cover;border:2px solid var(--line)}
+.list{display:flex;flex-direction:column;gap:8px}
+.it{display:grid;grid-template-columns:52px 1fr auto;gap:12px;align-items:center;background:var(--surface);border:2px solid var(--line);border-radius:16px;padding:8px 12px}
+.it img,.it .ph{width:52px;height:52px;border-radius:10px;object-fit:cover;background:var(--bile-wash)}
+.it b{font-family:var(--display)}.it .row{gap:6px}
+.tag2{font-size:12px;font-weight:700;border-radius:999px;padding:2px 8px;background:var(--line)}.tag2.live{background:var(--bile);color:#1D2013}
+.req{background:var(--surface);border:2px solid var(--line);border-radius:16px;padding:10px 14px;display:flex;flex-direction:column;gap:4px}
+.req.done{opacity:.55}
+@media (max-width:760px){.ed{grid-template-columns:1fr}}
+</style>
+</head><body><div class="wrap"><a class="back" href="/reviews">← Lyric reviews</a><div class="doc">
+<h1>Review editor</h1>
+<p class="hint" id="err"></p>
+<div id="app" hidden>
+<form class="ed" id="ed" autocomplete="off">
+<label class="full">Spotify or YouTube link <span class="hint">Paste it and hit Fill in: we grab the title and cover art.</span>
+<span class="lookup"><input id="fSpotify" type="url" placeholder="https://open.spotify.com/track/…"><button class="btn" type="button" id="lookupBtn">Fill in</button></span></label>
+<label>Artist<input id="fArtist" required maxlength="120"></label>
+<label>Title<input id="fTitle" required maxlength="160"></label>
+<label>Song or album<select id="fKind"><option value="song">Song</option><option value="album">Album</option></select></label>
+<label>Genre <span class="hint">(optional)</span><input id="fGenre" maxlength="60" placeholder="indie pop, trap, R&amp;B…"></label>
+<label>Released <span class="hint">(optional)</span><input id="fReleased" maxlength="40" placeholder="Oct 2026"></label>
+<label>Reviewed by <span class="hint">(blank = Wackometer)</span><input id="fReviewer" maxlength="60"></label>
+<label class="full">Score <span class="hint">0 is Wicked, 100 is Wack. Under 20 earns “Certified Wicked”.</span>
+<span class="scoreRow"><input id="fScore" type="range" min="0" max="100" value="15"><span id="scoreOut"></span></span></label>
+<label class="full">One-line verdict <span class="hint">Shows on cards, link previews and the share card. One sentence.</span><input id="fVerdict" maxlength="220" required placeholder="Every verse is a photograph. The hook is the only thing you've heard before."></label>
+<label class="full">The review <span class="hint">Blank line = new paragraph. Start a line with “&gt; ” for a quote. **bold** works.</span><textarea id="fBody" maxlength="12000"></textarea></label>
+<label class="full">Best line <span class="hint">One short lyric quote, 25 words max. Never paste full lyrics (copyright).</span><input id="fBest" maxlength="160"></label>
+<label class="full" id="standRow">Standout tracks <span class="hint">(albums, comma separated)</span><input id="fStand" maxlength="600"></label>
+<label>Artist Instagram <span class="hint">(handle, for tags on the share card)</span><input id="fIg" maxlength="80" placeholder="@artist"></label>
+<label>Artist website or link-in-bio <span class="hint">(optional)</span><input id="fArtistUrl" type="url" maxlength="300"></label>
+<label>Apple Music link <span class="hint">(optional)</span><input id="fApple" type="url" maxlength="300"></label>
+<label>YouTube link <span class="hint">(optional, used if there's no Spotify link)</span><input id="fYoutube" type="url" maxlength="300"></label>
+<label>Cover image URL <span class="hint">(filled in from Spotify)</span><input id="fCover" type="url" maxlength="500"></label>
+<span><img id="coverPrev" alt="" hidden></span>
+<label>Page link <span class="hint">wackometer.com/reviews/… (blank = artist-title)</span><input id="fSlug" maxlength="80"></label>
+<label>Status<select id="fStatus"><option value="draft">Draft (only you can see it)</option><option value="live">Live (public, in the sitemap)</option></select></label>
+<div class="row full"><button class="btn bile" type="submit" id="saveBtn">Save</button><a class="btn" id="viewBtn" target="_blank" hidden>View page</a><button class="btn" type="button" id="newBtn">New review</button><button class="btn quiet" type="button" id="delBtn" hidden>Delete</button><span class="hint" id="note" role="status"></span></div>
+</form>
+<h2>All reviews</h2>
+<div class="list" id="list"></div>
+<h2>Artist submissions</h2>
+<p class="hint">Sent from the “Want your music weighed?” form. Mark them done once you've listened.</p>
+<div class="list" id="reqs"></div>
+</div>
+</div></div>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const TIERS = ["Wicked", "Well put", "Whatever", "Weird", "Wack"], TC = ["#3D8BFF", "#22C29B", "#A9A2DA", "#FF8A3D", "#A8C42E"], TO = ["#fff", "#1F2340", "#1F2340", "#1F2340", "#1F2340"];
+const tierOf = (s) => (s >= 80 ? 4 : s >= 60 ? 3 : s >= 40 ? 2 : s >= 20 ? 1 : 0);
+async function api(path, body) {
+const r = await fetch(path, body ? { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : {});
+const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || "Something went wrong."); return d;
+}
+const F = { spotify_url: "fSpotify", artist: "fArtist", title: "fTitle", kind: "fKind", genre: "fGenre", released: "fReleased", reviewer: "fReviewer", score: "fScore", verdict: "fVerdict", body: "fBody", best_line: "fBest", standouts: "fStand", artist_ig: "fIg", artist_url: "fArtistUrl", apple_url: "fApple", youtube_url: "fYoutube", cover_url: "fCover", slug: "fSlug", status: "fStatus" };
+let DATA = { reviews: [], requests: [] }, original = null;
+function showScore() {
+const s = Number($("fScore").value), t = tierOf(s), o = $("scoreOut");
+o.textContent = `${s} · ${t === 0 ? "Certified Wicked" : TIERS[t]}`; o.style.background = TC[t]; o.style.color = TO[t];
+}
+function showCover() { const u = $("fCover").value.trim(); $("coverPrev").hidden = !u; if (u) $("coverPrev").src = u; }
+function fill(r) {
+original = r ? r.slug : null;
+for (const [k, id] of Object.entries(F)) $(id).value = r ? (r[k] ?? "") : k === "score" ? 15 : k === "kind" ? "song" : k === "status" ? "draft" : "";
+$("delBtn").hidden = !r; $("viewBtn").hidden = !r; if (r) $("viewBtn").href = `/reviews/${r.slug}${r.status === "live" ? "" : "?preview=1"}`;
+$("standRow").hidden = $("fKind").value !== "album";
+$("note").textContent = r ? `Editing “${r.title}”.` : ""; showScore(); showCover();
+}
+function renderList() {
+$("list").innerHTML = DATA.reviews.length ? DATA.reviews.map((r, i) => `<div class="it">${r.cover_url ? `<img src="${esc(r.cover_url)}" alt="">` : '<span class="ph"></span>'}
+<span><b>${esc(r.title)}</b> · ${esc(r.artist)}<br><span class="hint">${r.score} ${TIERS[tierOf(r.score)]} · ${r.votes} crowd vote${r.votes === 1 ? "" : "s"} · </span><span class="tag2 ${r.status}">${r.status}</span></span>
+<span class="row"><a class="btn" href="/reviews/${esc(r.slug)}${r.status === "live" ? "" : "?preview=1"}" target="_blank">View</a><button class="btn" data-edit="${i}">Edit</button></span></div>`).join("") : '<p class="hint">No reviews yet. Write the first one above.</p>';
+$("list").querySelectorAll("[data-edit]").forEach((b) => (b.onclick = () => { fill(DATA.reviews[Number(b.dataset.edit)]); window.scrollTo({ top: 0, behavior: "smooth" }); }));
+$("reqs").innerHTML = DATA.requests.length ? DATA.requests.map((q) => `<div class="req ${q.status}"><b>${esc(q.artist)}</b><a href="${esc(q.link)}" target="_blank" rel="noopener">${esc(q.link)}</a>
+${q.note ? `<span>${esc(q.note)}</span>` : ""}<span class="hint">${q.email ? esc(q.email) + " · " : ""}${new Date(q.created_at).toLocaleDateString()}</span>
+<span class="row"><button class="btn" data-req="${esc(q.id)}" data-s="${q.status === "done" ? "new" : "done"}">${q.status === "done" ? "Mark as new" : "Mark done"}</button><button class="btn" data-start="${esc(q.id)}">Start a review</button></span></div>`).join("") : '<p class="hint">No submissions yet.</p>';
+$("reqs").querySelectorAll("[data-req]").forEach((b) => (b.onclick = async () => { await api("/api/reviews-admin/request", { id: b.dataset.req, status: b.dataset.s }); load(); }));
+$("reqs").querySelectorAll("[data-start]").forEach((b) => (b.onclick = () => { const q = DATA.requests.find((x) => x.id === b.dataset.start); fill(null); $("fArtist").value = q.artist; if (/spotify|youtu/.test(q.link)) { $("fSpotify").value = /youtu/.test(q.link) ? "" : q.link; if (/youtu/.test(q.link)) $("fYoutube").value = q.link; } window.scrollTo({ top: 0, behavior: "smooth" }); }));
+}
+async function load() {
+try { DATA = await api("/api/reviews-admin/list"); $("app").hidden = false; renderList(); }
+catch (e) { $("err").innerHTML = esc(e.message) + ' <a href="/">Sign in on the main site</a> with your admin email, then come back.'; }
+}
+$("fScore").oninput = showScore; $("fCover").oninput = showCover;
+$("fKind").onchange = () => ($("standRow").hidden = $("fKind").value !== "album");
+$("newBtn").onclick = () => fill(null);
+$("lookupBtn").onclick = async () => {
+const link = $("fSpotify").value.trim() || $("fYoutube").value.trim(); if (!link) { $("note").textContent = "Paste a Spotify or YouTube link first."; return; }
+$("note").textContent = "Looking it up…";
+try {
+const d = await api("/api/reviews-admin/lookup?url=" + encodeURIComponent(link));
+if (d.title && !$("fTitle").value) $("fTitle").value = d.title;
+if (d.artist && !$("fArtist").value && d.youtube) $("fArtist").value = d.artist;
+if (d.cover) $("fCover").value = d.cover;
+if (d.kind) { $("fKind").value = d.kind; $("standRow").hidden = d.kind !== "album"; }
+if (d.youtube && !$("fYoutube").value) { $("fYoutube").value = link; if ($("fSpotify").value.trim() === link) $("fSpotify").value = ""; }
+showCover(); $("note").textContent = d.spotify ? "Filled in. Spotify doesn't share the artist name, so type that in." : "Filled in. Check the artist name (YouTube gives the channel name).";
+} catch (e) { $("note").textContent = e.message; }
+};
+$("ed").onsubmit = async (e) => {
+e.preventDefault();
+const body = { original }; for (const [k, id] of Object.entries(F)) body[k] = $(id).value;
+$("saveBtn").disabled = true; $("note").textContent = "Saving…";
+try {
+const r = await api("/api/reviews-admin/save", body);
+await load(); fill(DATA.reviews.find((x) => x.slug === r.slug));
+$("note").innerHTML = r.status === "live" ? `Live at <a href="/reviews/${esc(r.slug)}" target="_blank">wackometer.com/reviews/${esc(r.slug)}</a>` : `Saved as a draft. <a href="/reviews/${esc(r.slug)}?preview=1" target="_blank">Preview it</a>`;
+} catch (e) { $("note").textContent = e.message; }
+$("saveBtn").disabled = false;
+};
+$("delBtn").onclick = async () => {
+if (!original || !confirm("Delete this review and its crowd votes? This can't be undone.")) return;
+await api("/api/reviews-admin/delete", { slug: original }); fill(null); load();
+};
+fill(null); load();
+</script>
+</body></html>

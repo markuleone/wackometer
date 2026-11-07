@@ -26,7 +26,11 @@ export const SCHEMA = [
   "CREATE TABLE IF NOT EXISTS blocks ( blocker TEXT NOT NULL, blocked TEXT NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY (blocker, blocked) )",
   "CREATE TABLE IF NOT EXISTS profile_reports ( target TEXT NOT NULL, reporter TEXT NOT NULL, reason TEXT, created_at INTEGER NOT NULL, PRIMARY KEY (target, reporter) )",
   "CREATE TABLE IF NOT EXISTS notify_log ( k TEXT PRIMARY KEY, at INTEGER NOT NULL )",
-  "CREATE TABLE IF NOT EXISTS waitlist ( email TEXT PRIMARY KEY, daw TEXT, user_id TEXT, created_at INTEGER NOT NULL )"
+  "CREATE TABLE IF NOT EXISTS waitlist ( email TEXT PRIMARY KEY, daw TEXT, user_id TEXT, created_at INTEGER NOT NULL )",
+  "CREATE TABLE IF NOT EXISTS reviews ( slug TEXT PRIMARY KEY, kind TEXT NOT NULL DEFAULT 'song', artist TEXT NOT NULL, title TEXT NOT NULL, genre TEXT, released TEXT, score INTEGER NOT NULL, verdict TEXT NOT NULL, body TEXT, best_line TEXT, standouts TEXT, cover_url TEXT, spotify_url TEXT, youtube_url TEXT, apple_url TEXT, artist_url TEXT, artist_ig TEXT, reviewer TEXT, status TEXT NOT NULL DEFAULT 'draft', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, published_at INTEGER )",
+  "CREATE INDEX IF NOT EXISTS reviews_live ON reviews(status, published_at DESC)",
+  "CREATE TABLE IF NOT EXISTS review_votes ( slug TEXT NOT NULL, user_id TEXT NOT NULL, tier INTEGER NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY (slug, user_id) )",
+  "CREATE TABLE IF NOT EXISTS review_requests ( id TEXT PRIMARY KEY, artist TEXT NOT NULL, link TEXT NOT NULL, email TEXT, note TEXT, user_id TEXT, status TEXT NOT NULL DEFAULT 'new', created_at INTEGER NOT NULL )"
 ];
 
 // Changes for databases created before these existed. Each runs on its own; 'duplicate column' errors are expected and ignored.

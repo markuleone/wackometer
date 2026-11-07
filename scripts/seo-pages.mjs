@@ -41,12 +41,12 @@ ${ld ? `<script type="application/ld+json">${JSON.stringify(ld)}</script>` : ""}
 <body>
 <div class="wrap seo">
 <header class="top"><a class="logo" href="/" aria-label="Wackometer home"><span class="w">W</span>ackometer</a>
-<nav id="mainNav" aria-label="Tools"><a href="/">⚖️ Weigh</a><a href="/#community">🧱 Wall</a><a href="/#storm">🎤 Wordstorm</a><a href="/#workshop">🏋️ Workshop</a><a href="/rhymes/">Rhymes</a><a href="/cliches/">Clichés</a><a href="/syllable-counter">Syllables</a></nav></header>
+<nav id="mainNav" aria-label="Tools"><a href="/">⚖️ Weigh</a><a href="/reviews">🎧 Reviews</a><a href="/#community">🧱 Wall</a><a href="/#storm">🎤 Wordstorm</a><a href="/#workshop">🏋️ Workshop</a><a href="/rhymes/">Rhymes</a><a href="/cliches/">Clichés</a><a href="/syllable-counter">Syllables</a></nav></header>
 <main id="main">
 ${body}
 <div class="cta"><b>How wack are your lyrics?</b><p>Paste a verse into the Wackometer. It scores it from Wicked to Wack, circles the clichés and lazy rhymes, and shows you how to fix them.</p><a class="btn bile" href="/">Weigh my lyrics, free</a></div>
 </main>
-<footer><p class="flinks">Wackometer · <a href="/rhymes/">Fresh rhymes</a> · <a href="/cliches/">Cliché fixer</a> · <a href="/syllable-counter">Syllable counter</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a></p>${DBV}</footer>
+<footer><p class="flinks">Wackometer · <a href="/reviews">Lyric reviews</a> · <a href="/rhymes/">Fresh rhymes</a> · <a href="/cliches/">Cliché fixer</a> · <a href="/syllable-counter">Syllable counter</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a></p>${DBV}</footer>
 </div>
 </body>
 </html>`;

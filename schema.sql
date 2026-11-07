@@ -196,3 +196,51 @@ CREATE TABLE IF NOT EXISTS waitlist (
   user_id    TEXT,
   created_at INTEGER NOT NULL
 );
+
+-- lyric reviews of released songs and albums (written by admins)
+CREATE TABLE IF NOT EXISTS reviews (
+  slug         TEXT PRIMARY KEY,
+  kind         TEXT NOT NULL DEFAULT 'song',   -- song | album
+  artist       TEXT NOT NULL,
+  title        TEXT NOT NULL,
+  genre        TEXT,
+  released     TEXT,                            -- free text, e.g. 2026 or Oct 2026
+  score        INTEGER NOT NULL,                -- 0-100 on the meter (0 = Wicked, 100 = Wack)
+  verdict      TEXT NOT NULL,                   -- one-line take
+  body         TEXT,                            -- the review (blank line = new paragraph, "> " = quote)
+  best_line    TEXT,                            -- one short lyric quote
+  standouts    TEXT,                            -- album: standout tracks, comma separated
+  cover_url    TEXT,
+  spotify_url  TEXT,
+  youtube_url  TEXT,
+  apple_url    TEXT,
+  artist_url   TEXT,
+  artist_ig    TEXT,
+  reviewer     TEXT,
+  status       TEXT NOT NULL DEFAULT 'draft',   -- draft | live
+  created_at   INTEGER NOT NULL,
+  updated_at   INTEGER NOT NULL,
+  published_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS reviews_live ON reviews(status, published_at DESC);
+
+-- crowd score: one tier vote (0 Wicked .. 4 Wack) per person per review
+CREATE TABLE IF NOT EXISTS review_votes (
+  slug        TEXT NOT NULL,
+  user_id     TEXT NOT NULL,
+  tier        INTEGER NOT NULL,
+  created_at  INTEGER NOT NULL,
+  PRIMARY KEY (slug, user_id)
+);
+
+-- artists asking to be reviewed
+CREATE TABLE IF NOT EXISTS review_requests (
+  id          TEXT PRIMARY KEY,
+  artist      TEXT NOT NULL,
+  link        TEXT NOT NULL,
+  email       TEXT,
+  note        TEXT,
+  user_id     TEXT,
+  status      TEXT NOT NULL DEFAULT 'new',     -- new | done
+  created_at  INTEGER NOT NULL
+);

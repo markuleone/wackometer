@@ -1,0 +1,131 @@
+// Review pages (/reviews and /reviews/<slug>): crowd vote, share link, story card, badge code, artist submissions.
+// The page itself is rendered by the worker; this only adds the interactive bits.
+import { $, api, charSVG, track, sourceOf, copyText, IS_BOT } from "./core.js";
+import { TIERS } from "./score.js";
+
+const TC = ["#3D8BFF", "#22C29B", "#A9A2DA", "#FF8A3D", "#A8C42E"];
+const TEXT_ON = ["#1F2340", "#1F2340", "#1F2340", "#1F2340", "#1F2340"];
+let R = {};
+try { R = JSON.parse(document.body.dataset.review || "{}"); } catch (e) {}
+
+// First-party counters: one view, which kind of page, where they came from.
+if (!IS_BOT && !sessionStorage.getItem("wk-v")) {
+  try { sessionStorage.setItem("wk-v", "1"); } catch (e) {}
+  const src = sourceOf();
+  track("view"); track(R.index ? "land:reviews" : "land:review"); if (src) track("src:" + src);
+}
+
+// The crew member for this tier, next to the score.
+document.querySelectorAll(".rv-char").forEach((el) => (el.innerHTML = charSVG(Number(el.dataset.tier) || 0)));
+
+/* ---------- crowd vote ---------- */
+function renderCrowd(c) {
+  const box = $("crowdTier"); if (!box) return;
+  box.innerHTML = c.n ? `<span class="rv-pill" style="--tc:${TC[c.tier]};--to:${TEXT_ON[c.tier]}">${TIERS[c.tier].n} · ${c.avg}</span>` : `<span class="hint">No votes yet</span>`;
+  $("crowdN").textContent = c.n ? `${c.n} vote${c.n === 1 ? "" : "s"}` : "Be the first";
+  $("crowdDist").querySelectorAll("i").forEach((i, k) => i.style.setProperty("--h", (c.n ? Math.round((c.dist[k] / c.n) * 100) : 0) + "%"));
+  document.querySelectorAll(".rv-t").forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.t) === c.mine)));
+}
+if (R.slug) {
+  api(`/api/reviews/${R.slug}/crowd`).then(renderCrowd).catch(() => {});
+  document.querySelectorAll(".rv-t").forEach((b) => (b.onclick = async () => {
+    const note = $("voteNote"), t = Number(b.dataset.t);
+    document.querySelectorAll(".rv-t").forEach((x) => (x.disabled = true));
+    try {
+      const c = await api(`/api/reviews/${R.slug}/vote`, { body: { tier: t } });
+      renderCrowd(c); track("review_vote");
+      const agree = t === R.tier ? "Same call as us." : Math.abs(t - R.tier) === 1 ? "Close to our call." : "Bold. You and the meter disagree.";
+      note.textContent = `You said ${TIERS[t].n}. ${agree}`;
+    } catch (e) { note.textContent = e.message; }
+    document.querySelectorAll(".rv-t").forEach((x) => (x.disabled = false));
+  }));
+}
+
+/* ---------- share ---------- */
+const tierLabel = () => (R.cert ? "Certified Wicked" : TIERS[R.tier].n);
+const shareText = () => {
+  const who = R.ig ? `@${R.ig}` : R.artist;
+  return R.cert ? `${who}'s “${R.title}” is Certified Wicked on the Wackometer ✨` : `“${R.title}” by ${who} got weighed: ${tierLabel()} (${R.score}/100). Do you agree?`;
+};
+if ($("rvShare")) $("rvShare").onclick = async () => {
+  const url = location.origin + location.pathname, note = $("shareNote");
+  track("review_share");
+  if (navigator.share) { try { await navigator.share({ title: document.title, text: shareText(), url }); return; } catch (e) { if (e.name === "AbortError") return; } }
+  try { await navigator.clipboard.writeText(`${shareText()} ${url}`); note.textContent = "Link copied. Paste it anywhere."; } catch (e) { note.textContent = url; }
+};
+if ($("badgeCopy")) $("badgeCopy").onclick = () => { copyText($("badgeCode").value, $("badgeCopy"), "Copy the code"); track("review_badge"); };
+
+/* ---------- story card (1080x1920, for Instagram and TikTok stories) ---------- */
+const W = 1080, H = 1920, D = '"Fredoka",system-ui,sans-serif', B = 'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif';
+const loadImg = (src) => new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
+function wrap(x, text, maxW, max) {
+  const out = []; let line = "";
+  for (const w of String(text).split(/\s+/)) { const t = line ? line + " " + w : w; if (x.measureText(t).width > maxW && line) { out.push(line); line = w; } else line = t; }
+  if (line) out.push(line);
+  if (out.length > max) { out.length = max; out[max - 1] = out[max - 1].replace(/\s*\S*$/, "") + "…"; }
+  return out;
+}
+async function storyCard() {
+  try { await document.fonts.load(`700 100px "Fredoka"`); } catch (e) {}
+  const [cover, ch] = await Promise.all([R.cover ? loadImg(`/api/reviews/${R.slug}/cover`) : null, loadImg("data:image/svg+xml;charset=utf-8," + encodeURIComponent(charSVG(R.tier, 400)))]);
+  const c = document.createElement("canvas"); c.width = W; c.height = H; const x = c.getContext("2d");
+  const t = R.tier, col = TC[t];
+  x.fillStyle = "#FBFCFF"; x.fillRect(0, 0, W, H);
+  x.fillStyle = t >= 3 ? "#EAF3C4" : "#E8F1FF"; x.fillRect(0, 0, W, 990);
+  // logo
+  x.textBaseline = "alphabetic"; x.fillStyle = "#1F2340"; x.font = `700 84px ${D}`;
+  const wW = x.measureText("W").width, rest = "ackometer", rW = x.measureText(rest).width, sx = (W - wW - rW) / 2;
+  x.save(); x.translate(sx + wW / 2, 170); x.rotate(-0.14); x.fillStyle = "#86A01A"; x.fillText("W", -wW / 2, 0); x.restore(); x.fillText(rest, sx + wW, 170);
+  x.textAlign = "center"; x.font = `700 34px ${D}`; x.fillStyle = "#646A8C"; x.fillText("LYRIC REVIEW", W / 2, 240);
+  // cover
+  const cs = 640, cx = (W - cs) / 2, cy = 300;
+  x.save(); x.shadowColor = "rgba(31,35,64,.25)"; x.shadowBlur = 40; x.shadowOffsetY = 16; x.fillStyle = "#1F2340"; x.beginPath(); x.roundRect(cx, cy, cs, cs, 36); x.fill(); x.restore();
+  x.save(); x.beginPath(); x.roundRect(cx, cy, cs, cs, 36); x.clip();
+  if (cover) x.drawImage(cover, cx, cy, cs, cs); else { x.fillStyle = col; x.fillRect(cx, cy, cs, cs); x.fillStyle = TEXT_ON[t]; x.font = `700 260px ${D}`; x.fillText("♪", W / 2, cy + cs / 2 + 90); }
+  x.restore();
+  if (R.cert) {
+    x.save(); x.translate(cx + cs - 40, cy + 40); x.rotate(0.22); x.font = `700 44px ${D}`;
+    const s = "CERTIFIED WICKED", sw = x.measureText(s).width + 70;
+    x.fillStyle = "#1F2340"; x.beginPath(); x.roundRect(-sw / 2, -46, sw, 92, 46); x.fill(); x.fillStyle = "#BCD83C"; x.fillText(s, 0, 16); x.restore();
+  }
+  // title + artist
+  x.fillStyle = "#1F2340"; x.font = `700 76px ${D}`;
+  const tl = wrap(x, R.title, W - 160, 2); tl.forEach((l, i) => x.fillText(l, W / 2, 1060 + i * 84));
+  let y = 1060 + tl.length * 84;
+  x.font = `600 44px ${B}`; x.fillStyle = "#646A8C"; x.fillText(`by ${R.artist}`, W / 2, y + 6); y += 110;
+  // verdict pill + score + character
+  const vt = tierLabel().toUpperCase(); let fs = 84; x.font = `700 ${fs}px ${D}`;
+  while (x.measureText(vt).width > W - 420 && fs > 48) { fs -= 4; x.font = `700 ${fs}px ${D}`; }
+  const vw = x.measureText(vt).width + 90, chS = 170, px = W / 2 + (chS + 20) / 2;
+  x.save(); x.translate(px, y + 40); x.rotate(-0.03); x.fillStyle = col; x.beginPath(); x.roundRect(-vw / 2, -62, vw, 124, 62); x.fill(); x.fillStyle = TEXT_ON[t]; x.fillText(vt, 0, fs * 0.36); x.restore();
+  if (ch) x.drawImage(ch, px - vw / 2 - chS - 20, y + 40 - chS / 2 - 10, chS, chS);
+  x.font = `600 38px ${B}`; x.fillStyle = "#646A8C"; x.fillText(`${R.score}/100 on the Wackometer`, W / 2, y + 160); y += 260;
+  // verdict
+  x.font = `italic 400 44px ${B}`; x.fillStyle = "#1F2340";
+  wrap(x, `“${R.verdict}”`, W - 200, 3).forEach((l, i) => x.fillText(l, W / 2, y + i * 60));
+  x.font = `700 40px ${D}`; x.fillStyle = "#5A6E0C"; x.fillText("wackometer.com/reviews", W / 2, 1830);
+  x.font = `600 30px ${B}`; x.fillStyle = "#646A8C"; x.fillText("Do you agree? Cast your vote.", W / 2, 1878);
+  return new Promise((r) => c.toBlob(r, "image/png"));
+}
+if ($("rvCard")) $("rvCard").onclick = async () => {
+  const b = $("rvCard"), note = $("shareNote"); b.disabled = true; note.textContent = "Drawing your card…";
+  try {
+    const blob = await storyCard(); track("review_card");
+    const name = `wackometer-${R.slug}.png`, file = new File([blob], name, { type: "image/png" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], text: shareText() }); note.textContent = ""; b.disabled = false; return; } catch (e) { if (e.name === "AbortError") { note.textContent = ""; b.disabled = false; return; } } }
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    note.textContent = R.ig ? `Saved. Post it to your story and tag @${R.ig}.` : "Saved. Post it to your story.";
+  } catch (e) { note.textContent = "Couldn't draw the card on this browser."; }
+  b.disabled = false;
+};
+
+/* ---------- artist submissions ---------- */
+const form = $("subForm");
+if (form) form.onsubmit = async (e) => {
+  e.preventDefault();
+  const note = $("subNote"), btn = form.querySelector("button"), d = Object.fromEntries(new FormData(form));
+  btn.disabled = true; note.textContent = "Sending…";
+  try { await api("/api/reviews/submit", { body: d }); form.reset(); note.textContent = "Got it. We'll listen this week. If we review it, you'll hear from us."; track("review_submit"); }
+  catch (err) { note.textContent = err.message; }
+  btn.disabled = false;
+};

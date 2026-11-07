@@ -20,3 +20,5 @@
   Permissions-Policy: camera=(), microphone=(self), geolocation=()
 /admin
   X-Robots-Tag: noindex
+/admin-reviews
+  X-Robots-Tag: noindex

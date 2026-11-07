@@ -5,6 +5,7 @@ import { handleSocial, profileMeta } from "./social.js";
 import { cleanLyrics, cleanIdentity } from "./moderation.js";
 import SEO_URLS from "./seo-urls.js";
 import { checkUnsubscribe } from "./notify.js";
+import { reviewsPage, badgeSVG, reviewApi, reviewUrls } from "./reviews.js";
 import { analyze, tierOf, clamp, MID, TIERS, METRICS, words, dailyKey, dailyPrompt } from "../web/js/score.js";
 
 const json = (data, status = 200, headers = {}) =>
@@ -102,12 +103,12 @@ function me(u, used, env) {
     billing: !!u.stripe_customer, checkout: !!env.STRIPE_SECRET_KEY };
 }
 const REACTIONS = ["🔥", "😭", "💀", "🤢"];
-const HUMAN_PATHS = [/^\/api\/wall$/, /^\/api\/daily$/, /^\/api\/login$/, /^\/api\/profile$/, /^\/api\/report$/, /^\/api\/u\/[a-z0-9_.]+\/report$/, /^\/api\/waitlist$/];
+const HUMAN_PATHS = [/^\/api\/wall$/, /^\/api\/daily$/, /^\/api\/login$/, /^\/api\/profile$/, /^\/api\/report$/, /^\/api\/u\/[a-z0-9_.]+\/report$/, /^\/api\/waitlist$/, /^\/api\/reviews\/submit$/, /^\/api\/reviews\/[a-z0-9-]+\/vote$/];
 const BLOCKED_MSG = "That includes language we don't allow on Wackometer. Try different words.";
 const EVENT_TYPES = ["share_card", "save_card", "save_video", "copy_caption", "copy_daily", "copy_roast", "pen_share", "pen_start", "swap_used", "emoji_starter", "best_line", "storm_start", "storm_done", "wash", "humanize", "lesson_pass", "install", "waitlist"];
-EVENT_TYPES.push("view", "weigh", "weigh_example", "signup_sent", "signup_done", "wall_post", "roast", "wingman_msg", "daily_submit", "ai_locked", "pro_click");
+EVENT_TYPES.push("view", "weigh", "weigh_example", "signup_sent", "signup_done", "wall_post", "roast", "wingman_msg", "daily_submit", "ai_locked", "pro_click", "review_vote", "review_share", "review_card", "review_badge", "review_submit");
 // Prefixed counters: where visits come from, which page they land on, which tools get opened. Fixed lists only.
-const EVENT_PREFIXED = /^(src:(google|bing|duckduckgo|yahoo|instagram|tiktok|facebook|x|reddit|youtube|discord|linkedin|pinterest|snapchat|threads|whatsapp|chatgpt|perplexity|email|direct|other)|land:(home|profile|rhymes|cliches|syllables)|tool:(weigh|community|storm|workshop|wingman|why|pro|lost|profile))$/;
+const EVENT_PREFIXED = /^(src:(google|bing|duckduckgo|yahoo|instagram|tiktok|facebook|x|reddit|youtube|discord|linkedin|pinterest|snapchat|threads|whatsapp|chatgpt|perplexity|email|direct|other)|land:(home|profile|rhymes|cliches|syllables|reviews|review)|tool:(weigh|community|storm|workshop|wingman|why|pro|lost|profile))$/;
 const cleanHandle = (h) => String(h || "").replace(/[^A-Za-z0-9_.\- ]/g, "").trim().slice(0, 20);
 
 /* ---------------- Wingman (Claude API) ---------------- */
@@ -166,6 +167,8 @@ export default {
     if (path === "/api/stripe/webhook" && method === "POST") { await ensureSchema(env); return stripeWebhook(req, env); }
     if (path.startsWith("/u/")) return profilePage(req, env, decodeURIComponent(path.slice(3)).toLowerCase());
     if (path === "/sitemap.xml") return sitemap(env);
+    if (path === "/reviews" || path.startsWith("/reviews/")) { try { return await reviewsPage(req, env, path, ensureSchema); } catch (e) { console.error(e); return new Response("Something broke on our side. Try again in a moment.", { status: 500 }); } }
+    if (path.startsWith("/badge/") && path.endsWith(".svg")) return badgeSVG(env, path.slice(7, -4).toLowerCase(), ensureSchema);
     if (!path.startsWith("/api/")) return env.ASSETS.fetch(req);
     if (method !== "GET" && req.headers.get("origin") && new URL(req.headers.get("origin")).host !== url.host) return bad("Wrong origin", 403);
     if (path === "/api/unsubscribe") return unsubscribe(url, env, method);
@@ -582,6 +585,9 @@ async function route(path, method, url, body, u, env, req) {
     return json({ url: p.url });
   }
 
+  const rv = await reviewApi(path, method, url, body, u, env, isAdmin(u, env), rid);
+  if (rv) return rv;
+
   const social = await handleSocial(path, method, url, body, u, env);
   if (social) return social;
 
@@ -590,11 +596,14 @@ async function route(path, method, url, body, u, env, req) {
 
 // Sitemap: the main pages plus every public profile.
 async function sitemap(env) {
-  let users = [];
-  try { await ensureSchema(env); users = (await env.DB.prepare("SELECT username FROM users WHERE username IS NOT NULL ORDER BY created_at DESC LIMIT 45000").all()).results; } catch (e) {}
+  let users = [], reviews = [];
+  try { await ensureSchema(env); reviews = await reviewUrls(env.DB); } catch (e) {}
+  try { users = (await env.DB.prepare("SELECT username FROM users WHERE username IS NOT NULL ORDER BY created_at DESC LIMIT 45000").all()).results; } catch (e) {}
   const base = env.APP_URL || "https://wackometer.com";
   const urls = [["/", "daily", "1.0"], ["/terms", "yearly", "0.2"], ["/privacy", "yearly", "0.2"]].map(([p, f, pr]) => `<url><loc>${base}${p}</loc><changefreq>${f}</changefreq><priority>${pr}</priority></url>`)
     .concat(SEO_URLS.map((p) => `<url><loc>${base}${p}</loc><changefreq>monthly</changefreq><priority>${p.endsWith("/") || p === "/syllable-counter" ? "0.8" : "0.6"}</priority></url>`))
+    .concat([`<url><loc>${base}/reviews</loc><changefreq>daily</changefreq><priority>0.9</priority></url>`])
+    .concat(reviews.map((r) => `<url><loc>${base}/reviews/${r.slug}</loc><lastmod>${new Date(r.updated_at).toISOString().slice(0, 10)}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>`))
     .concat(users.map((u) => `<url><loc>${base}/u/${encodeURIComponent(u.username)}</loc><changefreq>weekly</changefreq><priority>0.5</priority></url>`));
   return new Response(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.join("")}</urlset>`, { headers: { "content-type": "application/xml; charset=utf-8", "cache-control": "public, max-age=3600" } });
 }
