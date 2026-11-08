@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Wackometer · How wack are your lyrics?</title>
-<meta name="description" content="Paste your lyrics and the Wackometer crew grades how wack they are, from Wicked to Wack. Take the Daily W, get roasted by Wretch, and write with Wingman.">
+<title>Wackometer · Lyric reviews and songwriting tools</title>
+<meta name="description" content="Lyric reviews of new songs and albums, scored from Wicked to Wack. Plus free tools that weigh your own lyrics, fix clichés and help you write better, and the Wingman plugin for your DAW.">
 <meta property="og:title" content="Wackometer · How wack are your lyrics?">
 <meta property="og:description" content="Paste a verse. The crew weighs it. Then the crowd decides if they got it right.">
 <meta property="og:image" content="https://wackometer.com/og.png">
@@ -53,8 +53,41 @@
   </header>
   <main id="main" tabindex="-1">
 
+  <!-- HOME: pick a path -->
+  <section id="v-home" class="homev" aria-labelledby="homeH">
+    <div class="hhead">
+      <h1 id="homeH">What are we <em>working</em> on?</h1>
+      <p>Read the lyric reviews, sharpen your own writing, or bring Wingman into your studio.</p>
+    </div>
+    <div class="hpaths">
+      <a class="hpath hp-rev" href="/reviews" data-hub="reviews">
+        <span class="hc" data-ch="0" aria-hidden="true"></span>
+        <span class="hey">🎧 Read</span>
+        <b class="ht">Lyric reviews</b>
+        <span class="hd">New songs and albums weighed from Wicked to Wack. Mostly artists you haven't heard yet, and you get a vote on every one.</span>
+        <span class="hcovers" id="homeCovers" aria-hidden="true"></span>
+        <span class="hgo">See the reviews <span aria-hidden="true">→</span></span>
+      </a>
+      <div class="hpath hp-write" role="group" aria-labelledby="hwT">
+        <span class="hc" data-ch="1" aria-hidden="true"></span>
+        <span class="hey">✍️ Write</span>
+        <b class="ht" id="hwT">Help writing</b>
+        <span class="hd">Paste a verse and get it weighed in a second. Then fix the clichés with Wingman, train in the Workshop or freestyle in Wordstorm.</span>
+        <span class="htools"><button type="button" data-go="weigh">⚖️ Weigh</button><button type="button" data-go="wingman">🪽 Wingman</button><button type="button" data-go="workshop">🏋️ Workshop</button><button type="button" data-go="storm">🎤 Wordstorm</button></span>
+        <button type="button" class="hgo" data-go="weigh" data-hub="write">Weigh my lyrics <span aria-hidden="true">→</span></button>
+      </div>
+      <button type="button" class="hpath hp-plug" data-go="plugin" data-hub="plugin">
+        <span class="hc" data-ch="3" aria-hidden="true"></span>
+        <span class="hey">🎛️ Studio <span class="hsoon">Coming soon</span></span>
+        <b class="ht">Wingman plugin</b>
+        <span class="hd">The Wackometer inside FL Studio, Ableton and Logic. Weigh lines and get rewrites without leaving your session.</span>
+        <span class="hgo">Get early access <span aria-hidden="true">→</span></span>
+      </button>
+    </div>
+  </section>
+
   <!-- WEIGH -->
-  <section id="v-weigh" class="weigh">
+  <section id="v-weigh" class="weigh" hidden>
     <div class="hero">
       <div class="hero-copy">
         <h1>How <span class="hwrap"><em id="heroWord" class="hw tw4">wack</em></span><br>are your lyrics?</h1>

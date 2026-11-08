@@ -72,7 +72,7 @@ ${ld ? `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, "\
 <a class="skip" href="#main">Skip to content</a>
 <div class="wrap seo">
 <header class="top"><a class="logo" href="/" aria-label="Wackometer home"><span class="w">W</span>ackometer</a>
-<nav id="mainNav" aria-label="Tools"><a href="/">⚖️ Weigh</a><a href="/reviews"${path.startsWith("/reviews") ? ' aria-current="page"' : ""}>🎧 Reviews</a><a href="/#community">🧱 Wall</a><a href="/#workshop">🏋️ Workshop</a><a href="/rhymes/">Rhymes</a></nav></header>
+<nav id="mainNav" aria-label="Tools"><a href="/#weigh">⚖️ Weigh</a><a href="/reviews"${path.startsWith("/reviews") ? ' aria-current="page"' : ""}>🎧 Reviews</a><a href="/#community">🧱 Wall</a><a href="/#workshop">🏋️ Workshop</a><a href="/rhymes/">Rhymes</a></nav></header>
 <main id="main">
 ${body}
 </main>
@@ -195,7 +195,7 @@ ${standouts.length ? `<h2>Standout tracks</h2><ul class="rv-stand">${standouts.m
 <button class="btn" type="button" id="badgeCopy">Copy the code</button></details>
 </section>
 ${more.length ? `<section class="rv-more" aria-labelledby="moreH"><h2 id="moreH">More reviews</h2><div class="rv-grid">${more.map(card).join("")}</div><p><a href="/reviews">All reviews →</a></p></section>` : ""}
-<div class="cta"><b>Now weigh your own.</b><p>Paste a verse into the Wackometer. It scores it from Wicked to Wack, circles the clichés and lazy rhymes, and shows you how to fix them.</p><a class="btn bile" href="/">Weigh my lyrics, free</a></div>
+<div class="cta"><b>Now weigh your own.</b><p>Paste a verse into the Wackometer. It scores it from Wicked to Wack, circles the clichés and lazy rhymes, and shows you how to fix them.</p><a class="btn bile" href="/#weigh">Weigh my lyrics, free</a></div>
 ${SUBMIT}
 </article>`;
   const item = { "@type": r.kind === "album" ? "MusicAlbum" : "MusicRecording", name: r.title, byArtist: { "@type": "MusicGroup", name: r.artist, ...(artistUrl ? { url: artistUrl } : {}) }, ...(r.cover_url ? { image: r.cover_url } : {}), ...(r.genre ? { genre: r.genre } : {}) };
@@ -253,6 +253,9 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId) {
     const res = await fetch(src, { cf: { cacheTtl: 86400 } });
     if (!res.ok || !/^image\//.test(res.headers.get("content-type") || "")) return bad("No cover.", 404);
     return new Response(res.body, { headers: { "content-type": res.headers.get("content-type"), "cache-control": "public, max-age=86400" } });
+  }
+  if (path === "/api/reviews/latest" && method === "GET") {
+    return json((await DB.prepare("SELECT slug,title,artist,cover_url,score FROM reviews WHERE status='live' ORDER BY published_at DESC LIMIT 5").all()).results);
   }
   if (path === "/api/reviews/submit" && method === "POST") {
     const artist = String(body.artist || "").trim().slice(0, 80), link = safeUrl(String(body.link || "").replace(/^http:/i, "https:")).slice(0, 300);

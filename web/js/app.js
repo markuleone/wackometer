@@ -11,7 +11,7 @@ const robotM = lazy(() => import("./robot.js"));
 const lessonsM = lazy(() => import("./workshop.js"));
 const swapsM = lazy(() => import("./swaps.js"));
 const stormM = lazy(() => import("./storm.js").then((m) => m.initStorm({ ls, track, copyText })));
-let stormOn = false, lastShown = "weigh";
+let stormOn = false, lastShown = "", tourShown = false;
 
 /* ---------- gauge ---------- */
 const cx=160,cy=166,R=128;
@@ -167,22 +167,23 @@ const GROUP = { weigh: "write", wingman: "write", community: "write", profile: "
 const TAB = { profile: "community", me: "community" };
 const TITLES = { wingman: "Wingman", community: "The Wall", workshop: "Workshop", storm: "Wordstorm", why: "Why it's wack", pro: "Wingman Pro", lost: "Page not found", me: "Your profile" };
 const GROUP_FIRST = { write: "weigh", practice: "workshop" };
-const VIEWS = ["weigh", "wingman", "community", "workshop", "storm", "why", "pro", "lost", "profile", "me"];
+const VIEWS = ["home", "weigh", "wingman", "community", "workshop", "storm", "why", "pro", "lost", "profile", "me"];
 // Old links (before the tools were merged) still land somewhere sensible.
 const ALIASES = { wash: "weigh", daily: "community", wall: "community", squad: "me", pen: "community", train: "workshop" };
 function show(v) {
   v = ALIASES[v] || v;
   const g = GROUP[v], tab = TAB[v] || v;
-  if (g) { $("mainNav").dataset.group = g; ls("wk-g-" + g, tab); }
+  if (g) { $("mainNav").dataset.group = g; ls("wk-g-" + g, tab); } else if (v === "home") $("mainNav").dataset.group = "none";
   document.querySelectorAll("#groupNav button").forEach((b) => (b.dataset.g === g ? b.setAttribute("aria-current", "true") : b.removeAttribute("aria-current")));
   document.querySelectorAll("#mainNav button,#proBtn").forEach((b) => (b.dataset.v === tab ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current")));
   if (v !== "storm" && stormOn) stormM().then((st) => st.onHide());
   VIEWS.forEach((x) => ($("v-" + x).hidden = x !== v)); window.scrollTo(0, 0);
-  if (v !== "profile") document.title = v === "weigh" ? "Wackometer · How wack are your lyrics?" : `${TITLES[v] || "Wackometer"} · Wackometer`;
+  if (v !== "profile") document.title = v === "home" ? "Wackometer · Lyric reviews and songwriting tools" : v === "weigh" ? "Wackometer · How wack are your lyrics?" : `${TITLES[v] || "Wackometer"} · Wackometer`;
   if (v !== lastShown) { lastShown = v; track("tool:" + v); try { window.clarity && window.clarity("set", "tool", v); } catch (e) {} }
   if (v === "storm") { stormOn = true; stormM().then((st) => st.onShow()); }
   if (v === "workshop") shopM().then((mod) => mod.renderWorkshop());
-  if (v !== "profile" && v !== "lost" && (location.pathname !== "/" || location.hash !== "#" + v)) history.replaceState(null, "", "/#" + v);
+  if (v !== "profile" && v !== "lost") { const to = v === "home" ? "/" : "/#" + v; if (location.pathname + location.hash !== to) history.replaceState(null, "", to); }
+  if (v === "weigh" && !tourShown && ls("wk-tour") !== "1") { tourShown = true; setTimeout(tourStep, 900); }
   if (v === "community") communityM().then((mod) => mod.loadCommunity());
   if (v === "pro") loadMe();
   if (v === "me") meM().then((mod) => mod.loadMe());
@@ -357,7 +358,7 @@ function applyUnlocks() {
   UNLOCKS.forEach((u) => (UNLOCK[u.k] = st >= u.d));
   if (JSON.stringify(UNLOCK) !== before) { renderCrew(S.last ? S.last.tier : null); if (S.last) $("mchar").innerHTML = charSVG(S.last.tier); }
 }
-window.addEventListener("popstate", () => { if (location.pathname.startsWith("/u/")) show("profile"); else { const h = location.hash.slice(1); show(VIEWS.includes(h) || ALIASES[h] ? h : "weigh"); } });
+window.addEventListener("popstate", () => { if (location.pathname.startsWith("/u/")) show("profile"); else { const h = location.hash.slice(1); show(VIEWS.includes(h) || ALIASES[h] ? h : "home"); } });
 
 /* ---------- theme ---------- */
 const THEMES = ["auto", "light", "dark"];
@@ -470,7 +471,7 @@ $("lyrics").addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) &&
 $("lyrics").addEventListener("input", () => { padIsExample = false; ls("wk-draft", $("lyrics").value); $("draftBack").hidden = true; });
 document.querySelectorAll("#mainNav button,#proBtn,#wingLockGo").forEach((b) => (b.onclick = () => show(b.dataset.v)));
 document.querySelectorAll("#groupNav button").forEach((b) => (b.onclick = () => { const prev = ls("wk-g-" + b.dataset.g); show(VIEWS.includes(prev) && GROUP[prev] === b.dataset.g ? prev : GROUP_FIRST[b.dataset.g]); }));
-window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if (VIEWS.includes(h) || ALIASES[h]) show(h); });
+window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if (VIEWS.includes(h) || ALIASES[h]) show(h); else if (!h) show("home"); });
 $("toWing").onclick = () => { show("wingman"); if (!canAI()) { track("ai_locked"); return; } if (words($("lyrics").value).length >= 8) { if (!S.last) renderReading(); ask("Make my lyrics less wack"); } };
 $("whyList").innerHTML = METRICS.map((m) => `<dt>${m.n} <span class="hint">(${Math.round(m.w * 100)}%)</span></dt><dd>${m.d}</dd>`).join("");
 $("heroGo").onclick = () => { const t = $("lyrics"); t.scrollIntoView({ behavior: "smooth", block: "center" }); setTimeout(() => { t.focus(); t.select(); }, 350); };
@@ -569,12 +570,26 @@ try {
   if (path.startsWith("/u/")) show("profile");
   else if (path.startsWith("/pen/")) show("community"); // old Pass the Pen links
   else if (path !== "/" && path !== "/index.html") { show("lost"); $("lostChar").innerHTML = charSVG(3); }
-  else if ((VIEWS.includes(h) || ALIASES[h]) && h !== "weigh" && h !== "lost") show(h);
+  else if ((VIEWS.includes(h) || ALIASES[h]) && h !== "lost") show(h);
+  else show("home");
   const qs0 = new URLSearchParams(location.search);
-  if (qs0.get("unsubscribed")) { history.replaceState(null, "", "/#weigh"); setTimeout(() => { $("quip").textContent = "Wally: Done. No more emails from us."; $("mchar").innerHTML = charSVG(2); }, 300); }
-  if (qs0.get("deleted")) { history.replaceState(null, "", "/#weigh"); setTimeout(() => { $("quip").textContent = "Wendy: Your account is gone. Sad to see you go. The door's always open."; $("mchar").innerHTML = charSVG(1); }, 300); }
+  if (qs0.get("unsubscribed")) { show("weigh"); setTimeout(() => { $("quip").textContent = "Wally: Done. No more emails from us."; $("mchar").innerHTML = charSVG(2); }, 300); }
+  if (qs0.get("deleted")) { show("weigh"); setTimeout(() => { $("quip").textContent = "Wendy: Your account is gone. Sad to see you go. The door's always open."; $("mchar").innerHTML = charSVG(1); }, 300); }
   const si = qs0.get("signin");
-  if (si) { history.replaceState(null, "", "/#weigh"); if (si === "ok") { setTimeout(() => { $("quip").textContent = "Wendy: You're signed in! Your streak and profile are safe now."; $("mchar").innerHTML = charSVG(1); }, 300); } else { openLogin(); $("loginNote").textContent = "That link expired. Send a new one."; } }
-  if (ls("wk-tour") !== "1" && path === "/" && (!h || h === "weigh") && !qs0.toString()) setTimeout(tourStep, 1200);
+  if (si) { show("weigh"); if (si === "ok") { setTimeout(() => { $("quip").textContent = "Wendy: You're signed in! Your streak and profile are safe now."; $("mchar").innerHTML = charSVG(1); }, 300); } else { openLogin(); $("loginNote").textContent = "That link expired. Send a new one."; } }
   if (qs0.get("paid")) { show("pro"); setTimeout(() => ($("demoNote").textContent = "Welcome to Wingman Pro. It can take a few seconds to switch on."), 600); history.replaceState(null, "", "/#pro"); }
 }
+
+/* ---------- home: pick a path ---------- */
+document.querySelectorAll("#v-home .hc").forEach((el) => (el.innerHTML = charSVG(Number(el.dataset.ch))));
+document.querySelectorAll("#v-home [data-hub]").forEach((el) => el.addEventListener("click", () => track("hub_" + el.dataset.hub)));
+document.querySelectorAll("#v-home [data-go]").forEach((b) => (b.onclick = (e) => {
+  e.stopPropagation();
+  if (b.dataset.go === "plugin") { show("pro"); setTimeout(() => { $("dawBox").scrollIntoView({ behavior: "smooth", block: "center" }); $("dawEmail").focus({ preventScroll: true }); }, 80); }
+  else show(b.dataset.go);
+}));
+document.querySelector(".logo").addEventListener("click", (e) => { if (location.pathname === "/") { e.preventDefault(); show("home"); } });
+api("/api/reviews/latest").then((list) => {
+  const box = $("homeCovers"); if (!list.length) { box.innerHTML = '<span class="hint">First reviews drop soon</span>'; return; }
+  box.innerHTML = list.slice(0, 4).map((r) => r.cover_url ? `<img src="${esc(r.cover_url)}" alt="" width="56" height="56" loading="lazy">` : '<i>♪</i>').join("") + `<span class="hint">${list.length > 4 ? "and more" : `${list.length} review${list.length === 1 ? "" : "s"}`}</span>`;
+}).catch(() => {});
