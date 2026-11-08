@@ -12,7 +12,7 @@ try { R = JSON.parse(document.body.dataset.review || "{}"); } catch (e) {}
 if (!IS_BOT && !sessionStorage.getItem("wk-v")) {
   try { sessionStorage.setItem("wk-v", "1"); } catch (e) {}
   const src = sourceOf();
-  track("view"); track(R.front ? "land:home" : R.index ? "land:reviews" : "land:review"); if (src) track("src:" + src);
+  track("view"); track(R.front ? "land:home" : R.index ? "land:reviews" : R.artist ? "land:artist" : "land:review"); if (src) track("src:" + src);
 }
 
 // The crew member for this tier, next to the score.
@@ -143,7 +143,16 @@ if (form) form.onsubmit = async (e) => {
   e.preventDefault();
   const note = $("subNote"), btn = form.querySelector("button"), d = Object.fromEntries(new FormData(form));
   btn.disabled = true; note.textContent = "Sending…";
-  try { await api("/api/reviews/submit", { body: d }); form.reset(); note.textContent = "Got it. We'll listen this week. If we review it, you'll hear from us."; track("review_submit"); }
-  catch (err) { note.textContent = err.message; }
+  try {
+    const r = await api("/api/reviews/submit", { body: d });
+    track("submit_checkout"); note.textContent = "Taking you to checkout…"; location.href = r.url; return;
+  } catch (err) { note.textContent = err.message; }
   btn.disabled = false;
 };
+
+// Back from Stripe checkout.
+{
+  const qs = new URLSearchParams(location.search), note = $("subNote");
+  if (note && qs.get("submitted")) { note.textContent = "Paid. You're in the queue: your feedback lands in your inbox within 7 days."; track("submit_paid"); history.replaceState(null, "", location.pathname + "#submit"); }
+  else if (note && qs.get("submit") === "cancelled") { note.textContent = "Checkout cancelled. Nothing was charged."; history.replaceState(null, "", location.pathname + "#submit"); }
+}

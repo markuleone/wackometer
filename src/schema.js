@@ -54,6 +54,11 @@ export const MIGRATIONS = [
   // front-page hero picks
   "ALTER TABLE reviews ADD COLUMN featured INTEGER NOT NULL DEFAULT 0",
   "ALTER TABLE review_requests ADD COLUMN title TEXT",
+  // $10 submissions: paid flag, amount in cents, Stripe session; reviews remember they came from a paid submission
+  "ALTER TABLE review_requests ADD COLUMN paid INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE review_requests ADD COLUMN amount INTEGER",
+  "ALTER TABLE review_requests ADD COLUMN stripe_session TEXT",
+  "ALTER TABLE reviews ADD COLUMN submitted INTEGER NOT NULL DEFAULT 0",
   // songs Marku asked to have queued for review (Nov 2026). OR IGNORE: runs once, never overwrites.
   "INSERT OR IGNORE INTO review_requests (id,artist,title,link,note,status,created_at) VALUES ('seed-gabi-015cc9b6dc','Air','Cherry Blossom Girl','https://open.spotify.com/search/Cherry%20Blossom%20Girl%20Air','From Gabi''s links. Title was cut off in the screenshot (\"Cherry Blossom\u2026\"). Cover looks like Air, double-check.','new',1762640000000)",
   "INSERT OR IGNORE INTO review_requests (id,artist,title,link,note,status,created_at) VALUES ('seed-gabi-565a7f044d','Louke\u2026','Snoopy','https://open.spotify.com/search/Snoopy%20Louke','From Gabi''s links. Artist name was cut off in the screenshot (\"Louke\u2026\"). Find the right artist.','new',1762640000001)",

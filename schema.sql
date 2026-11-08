@@ -219,6 +219,7 @@ CREATE TABLE IF NOT EXISTS reviews (
   reviewer     TEXT,
   status       TEXT NOT NULL DEFAULT 'draft',   -- draft | live
   featured     INTEGER NOT NULL DEFAULT 0,      -- 1 = in the front-page hero
+  submitted    INTEGER NOT NULL DEFAULT 0,      -- 1 = the artist paid to submit it (noted on the page)
   created_at   INTEGER NOT NULL,
   updated_at   INTEGER NOT NULL,
   published_at INTEGER
@@ -243,6 +244,9 @@ CREATE TABLE IF NOT EXISTS review_requests (
   email       TEXT,
   note        TEXT,
   user_id     TEXT,
-  status      TEXT NOT NULL DEFAULT 'new',     -- new | done
+  status      TEXT NOT NULL DEFAULT 'new',     -- pending (not paid yet) | new | done
+  paid        INTEGER NOT NULL DEFAULT 0,      -- 1 = paid the submission fee
+  amount      INTEGER,                         -- cents paid
+  stripe_session TEXT,
   created_at  INTEGER NOT NULL
 );

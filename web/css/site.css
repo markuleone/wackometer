@@ -932,3 +932,25 @@ a.rchip:hover{border-color:var(--ink)}
   .fscroll{grid-auto-columns:150px;gap:12px}.fvids .fscroll{grid-auto-columns:250px}
 }
 @media (max-width:760px){.rtop .rb-p{display:none}}
+/* ===== artist leaderboard + artist pages ===== */
+.lb{display:flex;flex-direction:column;gap:16px;max-width:900px}
+.lb-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.lb-row{display:grid;grid-template-columns:44px 56px 1fr auto;gap:14px;align-items:center;background:var(--surface);border:2px solid var(--line);border-radius:18px;padding:8px 14px 8px 10px}
+.lb-row.top{border-color:var(--ink);box-shadow:0 3px 0 var(--ink)}
+.lb-rank{font-family:var(--display);font-weight:700;font-size:20px;text-align:center;color:var(--muted)}.lb-row.top .lb-rank{font-size:28px}
+.lb-art{text-decoration:none;display:block;width:56px;height:56px;border-radius:12px;overflow:hidden;background:var(--bile-wash)}.lb-art img{width:100%;height:100%;object-fit:cover;display:block}.lb-art i{display:grid;place-items:center;height:100%;font-style:normal}
+.lb-who{display:flex;flex-direction:column;gap:2px;min-width:0}.lb-who>a{color:var(--ink);text-decoration:none;font-family:var(--display);font-size:18px}.lb-who>a:hover{text-decoration:underline}
+.lb-who .hint a{color:inherit}
+.lb-score{display:flex;align-items:center;gap:10px}.lb-num{font-family:var(--display);font-weight:700;font-size:28px;min-width:2ch;text-align:right}
+.flb{display:flex;flex-direction:column;gap:8px}.flb>p{margin:0}
+.ar-head{display:grid;grid-template-columns:minmax(160px,260px) 1fr;gap:28px;align-items:start}
+.ar-art{border:2px solid var(--ink);box-shadow:0 6px 0 var(--ink);border-radius:24px;overflow:hidden;aspect-ratio:1;background:var(--bile-wash)}.ar-art img{width:100%;height:100%;object-fit:cover;display:block}
+.rv-scores.one{grid-template-columns:minmax(0,260px)}
+.rv-by .rv-ext{font-weight:500;color:var(--muted)}
+.rv-paid{margin:0 0 6px}
+@media (max-width:760px){
+  .lb-row{grid-template-columns:30px 1fr auto;gap:10px;padding:10px 12px 10px 8px}
+  .lb-art{display:none}.lb-rank{font-size:15px}.lb-row.top .lb-rank{font-size:22px}
+  .lb-who>a{font-size:16px}.lb-score{flex-direction:column;align-items:flex-end;gap:2px}.lb-score .rv-pill{font-size:12px;padding:2px 8px}.lb-num{font-size:22px;min-width:0}
+  .ar-head{grid-template-columns:1fr;gap:16px}.ar-art{max-width:220px}
+}

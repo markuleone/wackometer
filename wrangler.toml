@@ -7,7 +7,7 @@ compatibility_date = "2026-09-01"
 directory = "./public"
 binding = "ASSETS"
 not_found_handling = "none"  # no asset? the worker answers (front page, reviews, 404s)
-run_worker_first = ["/", "/api/*", "/u/*", "/sitemap.xml", "/reviews", "/reviews/*", "/badge/*"]
+run_worker_first = ["/", "/api/*", "/u/*", "/sitemap.xml", "/reviews", "/reviews/*", "/artists", "/artists/*", "/badge/*"]
 
 # Error logs and traces in the Cloudflare dashboard (Workers → wackometer → Observability)
 [observability]
