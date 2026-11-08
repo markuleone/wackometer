@@ -6,6 +6,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { CLICHES } from "../web/js/score.js";
 import { SWAPS } from "../web/js/swaps.js";
+import { siteHeader } from "../src/site-header.js";
 
 const BASE = "https://wackometer.com";
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -40,11 +41,10 @@ ${ld ? `<script type="application/ld+json">${JSON.stringify(ld)}</script>` : ""}
 </head>
 <body>
 <div class="wrap seo">
-<header class="top"><a class="logo" href="/" aria-label="Wackometer home"><span class="w">W</span>ackometer</a>
-<nav id="mainNav" aria-label="Tools"><a href="/#weigh">⚖️ Weigh</a><a href="/reviews">🎧 Reviews</a><a href="/#community">🧱 Wall</a><a href="/#storm">🎤 Wordstorm</a><a href="/#workshop">🏋️ Workshop</a><a href="/rhymes/">Rhymes</a><a href="/cliches/">Clichés</a><a href="/syllable-counter">Syllables</a></nav></header>
+${siteHeader()}
 <main id="main">
 ${body}
-<div class="cta"><b>How wack are your lyrics?</b><p>Paste a verse into the Wackometer. It scores it from Wicked to Wack, circles the clichés and lazy rhymes, and shows you how to fix them.</p><a class="btn bile" href="/#weigh">Weigh my lyrics, free</a></div>
+<div class="cta"><b>How wack are your lyrics?</b><p>Paste a verse into the Wackometer. It scores it from Wicked to Wack, circles the clichés and lazy rhymes, and shows you how to fix them.</p><a class="btn bile" href="/write#weigh">Weigh my lyrics, free</a></div>
 </main>
 <footer><p class="flinks">Wackometer · <a href="/reviews">Lyric reviews</a> · <a href="/rhymes/">Fresh rhymes</a> · <a href="/cliches/">Cliché fixer</a> · <a href="/syllable-counter">Syllable counter</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a></p>${DBV}</footer>
 </div>
@@ -74,7 +74,7 @@ export function buildSeoPages(OUT, cssHref) {
 ${L ? `<div class="warn"><b>🤢 Lazy rhyme alert</b><p>${L.map(esc).join(" / ")} is one of the most overused rhyme families in pop songs. The Wackometer flags it as a <em>wimpy rhyme</em>. Try a slant rhyme from the list below, or rhyme two syllables at once.</p></div>` : ""}
 ${p.perfect.length ? `<h2>Perfect rhymes</h2>${Object.keys(bySyl).sort((a, b) => a - b).map((n) => `<h3>${n} syllable${n > 1 ? "s" : ""}</h3><div class="rchips">${chips(bySyl[n])}</div>`).join("")}` : ""}
 ${p.near.length ? `<h2>Slant rhymes (fresher)</h2><p class="hint">Same vowel sounds, different consonants. Listeners hear the rhyme without seeing it coming.</p><div class="rchips">${chips(p.near)}</div>` : ""}
-<h2>Write with it</h2><p>Want a beat to practice on? <a href="/#storm">Wordstorm</a> drops words like “${esc(w)}” on the beat with rhymes underneath, so you can freestyle with them.</p>
+<h2>Write with it</h2><p>Want a beat to practice on? <a href="/write#storm">Wordstorm</a> drops words like “${esc(w)}” on the beat with rhymes underneath, so you can freestyle with them.</p>
 </article>`;
     write(`/rhymes/${w}`, page({ path: `/rhymes/${w}`, title: `Words that rhyme with ${w} (perfect + slant rhymes) · Wackometer`, desc: `Rhymes for ${w}: ${p.perfect.slice(0, 6).concat(p.near.slice(0, 4)).join(", ")} and more. Perfect and slant rhymes for songwriters, with lazy rhymes flagged.`, body, ld: crumbs([["Rhymes", "/rhymes/"], [w, `/rhymes/${w}`]]) }));
   }
@@ -94,7 +94,7 @@ ${p.near.length ? `<h2>Slant rhymes (fresher)</h2><p class="hint">Same vowel sou
 <p class="hint">These are starting points. The best swap is the one only you could write: a real place, a real object, a real moment.</p>
 <h2>How to fix any cliché</h2>
 <ol><li>Ask what the phrase is trying to say (heartbreak, freedom, devotion).</li><li>Find one object or moment from your own life that shows it.</li><li>Describe that thing plainly. Specific beats poetic.</li></ol>
-<p>Paste your lyrics into the <a href="/#weigh">Wackometer</a> and it highlights every cliché it knows. Tap one to swap it in place.</p>
+<p>Paste your lyrics into the <a href="/write#weigh">Wackometer</a> and it highlights every cliché it knows. Tap one to swap it in place.</p>
 </article>`;
     write(`/cliches/${s}`, page({ path: `/cliches/${s}`, title: `“${c}” cliché: fresh alternatives for songwriters · Wackometer`, desc: `Stop writing “${c}”. Fresh, specific lyric alternatives${sw[0] ? ` like “${sw[0]}”` : ""}, and how to fix any cliché in your songs.`, body, ld: crumbs([["Cliché fixer", "/cliches/"], [c, `/cliches/${s}`]]) }));
   }

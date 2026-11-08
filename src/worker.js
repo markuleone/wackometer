@@ -5,7 +5,7 @@ import { handleSocial, profileMeta } from "./social.js";
 import { cleanLyrics, cleanIdentity } from "./moderation.js";
 import SEO_URLS from "./seo-urls.js";
 import { checkUnsubscribe } from "./notify.js";
-import { reviewsPage, badgeSVG, reviewApi, reviewUrls } from "./reviews.js";
+import { reviewsPage, badgeSVG, reviewApi, reviewUrls, frontPage } from "./reviews.js";
 import { analyze, tierOf, clamp, MID, TIERS, METRICS, words, dailyKey, dailyPrompt } from "../web/js/score.js";
 
 const json = (data, status = 200, headers = {}) =>
@@ -108,7 +108,7 @@ const BLOCKED_MSG = "That includes language we don't allow on Wackometer. Try di
 const EVENT_TYPES = ["share_card", "save_card", "save_video", "copy_caption", "copy_daily", "copy_roast", "pen_share", "pen_start", "swap_used", "emoji_starter", "best_line", "storm_start", "storm_done", "wash", "humanize", "lesson_pass", "install", "waitlist"];
 EVENT_TYPES.push("view", "weigh", "weigh_example", "signup_sent", "signup_done", "wall_post", "roast", "wingman_msg", "daily_submit", "ai_locked", "pro_click", "review_vote", "review_share", "review_card", "review_badge", "review_submit", "hub_reviews", "hub_write", "hub_plugin");
 // Prefixed counters: where visits come from, which page they land on, which tools get opened. Fixed lists only.
-const EVENT_PREFIXED = /^(src:(google|bing|duckduckgo|yahoo|instagram|tiktok|facebook|x|reddit|youtube|discord|linkedin|pinterest|snapchat|threads|whatsapp|chatgpt|perplexity|email|direct|other)|land:(home|profile|rhymes|cliches|syllables|reviews|review)|tool:(home|weigh|community|storm|workshop|wingman|why|pro|lost|profile))$/;
+const EVENT_PREFIXED = /^(src:(google|bing|duckduckgo|yahoo|instagram|tiktok|facebook|x|reddit|youtube|discord|linkedin|pinterest|snapchat|threads|whatsapp|chatgpt|perplexity|email|direct|other)|land:(home|write|profile|rhymes|cliches|syllables|reviews|review)|tool:(home|weigh|community|storm|workshop|wingman|why|pro|lost|profile))$/;
 const cleanHandle = (h) => String(h || "").replace(/[^A-Za-z0-9_.\- ]/g, "").trim().slice(0, 20);
 
 /* ---------------- Wingman (Claude API) ---------------- */
@@ -167,9 +167,17 @@ export default {
     if (path === "/api/stripe/webhook" && method === "POST") { await ensureSchema(env); return stripeWebhook(req, env); }
     if (path.startsWith("/u/")) return profilePage(req, env, decodeURIComponent(path.slice(3)).toLowerCase());
     if (path === "/sitemap.xml") return sitemap(env);
+    if ((path === "" || path === "/") && (req.method === "GET" || req.method === "HEAD")) { try { return await frontPage(req, env, ensureSchema); } catch (e) { console.error(e); return env.ASSETS.fetch(new Request(new URL("/write", req.url), req)); } }
     if (path === "/reviews" || path.startsWith("/reviews/")) { try { return await reviewsPage(req, env, path, ensureSchema); } catch (e) { console.error(e); return new Response("Something broke on our side. Try again in a moment.", { status: 500 }); } }
     if (path.startsWith("/badge/") && path.endsWith(".svg")) return badgeSVG(env, path.slice(7, -4).toLowerCase(), ensureSchema);
-    if (!path.startsWith("/api/")) return env.ASSETS.fetch(req);
+    if (!path.startsWith("/api/")) {
+      // Unknown page: the tools app shows its "page not found" view (with a real 404 status for search engines).
+      if (req.method !== "GET" && req.method !== "HEAD") return new Response("Not found", { status: 404 });
+      const r = await env.ASSETS.fetch(req);
+      if (r.status !== 404) return r;
+      const app = await env.ASSETS.fetch(new Request(new URL("/write", req.url), req));
+      return new Response(app.body, { status: 404, headers: app.headers });
+    }
     if (method !== "GET" && req.headers.get("origin") && new URL(req.headers.get("origin")).host !== url.host) return bad("Wrong origin", 403);
     if (path === "/api/unsubscribe") return unsubscribe(url, env, method);
 
@@ -228,7 +236,7 @@ async function route(path, method, url, body, u, env, req) {
   if (path === "/api/login/verify" && method === "GET") {
     const t = url.searchParams.get("t") || "";
     const row = await DB.prepare("SELECT * FROM login_tokens WHERE token=?").bind(t).first();
-    const go = (q) => new Response(null, { status: 302, headers: { location: `/?${q}#weigh` } });
+    const go = (q) => new Response(null, { status: 302, headers: { location: `/write?${q}#weigh` } });
     if (!row || row.expires_at < now()) return go("signin=expired");
     const target = await finishSignIn(DB, row);
     const res = go("signin=ok");
@@ -572,7 +580,7 @@ async function route(path, method, url, body, u, env, req) {
       mode: "subscription",
       "line_items[0][price]": price, "line_items[0][quantity]": 1,
       client_reference_id: u.id, metadata: { plan, user: u.id },
-      success_url: `${base}/?paid=${plan}#pro`, cancel_url: `${base}/#pro`, allow_promotion_codes: "true",
+      success_url: `${base}/write?paid=${plan}#pro`, cancel_url: `${base}/write#pro`, allow_promotion_codes: "true",
     };
     if (u.stripe_customer) params.customer = u.stripe_customer;
     params["subscription_data[metadata][user]"] = u.id;
@@ -581,7 +589,7 @@ async function route(path, method, url, body, u, env, req) {
   }
   if (path === "/api/portal" && method === "POST") {
     if (!env.STRIPE_SECRET_KEY || !u.stripe_customer) return bad("No billing account on this device yet.", 404);
-    const p = await stripe(env, "billing_portal/sessions", { customer: u.stripe_customer, return_url: `${env.APP_URL || url.origin}/#pro` });
+    const p = await stripe(env, "billing_portal/sessions", { customer: u.stripe_customer, return_url: `${env.APP_URL || url.origin}/write#pro` });
     return json({ url: p.url });
   }
 
@@ -602,7 +610,7 @@ async function sitemap(env) {
   const base = env.APP_URL || "https://wackometer.com";
   const urls = [["/", "daily", "1.0"], ["/terms", "yearly", "0.2"], ["/privacy", "yearly", "0.2"]].map(([p, f, pr]) => `<url><loc>${base}${p}</loc><changefreq>${f}</changefreq><priority>${pr}</priority></url>`)
     .concat(SEO_URLS.map((p) => `<url><loc>${base}${p}</loc><changefreq>monthly</changefreq><priority>${p.endsWith("/") || p === "/syllable-counter" ? "0.8" : "0.6"}</priority></url>`))
-    .concat([`<url><loc>${base}/reviews</loc><changefreq>daily</changefreq><priority>0.9</priority></url>`])
+    .concat([`<url><loc>${base}/reviews</loc><changefreq>daily</changefreq><priority>0.9</priority></url>`, `<url><loc>${base}/write</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>`])
     .concat(reviews.map((r) => `<url><loc>${base}/reviews/${r.slug}</loc><lastmod>${new Date(r.updated_at).toISOString().slice(0, 10)}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>`))
     .concat(users.map((u) => `<url><loc>${base}/u/${encodeURIComponent(u.username)}</loc><changefreq>weekly</changefreq><priority>0.5</priority></url>`));
   return new Response(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.join("")}</urlset>`, { headers: { "content-type": "application/xml; charset=utf-8", "cache-control": "public, max-age=3600" } });
@@ -610,7 +618,7 @@ async function sitemap(env) {
 
 // Profile links get their own title and description in link previews (iMessage, Instagram, X).
 async function profilePage(req, env, username) {
-  const page = await env.ASSETS.fetch(new Request(new URL("/", req.url), req));
+  const page = await env.ASSETS.fetch(new Request(new URL("/write", req.url), req));
   let meta = null;
   try { await ensureSchema(env); meta = await profileMeta(env, username.replace(/[^a-z0-9_.]/g, "")); } catch (e) {}
   if (!meta) return page;
@@ -654,5 +662,5 @@ async function unsubscribe(url, env, method) {
   const uid = url.searchParams.get("u") || "", sig = url.searchParams.get("s") || "";
   if (await checkUnsubscribe(await getSecret(env), uid, sig)) await env.DB.prepare("UPDATE users SET notify=0 WHERE id=?").bind(uid).run();
   if (method === "POST") return json({ ok: true }); // one-click unsubscribe from mail apps
-  return new Response(null, { status: 302, headers: { location: "/?unsubscribed=1#weigh" } });
+  return new Response(null, { status: 302, headers: { location: "/write?unsubscribed=1#weigh" } });
 }

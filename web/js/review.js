@@ -12,11 +12,29 @@ try { R = JSON.parse(document.body.dataset.review || "{}"); } catch (e) {}
 if (!IS_BOT && !sessionStorage.getItem("wk-v")) {
   try { sessionStorage.setItem("wk-v", "1"); } catch (e) {}
   const src = sourceOf();
-  track("view"); track(R.index ? "land:reviews" : "land:review"); if (src) track("src:" + src);
+  track("view"); track(R.front ? "land:home" : R.index ? "land:reviews" : "land:review"); if (src) track("src:" + src);
 }
 
 // The crew member for this tier, next to the score.
-document.querySelectorAll(".rv-char").forEach((el) => (el.innerHTML = charSVG(Number(el.dataset.tier) || 0)));
+document.querySelectorAll(".rv-char,.fp-char").forEach((el) => (el.innerHTML = charSVG(Number(el.dataset.tier) || 0)));
+// Header buttons and front-page cards that lead to the writing tools or the plugin.
+document.querySelectorAll("[data-hub]").forEach((el) => el.addEventListener("click", () => track("hub_" + el.dataset.hub)));
+
+/* ---------- front page: featured carousel ---------- */
+const slides = $("fSlides");
+if (slides && slides.children.length > 1) {
+  const dots = [...document.querySelectorAll(".fdots button")];
+  let cur = 0, paused = false;
+  const go = (i) => { cur = (i + slides.children.length) % slides.children.length; slides.scrollTo({ left: slides.clientWidth * cur, behavior: "smooth" }); };
+  dots.forEach((d) => (d.onclick = () => { go(Number(d.dataset.i)); paused = true; }));
+  slides.addEventListener("scroll", () => {
+    const i = Math.round(slides.scrollLeft / slides.clientWidth); if (i === cur && dots[i].hasAttribute("aria-current")) return; cur = i;
+    dots.forEach((d, k) => (k === i ? d.setAttribute("aria-current", "true") : d.removeAttribute("aria-current")));
+  }, { passive: true });
+  ["pointerenter", "focusin", "touchstart"].forEach((ev) => slides.addEventListener(ev, () => (paused = true), { passive: true }));
+  slides.addEventListener("pointerleave", () => (paused = false));
+  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) setInterval(() => { if (!paused && !document.hidden) go(cur + 1); }, 7000);
+}
 
 /* ---------- crowd vote ---------- */
 function renderCrowd(c) {

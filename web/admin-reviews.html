@@ -13,6 +13,7 @@ body{margin:0}[hidden]{display:none!important}
 .ed input,.ed select,.ed textarea{width:100%;background:var(--bg);border:2px solid var(--line);border-radius:12px;padding:9px 11px;font-weight:400;min-height:0}
 .ed textarea{min-height:90px}#fBody{min-height:260px;line-height:1.6}
 .ed .hint{font-weight:400}
+.ed label.chk{flex-direction:row;align-items:center;gap:8px;align-self:end}.ed label.chk input{width:auto;accent-color:var(--bile-deep)}
 .scoreRow{display:flex;align-items:center;gap:14px}.scoreRow input[type=range]{flex:1;accent-color:var(--bile-deep);padding:0;border:0;background:none}
 #scoreOut{font-family:var(--display);font-weight:700;border-radius:999px;padding:4px 14px;min-width:150px;text-align:center}
 .lookup{display:flex;gap:8px}.lookup input{flex:1}
@@ -24,6 +25,7 @@ body{margin:0}[hidden]{display:none!important}
 .tag2{font-size:12px;font-weight:700;border-radius:999px;padding:2px 8px;background:var(--line)}.tag2.live{background:var(--bile);color:#1D2013}
 .req{background:var(--surface);border:2px solid var(--line);border-radius:16px;padding:10px 14px;display:flex;flex-direction:column;gap:4px}
 .req.done{opacity:.55}
+.qadd{background:var(--surface);border:2px solid var(--line);border-radius:16px;padding:10px 14px}.qadd summary{cursor:pointer;font-family:var(--display);font-weight:700}.qadd[open]{display:flex;flex-direction:column;gap:8px}.qadd textarea{width:100%;min-height:110px;border:2px solid var(--line);border-radius:12px;padding:8px 10px;background:var(--bg)}
 @media (max-width:760px){.ed{grid-template-columns:1fr}}
 </style>
 </head><body><div class="wrap"><a class="back" href="/reviews">← Lyric reviews</a><div class="doc">
@@ -31,7 +33,7 @@ body{margin:0}[hidden]{display:none!important}
 <p class="hint" id="err"></p>
 <div id="app" hidden>
 <form class="ed" id="ed" autocomplete="off">
-  <label class="full">Spotify or YouTube link <span class="hint">Paste it and hit Fill in: we grab the title and cover art.</span>
+  <label class="full">Spotify or YouTube link <span class="hint">Paste it and hit Fill in for the title and cover. No link? Type the artist and title below, then hit Fill in.</span>
     <span class="lookup"><input id="fSpotify" type="url" placeholder="https://open.spotify.com/track/…"><button class="btn" type="button" id="lookupBtn">Fill in</button></span></label>
   <label>Artist<input id="fArtist" required maxlength="120"></label>
   <label>Title<input id="fTitle" required maxlength="160"></label>
@@ -48,18 +50,22 @@ body{margin:0}[hidden]{display:none!important}
   <label>Artist Instagram <span class="hint">(handle, for tags on the share card)</span><input id="fIg" maxlength="80" placeholder="@artist"></label>
   <label>Artist website or link-in-bio <span class="hint">(optional)</span><input id="fArtistUrl" type="url" maxlength="300"></label>
   <label>Apple Music link <span class="hint">(optional)</span><input id="fApple" type="url" maxlength="300"></label>
-  <label>YouTube link <span class="hint">(optional, used if there's no Spotify link)</span><input id="fYoutube" type="url" maxlength="300"></label>
-  <label>Cover image URL <span class="hint">(filled in from Spotify)</span><input id="fCover" type="url" maxlength="500"></label>
+  <label>Music video (YouTube link) <span class="hint">(optional: shows on the review and in Music videos)</span><input id="fYoutube" type="url" maxlength="300"></label>
+  <label>Cover image URL <span class="hint">(Fill in finds it for you)</span><input id="fCover" type="url" maxlength="500"></label>
   <span><img id="coverPrev" alt="" hidden></span>
   <label>Page link <span class="hint">wackometer.com/reviews/… (blank = artist-title)</span><input id="fSlug" maxlength="80"></label>
+  <label class="chk"><input type="checkbox" id="fFeatured"> Feature on the front page <span class="hint">(the big banner at the top; up to 3)</span></label>
   <label>Status<select id="fStatus"><option value="draft">Draft (only you can see it)</option><option value="live">Live (public, in the sitemap)</option></select></label>
   <div class="row full"><button class="btn bile" type="submit" id="saveBtn">Save</button><a class="btn" id="viewBtn" target="_blank" hidden>View page</a><button class="btn" type="button" id="newBtn">New review</button><button class="btn quiet" type="button" id="delBtn" hidden>Delete</button><span class="hint" id="note" role="status"></span></div>
 </form>
+<h2>To review <span class="hint" id="reqCount"></span></h2>
+<p class="hint">Songs you've queued plus artist submissions from the “Want your music weighed?” form. Tap Start a review, then Fill in to grab the cover.</p>
+<details class="qadd"><summary>Add songs to the list</summary>
+<textarea id="qLines" rows="5" placeholder="One per line: Title - Artist, or paste a link&#10;Lauren - Men I Trust&#10;https://open.spotify.com/track/..."></textarea>
+<div class="row"><button class="btn" type="button" id="qGo">Add to the list</button><span class="hint" id="qNote" role="status"></span></div></details>
+<div class="list" id="reqs"></div>
 <h2>All reviews</h2>
 <div class="list" id="list"></div>
-<h2>Artist submissions</h2>
-<p class="hint">Sent from the “Want your music weighed?” form. Mark them done once you've listened.</p>
-<div class="list" id="reqs"></div>
 </div>
 </div></div>
 <script type="module">
@@ -72,7 +78,7 @@ async function api(path, body) {
   const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || "Something went wrong."); return d;
 }
 const F = { spotify_url: "fSpotify", artist: "fArtist", title: "fTitle", kind: "fKind", genre: "fGenre", released: "fReleased", reviewer: "fReviewer", score: "fScore", verdict: "fVerdict", body: "fBody", best_line: "fBest", standouts: "fStand", artist_ig: "fIg", artist_url: "fArtistUrl", apple_url: "fApple", youtube_url: "fYoutube", cover_url: "fCover", slug: "fSlug", status: "fStatus" };
-let DATA = { reviews: [], requests: [] }, original = null;
+let DATA = { reviews: [], requests: [] }, original = null, startedFrom = null;
 
 function showScore() {
   const s = Number($("fScore").value), t = tierOf(s), o = $("scoreOut");
@@ -82,20 +88,24 @@ function showCover() { const u = $("fCover").value.trim(); $("coverPrev").hidden
 function fill(r) {
   original = r ? r.slug : null;
   for (const [k, id] of Object.entries(F)) $(id).value = r ? (r[k] ?? "") : k === "score" ? 15 : k === "kind" ? "song" : k === "status" ? "draft" : "";
+  $("fFeatured").checked = !!(r && r.featured);
   $("delBtn").hidden = !r; $("viewBtn").hidden = !r; if (r) $("viewBtn").href = `/reviews/${r.slug}${r.status === "live" ? "" : "?preview=1"}`;
   $("standRow").hidden = $("fKind").value !== "album";
   $("note").textContent = r ? `Editing “${r.title}”.` : ""; showScore(); showCover();
 }
 function renderList() {
   $("list").innerHTML = DATA.reviews.length ? DATA.reviews.map((r, i) => `<div class="it">${r.cover_url ? `<img src="${esc(r.cover_url)}" alt="">` : '<span class="ph"></span>'}
-    <span><b>${esc(r.title)}</b> · ${esc(r.artist)}<br><span class="hint">${r.score} ${TIERS[tierOf(r.score)]} · ${r.votes} crowd vote${r.votes === 1 ? "" : "s"} · </span><span class="tag2 ${r.status}">${r.status}</span></span>
+    <span><b>${esc(r.title)}</b> · ${esc(r.artist)}<br><span class="hint">${r.score} ${TIERS[tierOf(r.score)]} · ${r.votes} crowd vote${r.votes === 1 ? "" : "s"} · </span><span class="tag2 ${r.status}">${r.status}</span>${r.featured ? ' <span class="tag2">★ featured</span>' : ""}</span>
     <span class="row"><a class="btn" href="/reviews/${esc(r.slug)}${r.status === "live" ? "" : "?preview=1"}" target="_blank">View</a><button class="btn" data-edit="${i}">Edit</button></span></div>`).join("") : '<p class="hint">No reviews yet. Write the first one above.</p>';
   $("list").querySelectorAll("[data-edit]").forEach((b) => (b.onclick = () => { fill(DATA.reviews[Number(b.dataset.edit)]); window.scrollTo({ top: 0, behavior: "smooth" }); }));
-  $("reqs").innerHTML = DATA.requests.length ? DATA.requests.map((q) => `<div class="req ${q.status}"><b>${esc(q.artist)}</b><a href="${esc(q.link)}" target="_blank" rel="noopener">${esc(q.link)}</a>
+  const open = DATA.requests.filter((q) => q.status !== "done").length; $("reqCount").textContent = open ? `(${open} waiting)` : "";
+  $("reqs").innerHTML = DATA.requests.length ? DATA.requests.map((q) => `<div class="req ${q.status}"><b>${q.title ? esc(q.title) + " · " : ""}${esc(q.artist)}</b><a href="${esc(q.link)}" target="_blank" rel="noopener">${/open\.spotify\.com\/search\//.test(q.link) ? "Find it on Spotify ↗" : esc(q.link)}</a>
     ${q.note ? `<span>${esc(q.note)}</span>` : ""}<span class="hint">${q.email ? esc(q.email) + " · " : ""}${new Date(q.created_at).toLocaleDateString()}</span>
     <span class="row"><button class="btn" data-req="${esc(q.id)}" data-s="${q.status === "done" ? "new" : "done"}">${q.status === "done" ? "Mark as new" : "Mark done"}</button><button class="btn" data-start="${esc(q.id)}">Start a review</button></span></div>`).join("") : '<p class="hint">No submissions yet.</p>';
   $("reqs").querySelectorAll("[data-req]").forEach((b) => (b.onclick = async () => { await api("/api/reviews-admin/request", { id: b.dataset.req, status: b.dataset.s }); load(); }));
-  $("reqs").querySelectorAll("[data-start]").forEach((b) => (b.onclick = () => { const q = DATA.requests.find((x) => x.id === b.dataset.start); fill(null); $("fArtist").value = q.artist; if (/spotify|youtu/.test(q.link)) { $("fSpotify").value = /youtu/.test(q.link) ? "" : q.link; if (/youtu/.test(q.link)) $("fYoutube").value = q.link; } window.scrollTo({ top: 0, behavior: "smooth" }); }));
+  $("reqs").querySelectorAll("[data-start]").forEach((b) => (b.onclick = () => { const q = DATA.requests.find((x) => x.id === b.dataset.start); fill(null); $("fArtist").value = q.artist === "Unknown" ? "" : q.artist.replace(/…$/, ""); $("fTitle").value = (q.title || "").replace(/\s*\(.*?\)\s*$/, "").replace(/…$/, ""); startedFrom = q.id;
+      if (/open\.spotify\.com\/(intl-[a-z-]+\/)?(track|album)\//.test(q.link)) $("fSpotify").value = q.link; else if (/youtu/.test(q.link)) $("fYoutube").value = q.link;
+      $("note").textContent = `Started from your list${q.note ? ": " + q.note : "."}`; window.scrollTo({ top: 0, behavior: "smooth" }); }));
 }
 async function load() {
   try { DATA = await api("/api/reviews-admin/list"); $("app").hidden = false; renderList(); }
@@ -103,12 +113,23 @@ async function load() {
 }
 $("fScore").oninput = showScore; $("fCover").oninput = showCover;
 $("fKind").onchange = () => ($("standRow").hidden = $("fKind").value !== "album");
-$("newBtn").onclick = () => fill(null);
+$("newBtn").onclick = () => { fill(null); startedFrom = null; };
+$("qGo").onclick = async () => {
+  try { const r = await api("/api/reviews-admin/queue", { lines: $("qLines").value }); $("qLines").value = ""; $("qNote").textContent = `Added ${r.added}.`; load(); }
+  catch (e) { $("qNote").textContent = e.message; }
+};
 $("lookupBtn").onclick = async () => {
-  const link = $("fSpotify").value.trim() || $("fYoutube").value.trim(); if (!link) { $("note").textContent = "Paste a Spotify or YouTube link first."; return; }
+  const link = $("fSpotify").value.trim() || $("fYoutube").value.trim(), q = `${$("fArtist").value.trim()} ${$("fTitle").value.trim()}`.trim();
+  if (!link && !q) { $("note").textContent = "Paste a Spotify or YouTube link, or type the artist and title first."; return; }
   $("note").textContent = "Looking it up…";
   try {
-    const d = await api("/api/reviews-admin/lookup?url=" + encodeURIComponent(link));
+    const d = await api("/api/reviews-admin/lookup?url=" + encodeURIComponent(link) + "&q=" + encodeURIComponent(q));
+    if (d.apple) {
+      $("fCover").value = d.cover || $("fCover").value; if (d.apple_url && !$("fApple").value) $("fApple").value = d.apple_url;
+      if (!$("fTitle").value) $("fTitle").value = d.title; if (!$("fArtist").value) $("fArtist").value = d.artist;
+      if (!$("fGenre").value) $("fGenre").value = d.genre.toLowerCase(); if (!$("fReleased").value) $("fReleased").value = d.released;
+      showCover(); $("note").textContent = `Found “${d.title}” by ${d.artist} on Apple Music. Check it's the right song (the cover is on the right).`; return;
+    }
     if (d.title && !$("fTitle").value) $("fTitle").value = d.title;
     if (d.artist && !$("fArtist").value && d.youtube) $("fArtist").value = d.artist;
     if (d.cover) $("fCover").value = d.cover;
@@ -119,10 +140,11 @@ $("lookupBtn").onclick = async () => {
 };
 $("ed").onsubmit = async (e) => {
   e.preventDefault();
-  const body = { original }; for (const [k, id] of Object.entries(F)) body[k] = $(id).value;
+  const body = { original, featured: $("fFeatured").checked }; for (const [k, id] of Object.entries(F)) body[k] = $(id).value;
   $("saveBtn").disabled = true; $("note").textContent = "Saving…";
   try {
     const r = await api("/api/reviews-admin/save", body);
+    if (startedFrom && r.status === "live") { await api("/api/reviews-admin/request", { id: startedFrom, status: "done" }).catch(() => {}); startedFrom = null; }
     await load(); fill(DATA.reviews.find((x) => x.slug === r.slug));
     $("note").innerHTML = r.status === "live" ? `Live at <a href="/reviews/${esc(r.slug)}" target="_blank">wackometer.com/reviews/${esc(r.slug)}</a>` : `Saved as a draft. <a href="/reviews/${esc(r.slug)}?preview=1" target="_blank">Preview it</a>`;
   } catch (e) { $("note").textContent = e.message; }

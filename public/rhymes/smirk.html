@@ -14,7 +14,7 @@
 <meta name="theme-color" content="#FBFCFF">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="manifest" href="/manifest.webmanifest">
-<link rel="stylesheet" href="/css/site.7951ed2fe3.css">
+<link rel="stylesheet" href="/css/site.861f900f94.css">
 <script>try{var t=localStorage.getItem("wk-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
 <script>(function(c,l,a,r,i,t,y){if(navigator.webdriver||/bot|crawl|spider|slurp|headless|lighthouse/i.test(navigator.userAgent))return;c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y)})(window,document,"clarity","script","z8yr2p57ys");</script>
 <script>(function(){try{if(navigator.webdriver||/bot|crawl|spider|slurp|headless|lighthouse/i.test(navigator.userAgent))return;var land="rhymes";var r=document.referrer,h="";try{h=r?new URL(r).hostname.replace(/^www\./,""):""}catch(e){}var m=[["google","google"],["bing","bing"],["duckduckgo","duckduckgo"],["instagram","instagram"],["tiktok","tiktok"],["facebook","facebook"],["t.co","x"],["twitter","x"],["x.com","x"],["reddit","reddit"],["youtube","youtube"],["chatgpt","chatgpt"],["perplexity","perplexity"]],s=h?"other":"direct";if(h.indexOf("wackometer")>-1)return;for(var i=0;i<m.length;i++)if(h.indexOf(m[i][0])>-1){s=m[i][1];break}var send=function(t){fetch("/api/event",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({type:t}),keepalive:true})};send("view");send("land:"+land);send("src:"+s)}catch(e){}})();</script>
@@ -22,8 +22,12 @@
 </head>
 <body>
 <div class="wrap seo">
-<header class="top"><a class="logo" href="/" aria-label="Wackometer home"><span class="w">W</span>ackometer</a>
-<nav id="mainNav" aria-label="Tools"><a href="/#weigh">⚖️ Weigh</a><a href="/reviews">🎧 Reviews</a><a href="/#community">🧱 Wall</a><a href="/#storm">🎤 Wordstorm</a><a href="/#workshop">🏋️ Workshop</a><a href="/rhymes/">Rhymes</a><a href="/cliches/">Clichés</a><a href="/syllable-counter">Syllables</a></nav></header>
+<header class="rtop">
+<a class="logo" href="/" aria-label="Wackometer home"><span class="w">W</span>ackometer</a>
+<nav class="rnav" aria-label="Reviews"><a href="/reviews">Reviews</a><a href="/reviews?f=videos">Music videos</a><a href="/reviews?f=wicked">Certified Wicked</a><a href="/reviews#submit">Get reviewed</a></nav>
+<form class="rsearch" action="/reviews" role="search"><input type="search" name="q" value="" placeholder="Search artists and songs" aria-label="Search reviews" maxlength="80"></form>
+<div class="rcta"><a class="rbtn rb-w" href="/write#weigh" data-hub="write">✍️ <span class="l">Weigh my lyrics</span><span class="s">Weigh</span></a><a class="rbtn rb-p" href="/write#plugin" data-hub="plugin">🎛️ <span>Plugin</span></a></div>
+</header>
 <main id="main">
 <article class="seoart">
 <p class="eyebrow"><a href="/rhymes/">Rhymes</a></p>
@@ -31,9 +35,9 @@
 <p class="lead">12 perfect rhymes and 30 slant rhymes for “smirk”, picked from everyday words, sorted by how common they are.</p>
 <h2>Perfect rhymes</h2><h3>1 syllable</h3><div class="rchips"><span class="rchip">work</span><span class="rchip">clerk</span><span class="rchip">jerk</span><span class="rchip">burke</span><span class="rchip">kirk</span><span class="rchip">dirk</span><span class="rchip">turk</span><span class="rchip">perk</span><span class="rchip">quirk</span><span class="rchip">lurk</span><span class="rchip">cirque</span></div><h3>2 syllables</h3><div class="rchips"><span class="rchip">berserk</span></div>
 <h2>Slant rhymes (fresher)</h2><p class="hint">Same vowel sounds, different consonants. Listeners hear the rhyme without seeing it coming.</p><div class="rchips"><span class="rchip">first</span><span class="rchip">world</span><span class="rchip">research</span><a class="rchip" href="/rhymes/girl">girl</a><span class="rchip">third</span><span class="rchip">heard</span><span class="rchip">word</span><span class="rchip">church</span><span class="rchip">worked</span><span class="rchip">turned</span><span class="rchip">network</span><span class="rchip">search</span><span class="rchip">hurt</span><span class="rchip">worst</span><span class="rchip">learned</span><span class="rchip">returned</span><span class="rchip">served</span><span class="rchip">concerned</span><span class="rchip">confirmed</span><span class="rchip">bird</span><span class="rchip">shirt</span><span class="rchip">referred</span><span class="rchip">occurred</span><span class="rchip">earned</span><span class="rchip">observed</span><span class="rchip">transferred</span><span class="rchip">preferred</span><span class="rchip">alert</span><span class="rchip">burned</span><span class="rchip">framework</span></div>
-<h2>Write with it</h2><p>Want a beat to practice on? <a href="/#storm">Wordstorm</a> drops words like “smirk” on the beat with rhymes underneath, so you can freestyle with them.</p>
+<h2>Write with it</h2><p>Want a beat to practice on? <a href="/write#storm">Wordstorm</a> drops words like “smirk” on the beat with rhymes underneath, so you can freestyle with them.</p>
 </article>
-<div class="cta"><b>How wack are your lyrics?</b><p>Paste a verse into the Wackometer. It scores it from Wicked to Wack, circles the clichés and lazy rhymes, and shows you how to fix them.</p><a class="btn bile" href="/#weigh">Weigh my lyrics, free</a></div>
+<div class="cta"><b>How wack are your lyrics?</b><p>Paste a verse into the Wackometer. It scores it from Wicked to Wack, circles the clichés and lazy rhymes, and shows you how to fix them.</p><a class="btn bile" href="/write#weigh">Weigh my lyrics, free</a></div>
 </main>
 <footer><p class="flinks">Wackometer · <a href="/reviews">Lyric reviews</a> · <a href="/rhymes/">Fresh rhymes</a> · <a href="/cliches/">Cliché fixer</a> · <a href="/syllable-counter">Syllable counter</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a></p><a class="dbv" href="https://donebyverde.com" target="_blank" rel="noopener noreferrer" aria-label="Website by donebyverde (opens in a new tab)" title="Website by donebyverde"><svg viewBox="0 0 200 200" aria-hidden="true"><path d="M75 0H125L123 61L174 28L200 72L146 100L200 128L174 172L123 139L125 200H75L77 139L26 172L0 128L54 100L0 72L26 28L77 61Z"/></svg></a></footer>
 </div>

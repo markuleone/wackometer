@@ -218,6 +218,7 @@ CREATE TABLE IF NOT EXISTS reviews (
   artist_ig    TEXT,
   reviewer     TEXT,
   status       TEXT NOT NULL DEFAULT 'draft',   -- draft | live
+  featured     INTEGER NOT NULL DEFAULT 0,      -- 1 = in the front-page hero
   created_at   INTEGER NOT NULL,
   updated_at   INTEGER NOT NULL,
   published_at INTEGER
@@ -237,6 +238,7 @@ CREATE TABLE IF NOT EXISTS review_votes (
 CREATE TABLE IF NOT EXISTS review_requests (
   id          TEXT PRIMARY KEY,
   artist      TEXT NOT NULL,
+  title       TEXT,
   link        TEXT NOT NULL,
   email       TEXT,
   note        TEXT,

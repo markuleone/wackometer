@@ -111,11 +111,11 @@ export function initStorm({ ls, track, copyText }) {
       const caught = shown.filter(hit);
       const best = Math.max(+(ls("wk-storm-best") || 0), caught.length); ls("wk-storm-best", best);
       msg = `You caught <b>${caught.length} of ${n}</b> words at ${bpm} BPM.` + (caught.length < n ? ` Missed: ${shown.filter((w) => !hit(w)).slice(0, 6).map(esc).join(", ")}.` : " Every single one. Wicked.");
-      lastResult = `🎤 Wordstorm: I caught ${caught.length}/${n} words freestyling at ${bpm} BPM on the Wackometer. Your turn: https://wackometer.com/#storm`;
+      lastResult = `🎤 Wordstorm: I caught ${caught.length}/${n} words freestyling at ${bpm} BPM on the Wackometer. Your turn: https://wackometer.com/write#storm`;
       $("stBest").textContent = `Your best: ${best}/${ROUND}`;
     } else {
       msg = `Round done: ${n} words at ${bpm} BPM. Turn on "Score me" to count the words you actually land.`;
-      lastResult = `🎤 I just survived a ${n}-word Wordstorm at ${bpm} BPM on the Wackometer. Can you? https://wackometer.com/#storm`;
+      lastResult = `🎤 I just survived a ${n}-word Wordstorm at ${bpm} BPM on the Wackometer. Can you? https://wackometer.com/write#storm`;
     }
     $("stWord").textContent = "Done"; $("stRhymes").innerHTML = "&nbsp;"; $("stNext").textContent = "";
     $("stResult").innerHTML = msg; $("stResult").hidden = false; $("stShare").hidden = false;
