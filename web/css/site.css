@@ -931,3 +931,4 @@ a.rchip:hover{border-color:var(--ink)}
   .fp{padding:18px}.fp-char{width:56px;height:56px}
   .fscroll{grid-auto-columns:150px;gap:12px}.fvids .fscroll{grid-auto-columns:250px}
 }
+@media (max-width:760px){.rtop .rb-p{display:none}}
