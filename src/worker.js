@@ -638,6 +638,10 @@ async function stripeWebhook(req, env) {
   const payload = await req.text();
   if (!env.STRIPE_WEBHOOK_SECRET || !(await verifyStripe(env, payload, req.headers.get("stripe-signature")))) return bad("Bad signature", 400);
   const ev = JSON.parse(payload), o = ev.data.object, DB = env.DB;
+  if (ev.type === "payment_intent.succeeded" && o.metadata?.kind === "review_submission") {
+    await DB.prepare("UPDATE review_requests SET paid=1, amount=?, status='new' WHERE id=? AND status='pending'").bind(o.amount_received || o.amount, o.metadata.request).run();
+    return json({ ok: true });
+  }
   if (ev.type === "checkout.session.completed" && o.metadata?.kind === "review_submission") {
     // $10 "get your music weighed": the submission joins the review queue once it's paid.
     if (o.payment_status === "paid") await DB.prepare("UPDATE review_requests SET paid=1, amount=?, status='new' WHERE id=? AND status='pending'").bind(o.amount_total || null, o.metadata.request).run();

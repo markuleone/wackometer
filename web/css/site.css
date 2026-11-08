@@ -954,3 +954,26 @@ a.rchip:hover{border-color:var(--ink)}
   .lb-who>a{font-size:16px}.lb-score{flex-direction:column;align-items:flex-end;gap:2px}.lb-score .rv-pill{font-size:12px;padding:2px 8px}.lb-num{font-size:22px;min-width:0}
   .ar-head{grid-template-columns:1fr;gap:16px}.ar-art{max-width:220px}
 }
+/* ===== paid submission: form left, $10 card right ===== */
+.rv-submit .sub-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(300px,1fr);gap:26px;align-items:start}
+.sub-left{display:flex;flex-direction:column;gap:12px}.sub-left h2{margin:0}.sub-left p{margin:0}
+.sub-left label{display:flex;flex-direction:column;gap:4px;font-weight:600;font-size:14px}
+.sub-left input,.sub-left textarea{width:100%;background:var(--bg);border:2px solid var(--line);border-radius:12px;padding:10px 12px;font-weight:400;min-height:0}
+.sub-left textarea{min-height:80px}
+.paycard{position:relative;background:#1F2340;color:#F4F5FF;border:2px solid var(--ink);box-shadow:0 6px 0 var(--ink);border-radius:24px;padding:20px 20px 18px;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+.paycard::before{content:"";position:absolute;right:-60px;top:-60px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(188,216,60,.28),transparent 70%);pointer-events:none}
+.paycard .price,.seoart .paycard .price{position:relative;margin:0;font-family:var(--display);font-weight:700;font-size:clamp(84px,9vw,124px);line-height:.85;color:#BCD83C;text-shadow:5px 5px 0 #0E1128;transform:rotate(-5deg);transform-origin:left bottom;letter-spacing:-.03em;display:flex;align-items:flex-start;width:max-content;padding-top:4px;margin-top:10px!important}
+.price .cur{font-size:.48em;margin:.08em .04em 0 0}
+.paycard .price .spark{position:absolute;left:auto;right:-.5em;top:.12em;font-size:.3em;color:#FFD84D;text-shadow:none;animation:spark 2.4s ease-in-out infinite}
+@keyframes spark{0%,100%{transform:scale(1) rotate(0)}50%{transform:scale(1.35) rotate(25deg)}}
+@media (prefers-reduced-motion:reduce){.price .spark{animation:none}}
+.per{margin:6px 0 0;font-family:var(--display);font-weight:600;color:#C9CCEB}
+.perks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:14.5px}
+.perks li::before{content:"✓ ";color:#BCD83C;font-weight:700}
+.payel{min-height:120px;margin-top:4px}.payel .hint{color:#C9CCEB}
+.paybtn{width:100%;font-size:18px;padding:13px 18px;justify-content:center}
+.paycard .paynote{color:#C9CCEB;font-size:13px;text-align:center}
+.sub-done{display:flex;flex-direction:column;gap:8px;align-items:flex-start;background:var(--bile-wash);border:2px solid var(--bile);border-radius:20px;padding:20px}
+.sub-done b{font-family:var(--display);font-size:26px}.sub-done p{margin:0}
+@media (max-width:760px){.rv-submit .sub-grid{grid-template-columns:1fr;gap:18px}.paycard .price,.seoart .paycard .price{font-size:96px}}
+.rv-submit{max-width:1040px}.front .rv-submit{max-width:none}

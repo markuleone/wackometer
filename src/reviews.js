@@ -113,17 +113,28 @@ function card(r) {
 <span class="rv-cv">${esc(r.verdict)}</span></a>`;
 }
 
+// Paid submissions: the card form (Stripe Payment Element) sits right in the page; see review.js.
 const SUBMIT = `<section class="rv-submit" id="submit" aria-labelledby="subH">
+<form id="subForm" class="sub-grid">
+<div class="sub-left">
 <h2 id="subH">Want your music weighed?</h2>
-<p><b>$10</b> gets your song or album a guaranteed listen and written feedback on the lyrics, emailed to you within 7 days. If we love the writing, it also gets a public review page, a share card and a badge for your links.</p>
-<p class="hint">Paying gets you heard, not a better score. Every score is our honest take.</p>
-<form id="subForm" class="rv-form">
+<p>Send us a song or album. We listen, then email you written feedback on the lyrics within 7 days. If we love the writing, it also gets a public review page, a share card and a badge for your links.</p>
 <label>Artist name<input name="artist" required maxlength="80" autocomplete="off"></label>
 <label>Link to the song or album<input name="link" type="url" required maxlength="300" placeholder="Spotify, SoundCloud, Apple Music, YouTube…"></label>
 <label>Your email <span class="hint">(your feedback goes here)</span><input name="email" type="email" required maxlength="120" autocomplete="email"></label>
 <label>Anything we should know? <span class="hint">(optional)</span><textarea name="note" rows="3" maxlength="600"></textarea></label>
-<div class="row"><button class="btn bile" type="submit">Pay $10 and send it</button><span class="hint" id="subNote" role="status">Secure checkout by Stripe.</span></div>
-</form></section>`;
+</div>
+<div class="paycard" role="group" aria-labelledby="payH">
+<h3 id="payH" class="price" aria-label="10 dollars"><span class="cur" aria-hidden="true">$</span><span aria-hidden="true">10</span><span class="spark" aria-hidden="true">✦</span></h3>
+<p class="per">one song or album · one-time</p>
+<ul class="perks"><li>A guaranteed listen</li><li>Written feedback in 7 days</li><li>A shot at Certified Wicked</li></ul>
+<div id="payEl" class="payel"><span class="hint">Loading the card form…</span></div>
+<button class="btn bile paybtn" type="submit" id="payBtn">Pay $10 &amp; send it</button>
+<span class="hint paynote" id="subNote" role="status">🔒 Secure payment by Stripe. Paying gets you heard, not a better score.</span>
+</div>
+</form>
+<div class="sub-done" id="subDone" hidden tabindex="-1"><b>You're in. 🎧</b><p>Payment received. Your feedback lands in your inbox within 7 days, and Stripe is emailing your receipt now.</p><button class="btn" type="button" id="subAgain">Send another song</button></div>
+</section>`;
 
 /* ---------- HTML routes ---------- */
 export async function reviewsPage(req, env, path, ensureSchema) {
@@ -403,19 +414,32 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
     if (!env.STRIPE_SECRET_KEY) return bad("Paid submissions open very soon. Check back in a day or two.", 503);
     const recent = await DB.prepare("SELECT COUNT(*) c FROM review_requests WHERE user_id=? AND created_at>?").bind(u.id, Date.now() - 86400000).first();
     if (recent.c >= 10) return bad("That's plenty for today. Try again tomorrow.", 429);
-    // Saved as "pending" until Stripe confirms the payment (see stripeWebhook in worker.js), so unpaid ones never reach the queue.
-    const id = newId(), cents = Number(env.SUBMIT_PRICE_CENTS) || 1000, base = env.APP_URL || new URL(url).origin;
+    // Saved as "pending" until Stripe confirms the payment, so unpaid ones never reach the queue.
+    // The page's card form then confirms this PaymentIntent in place (no redirect to a checkout page).
+    const id = newId(), cents = Number(env.SUBMIT_PRICE_CENTS) || 1000;
     await DB.prepare("INSERT INTO review_requests (id,artist,link,email,note,user_id,status,created_at) VALUES (?,?,?,?,?,?,'pending',?)").bind(id, artist, link, email, note || null, u.id, Date.now()).run();
-    const sess = await stripe(env, "checkout/sessions", {
-      mode: "payment", customer_email: email, client_reference_id: u.id,
-      "line_items[0][quantity]": 1, "line_items[0][price_data][currency]": "usd", "line_items[0][price_data][unit_amount]": cents,
-      "line_items[0][price_data][product_data][name]": "Wackometer: get your music weighed",
-      "line_items[0][price_data][product_data][description]": `${artist}: a guaranteed listen and written feedback on the lyrics within 7 days`,
+    const pi = await stripe(env, "payment_intents", {
+      amount: cents, currency: "usd", "automatic_payment_methods[enabled]": "true", receipt_email: email,
+      description: `Wackometer: get your music weighed (${artist})`, statement_descriptor_suffix: "WACKOMETER",
       metadata: { kind: "review_submission", request: id, user: u.id },
-      success_url: `${base}/reviews?submitted=1#submit`, cancel_url: `${base}/reviews?submit=cancelled#submit`,
     });
-    await DB.prepare("UPDATE review_requests SET stripe_session=? WHERE id=?").bind(sess.id, id).run();
-    return json({ url: sess.url });
+    await DB.prepare("UPDATE review_requests SET stripe_session=? WHERE id=?").bind(pi.id, id).run();
+    return json({ id, clientSecret: pi.client_secret });
+  }
+  // What the card form needs to load. The publishable key is public by design.
+  if (path === "/api/reviews/pay-config" && method === "GET") {
+    return json({ pk: env.STRIPE_SECRET_KEY && env.STRIPE_PUBLISHABLE_KEY ? env.STRIPE_PUBLISHABLE_KEY : "", cents: Number(env.SUBMIT_PRICE_CENTS) || 1000 });
+  }
+  // Right after paying, the page asks us to check with Stripe so the song joins the queue immediately (the webhook does the same).
+  if (path === "/api/reviews/submit/confirm" && method === "POST") {
+    const piId = String(body.pi || "");
+    if (!/^pi_[A-Za-z0-9]+$/.test(piId) || !env.STRIPE_SECRET_KEY) return bad("Missing payment.");
+    const res = await fetch(`https://api.stripe.com/v1/payment_intents/${piId}`, { headers: { authorization: `Bearer ${env.STRIPE_SECRET_KEY}` } });
+    const pi = await res.json();
+    if (!res.ok) return bad("Couldn't check that payment.", 502);
+    if (pi.status !== "succeeded" || pi.metadata?.kind !== "review_submission") return json({ ok: false, status: pi.status });
+    await DB.prepare("UPDATE review_requests SET paid=1, amount=?, status='new' WHERE id=? AND status='pending'").bind(pi.amount_received || pi.amount, pi.metadata.request).run();
+    return json({ ok: true });
   }
 
   if (!path.startsWith("/api/reviews-admin/")) return null;

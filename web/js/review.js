@@ -138,21 +138,56 @@ if ($("rvCard")) $("rvCard").onclick = async () => {
 };
 
 /* ---------- artist submissions ---------- */
+// Paid submissions: Stripe's card form (Payment Element) is mounted in the page, so paying is one click, no checkout page.
+// Stripe.js has to load from js.stripe.com. It only loads once the form scrolls into view.
 const form = $("subForm");
-if (form) form.onsubmit = async (e) => {
-  e.preventDefault();
-  const note = $("subNote"), btn = form.querySelector("button"), d = Object.fromEntries(new FormData(form));
-  btn.disabled = true; note.textContent = "Sending…";
-  try {
-    const r = await api("/api/reviews/submit", { body: d });
-    track("submit_checkout"); note.textContent = "Taking you to checkout…"; location.href = r.url; return;
-  } catch (err) { note.textContent = err.message; }
-  btn.disabled = false;
-};
+if (form) {
+  let stripe = null, elements = null, loading = null, pending = null;
+  const note = $("subNote"), payBtn = $("payBtn"), NOTE0 = note.textContent;
+  const loadStripe = () => new Promise((res, rej) => { if (window.Stripe) return res(); const s = document.createElement("script"); s.src = "https://js.stripe.com/v3/"; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+  const setup = () => loading || (loading = (async () => {
+    const cfg = await api("/api/reviews/pay-config");
+    if (!cfg.pk) { $("payEl").innerHTML = '<span class="hint">Card payments switch on very soon.</span>'; payBtn.disabled = true; return; }
+    await loadStripe();
+    stripe = window.Stripe(cfg.pk);
+    elements = stripe.elements({ mode: "payment", amount: cfg.cents, currency: "usd",
+      appearance: { theme: "night", variables: { colorPrimary: "#BCD83C", colorBackground: "#2A2F52", colorText: "#F4F5FF", colorTextSecondary: "#C9CCEB", colorDanger: "#FF8A80", borderRadius: "12px", fontFamily: 'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif', spacingUnit: "4px" },
+        rules: { ".Input": { border: "2px solid #3A4070", boxShadow: "none" }, ".Input:focus": { border: "2px solid #BCD83C", boxShadow: "none" }, ".Tab": { border: "2px solid #3A4070" }, ".Tab--selected": { border: "2px solid #BCD83C" } } } });
+    const pe = elements.create("payment", { layout: { type: "tabs" }, wallets: { applePay: "auto", googlePay: "auto" } });
+    $("payEl").innerHTML = ""; pe.mount("#payEl");
+  })().catch(() => { loading = null; $("payEl").innerHTML = '<span class="hint">The card form didn\'t load. Refresh to try again.</span>'; }));
+  if ("IntersectionObserver" in window) new IntersectionObserver((es, ob) => { if (es.some((x) => x.isIntersecting)) { setup(); ob.disconnect(); } }, { rootMargin: "400px" }).observe(form);
+  else setup();
+  form.addEventListener("focusin", setup, { once: true });
+  const done = () => { form.hidden = true; $("subDone").hidden = false; $("subDone").focus(); track("submit_paid"); };
+  $("subAgain").onclick = () => { form.reset(); pending = null; form.hidden = false; $("subDone").hidden = true; note.textContent = NOTE0; };
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    await setup(); if (!stripe) return;
+    const d = Object.fromEntries(new FormData(form)), key = JSON.stringify(d);
+    payBtn.disabled = true; note.textContent = "Checking your card…";
+    try {
+      const { error: invalid } = await elements.submit();
+      if (invalid) throw new Error(invalid.message);
+      if (!pending || pending.key !== key) pending = { key, ...(await api("/api/reviews/submit", { body: d })) };
+      track("submit_checkout"); note.textContent = "Paying…";
+      const { error, paymentIntent } = await stripe.confirmPayment({ elements, clientSecret: pending.clientSecret, redirect: "if_required",
+        confirmParams: { return_url: location.origin + location.pathname + "?submitted=1#submit", receipt_email: d.email } });
+      if (error) throw new Error(error.message);
+      if (paymentIntent && paymentIntent.status === "succeeded") { await api("/api/reviews/submit/confirm", { body: { pi: paymentIntent.id } }).catch(() => {}); pending = null; done(); return; }
+      note.textContent = "Payment is processing. We'll email you as soon as it clears.";
+    } catch (err) { note.textContent = err.message; }
+    payBtn.disabled = false;
+  };
+}
 
 // Back from Stripe checkout.
 {
   const qs = new URLSearchParams(location.search), note = $("subNote");
-  if (note && qs.get("submitted")) { note.textContent = "Paid. You're in the queue: your feedback lands in your inbox within 7 days."; track("submit_paid"); history.replaceState(null, "", location.pathname + "#submit"); }
+  if (note && qs.get("submitted")) {
+    const pi = qs.get("payment_intent"); history.replaceState(null, "", location.pathname + "#submit");
+    if (qs.get("redirect_status") === "failed") note.textContent = "That payment didn't go through. Nothing was charged. Try another card.";
+    else { if (pi) api("/api/reviews/submit/confirm", { body: { pi } }).catch(() => {}); form.hidden = true; $("subDone").hidden = false; track("submit_paid"); }
+  }
   else if (note && qs.get("submit") === "cancelled") { note.textContent = "Checkout cancelled. Nothing was charged."; history.replaceState(null, "", location.pathname + "#submit"); }
 }
