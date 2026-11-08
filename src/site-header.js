@@ -8,6 +8,6 @@ export function siteHeader(active = "", q = "") {
 <a class="logo" href="/" aria-label="Wackometer home"><span class="w">W</span>ackometer</a>
 <nav class="rnav" aria-label="Reviews">${a("/reviews", "reviews", "Reviews")}${a("/reviews?f=videos", "videos", "Music videos")}${a("/reviews?f=wicked", "wicked", "Certified Wicked")}${a("/reviews#submit", "submit", "Get reviewed")}</nav>
 <form class="rsearch" action="/reviews" role="search"><input type="search" name="q" value="${qv}" placeholder="Search artists and songs" aria-label="Search reviews" maxlength="80"></form>
-<div class="rcta"><a class="rbtn rb-w" href="/write#weigh" data-hub="write">✍️ <span class="l">Weigh my lyrics</span><span class="s">Weigh</span></a><a class="rbtn rb-p" href="/write#plugin" data-hub="plugin">🎛️ <span>Plugin</span></a></div>
+<div class="rcta"><a class="rbtn rb-w" href="/write#weigh" data-hub="write">✍️ <span class="l">Weigh my lyrics</span><span class="s">Weigh</span></a></div>
 </header>`;
 }
