@@ -14,6 +14,7 @@ const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g
 const DBV = `<a class="dbv" href="https://donebyverde.com" target="_blank" rel="noopener noreferrer" aria-label="Website by donebyverde (opens in a new tab)" title="Website by donebyverde"><svg viewBox="0 0 200 200" aria-hidden="true"><path d="M75 0H125L123 61L174 28L200 72L146 100L200 128L174 172L123 139L125 200H75L77 139L26 172L0 128L54 100L0 72L26 28L77 61Z"/></svg></a>`;
 
 let CSS = "/css/site.css";
+let ADS = "";
 // First-party counters for landing pages: one "view", which kind of page they landed on, and where they came from.
 const TRACK = (path) => `(function(){try{if(navigator.webdriver||/bot|crawl|spider|slurp|headless|lighthouse/i.test(navigator.userAgent))return;var land=${JSON.stringify(path.startsWith("/rhymes") ? "rhymes" : path.startsWith("/cliches") ? "cliches" : "syllables")};var r=document.referrer,h="";try{h=r?new URL(r).hostname.replace(/^www\\./,""):""}catch(e){}var m=[["google","google"],["bing","bing"],["duckduckgo","duckduckgo"],["instagram","instagram"],["tiktok","tiktok"],["facebook","facebook"],["t.co","x"],["twitter","x"],["x.com","x"],["reddit","reddit"],["youtube","youtube"],["chatgpt","chatgpt"],["perplexity","perplexity"]],s=h?"other":"direct";if(h.indexOf("wackometer")>-1)return;for(var i=0;i<m.length;i++)if(h.indexOf(m[i][0])>-1){s=m[i][1];break}var send=function(t){fetch("/api/event",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({type:t}),keepalive:true})};send("view");send("land:"+land);send("src:"+s)}catch(e){}})();`;
 function page({ path, title, desc, body, ld }) {
@@ -44,17 +45,20 @@ ${ld ? `<script type="application/ld+json">${JSON.stringify(ld)}</script>` : ""}
 ${siteHeader()}
 <main id="main">
 ${body}
+<div class="ad-slot" hidden></div>
 <div class="cta"><b>How wack are your lyrics?</b><p>Paste a verse into the Wackometer. It scores it from Wicked to Wack, circles the clichés and lazy rhymes, and shows you how to fix them.</p><a class="btn bile" href="/write#weigh">Weigh my lyrics, free</a></div>
 </main>
 <footer><p class="flinks">Wackometer · <a href="/reviews">Lyric reviews</a> · <a href="/rhymes/">Fresh rhymes</a> · <a href="/cliches/">Cliché fixer</a> · <a href="/syllable-counter">Syllable counter</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a></p>${DBV}</footer>
 </div>
+${ADS ? `<script type="module" src="${ADS}"></script>` : ""}
 </body>
 </html>`;
 }
 const crumbs = (items) => ({ "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: items.map(([n, p], i) => ({ "@type": "ListItem", position: i + 1, name: n, item: BASE + p })) });
 
-export function buildSeoPages(OUT, cssHref) {
+export function buildSeoPages(OUT, cssHref, adsHref) {
   if (cssHref) CSS = cssHref;
+  if (adsHref) ADS = adsHref;
   const urls = [];
   const write = (path, html) => { const file = path.endsWith("/") ? `${OUT}${path}index.html` : `${OUT}${path}.html`; mkdirSync(file.slice(0, file.lastIndexOf("/")), { recursive: true }); writeFileSync(file, html.replace(/\n\s+/g, "\n")); urls.push(path); };
 

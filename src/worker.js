@@ -167,6 +167,11 @@ export default {
     if (path === "/api/stripe/webhook" && method === "POST") { await ensureSchema(env); return stripeWebhook(req, env); }
     if (path.startsWith("/u/")) return profilePage(req, env, decodeURIComponent(path.slice(3)).toLowerCase());
     if (path === "/sitemap.xml") return sitemap(env);
+    // ads.txt tells ad buyers which ad accounts may sell space on this site (Google requires it to pay out).
+    if (path === "/ads.txt") {
+      const pub = /^ca-pub-(\d{10,20})$/.exec(env.ADSENSE_CLIENT || "");
+      return new Response(pub ? `google.com, pub-${pub[1]}, DIRECT, f08c47fec0942fa0\n` : "# No ad partners yet.\n", { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "public, max-age=3600" } });
+    }
     if ((path === "" || path === "/") && (req.method === "GET" || req.method === "HEAD")) { try { return await frontPage(req, env, ensureSchema); } catch (e) { console.error(e); return env.ASSETS.fetch(new Request(new URL("/write", req.url), req)); } }
     if (path === "/reviews" || path.startsWith("/reviews/")) { try { return await reviewsPage(req, env, path, ensureSchema); } catch (e) { console.error(e); return new Response("Something broke on our side. Try again in a moment.", { status: 500 }); } }
     if (path === "/artists" || path.startsWith("/artists/")) { try { return await artistsPage(req, env, path, ensureSchema); } catch (e) { console.error(e); return new Response("Something broke on our side. Try again in a moment.", { status: 500 }); } }
@@ -592,6 +597,12 @@ async function route(path, method, url, body, u, env, req) {
     if (!env.STRIPE_SECRET_KEY || !u.stripe_customer) return bad("No billing account on this device yet.", 404);
     const p = await stripe(env, "billing_portal/sessions", { customer: u.stripe_customer, return_url: `${env.APP_URL || url.origin}/write#pro` });
     return json({ url: p.url });
+  }
+
+  // Ads (content pages only). The AdSense publisher ID is public: it sits in every page that shows ads.
+  if (path === "/api/ads-config" && method === "GET") {
+    const client = /^ca-pub-\d{10,20}$/.test(env.ADSENSE_CLIENT || "") ? env.ADSENSE_CLIENT : "";
+    return json({ client, slot: /^\d{6,14}$/.test(env.ADSENSE_SLOT || "") ? env.ADSENSE_SLOT : "", pro: !!isPro(u) });
   }
 
   const rv = await reviewApi(path, method, url, body, u, env, isAdmin(u, env), rid, stripe);

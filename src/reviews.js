@@ -69,6 +69,7 @@ ${noindex ? '<meta name="robots" content="noindex">' : `<link rel="canonical" hr
 <script>(function(c,l,a,r,i,t,y){if(navigator.webdriver||/bot|crawl|spider|slurp|headless|lighthouse/i.test(navigator.userAgent))return;c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y)})(window,document,"clarity","script","z8yr2p57ys");</script>
 ${ld ? `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, "\\u003c")}</script>` : ""}
 <script type="module" src="${META.reviewJs}"></script>
+<script type="module" src="${META.adsJs}"></script>
 </head>
 <body${data ? ` data-review="${esc(data)}"` : ""}>
 <a class="skip" href="#main">Skip to content</a>
@@ -154,7 +155,7 @@ export async function reviewsPage(req, env, path, ensureSchema) {
 <h1>${h1}</h1>
 <p class="lead">${lead}</p>
 <nav class="rchips" aria-label="Filter reviews">${chip("", "All")}${chip("wicked", "✨ Certified Wicked")}${chip("videos", "🎬 Music videos")}${chip("songs", "Songs")}${chip("albums", "Albums")}</nav>
-${list.length ? `<div class="rv-grid">${list.map(card).join("")}</div>` : `<div class="warn"><b>${f || q ? "Nothing here yet." : "The first reviews drop soon."}</b><p>${f || q ? `<a href="/reviews">See all reviews</a>, or send us your music below.` : "Know an artist whose writing deserves more ears? Send them our way below."}</p></div>`}
+${list.length ? `<div class="rv-grid">${list.map(card).join("")}</div><div class="ad-slot" hidden></div>` : `<div class="warn"><b>${f || q ? "Nothing here yet." : "The first reviews drop soon."}</b><p>${f || q ? `<a href="/reviews">See all reviews</a>, or send us your music below.` : "Know an artist whose writing deserves more ears? Send them our way below."}</p></div>`}
 ${SUBMIT}
 </article>`;
     const ld = { "@context": "https://schema.org", "@type": "CollectionPage", name: "Wackometer lyric reviews", url: `${BASE}/reviews`, hasPart: list.slice(0, 30).map((r) => ({ "@type": "Review", url: `${BASE}/reviews/${r.slug}`, name: `${r.artist}: ${r.title}` })) };
@@ -204,6 +205,7 @@ ${standouts.length ? `<h2>Standout tracks</h2><ul class="rv-stand">${standouts.m
 ${r.submitted ? '<p class="hint rv-paid">💵 The artist sent this in through paid submissions. Paying gets a listen, not a better score.</p>' : ""}
 <p class="hint rv-sig">Reviewed by ${esc(r.reviewer || "Wackometer")} · <time datetime="${date.toISOString().slice(0, 10)}">${date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" })}</time></p>
 </div>
+<div class="ad-slot" hidden></div>
 <section class="rv-share" aria-labelledby="shareH"><h2 id="shareH">Pass it on</h2>
 <div class="row"><button class="btn bile" type="button" id="rvShare">Share this review</button><button class="btn" type="button" id="rvCard">Save story card</button></div>
 <span class="hint" id="shareNote" role="status"></span>
@@ -214,6 +216,7 @@ ${r.submitted ? '<p class="hint rv-paid">💵 The artist sent this in through pa
 <button class="btn" type="button" id="badgeCopy">Copy the code</button></details>
 </section>
 ${more.length ? `<section class="rv-more" aria-labelledby="moreH"><h2 id="moreH">More reviews</h2><div class="rv-grid">${more.map(card).join("")}</div><p><a href="/reviews">All reviews →</a></p></section>` : ""}
+<div class="ad-slot" hidden></div>
 <div class="cta"><b>Now weigh your own.</b><p>Paste a verse into the Wackometer. It scores it from Wicked to Wack, circles the clichés and lazy rhymes, and shows you how to fix them.</p><a class="btn bile" href="/write#weigh">Weigh my lyrics, free</a></div>
 ${SUBMIT}
 </article>`;
@@ -276,12 +279,14 @@ export async function frontPage(req, env, ensureSchema) {
 ${hero.length ? `<section class="fhero" aria-roledescription="carousel" aria-label="Featured reviews"><div class="fslides" id="fSlides">${hero.map(slide).join("")}</div>${hero.length > 1 ? `<div class="fdots" role="group" aria-label="Choose a featured review">${hero.map((r, i) => `<button type="button" data-i="${i}" aria-label="Show ${esc(r.title)}"${i ? "" : ' aria-current="true"'}></button>`).join("")}</div>` : ""}</section>`
       : `<section class="fempty"><b>The first reviews drop soon.</b><p>Know an artist whose writing deserves more ears? <a href="#submit">Send them our way</a>.</p></section>`}
 ${all.length ? row("rNew", "Latest reviews", "/reviews", all.slice(0, 12).map((r) => rowCard(r, crowd)).join("")) : ""}
+<div class="ad-slot" hidden></div>
 <section class="fpromo" aria-label="More from Wackometer">
 <a class="fp fp-weigh" href="/write#weigh" data-hub="write"><span class="fp-char" data-tier="4" aria-hidden="true"></span><span class="hey">✍️ For writers · Free</span><b>How wack are <em>your</em> lyrics?</b><span>Paste a verse and the Wackometer scores it in a second, circles the clichés, then helps you fix them with Wingman, the Workshop and Wordstorm.</span><span class="fpgo">Weigh my lyrics <span aria-hidden="true">→</span></span></a>
 <a class="fp fp-plug" href="/write#plugin" data-hub="plugin"><span class="fp-char" data-tier="3" aria-hidden="true"></span><span class="hey">🎛️ In the studio <span class="hsoon">Coming soon</span></span><b>Wingman plugin</b><span>The Wackometer inside FL Studio, Ableton and Logic. Weigh lines and get rewrites without leaving your session.</span><span class="fpgo">Get early access <span aria-hidden="true">→</span></span></a>
 </section>
 ${wicked.length ? row("rWicked", "✨ Certified Wicked", "/reviews?f=wicked", wicked.map((r) => rowCard(r, crowd)).join("")) : ""}
 ${artists.length ? `<section class="flb" aria-labelledby="rLb"><div class="frh"><h2 id="rLb">🏆 Top artists</h2><a href="/artists">Full leaderboard <span aria-hidden="true">→</span></a></div><p class="hint">Each artist's score is the average of every song we've weighed. Lower is better.</p><ol class="lb-list">${leaderRows(artists.slice(0, 5))}</ol></section>` : ""}
+<div class="ad-slot" hidden></div>
 ${videos.length ? row("rVid", "🎬 Music videos", "/reviews?f=videos", videos.map(videoCard).join(""), " fvids") : ""}
 ${split.length ? `<section class="fsplit" aria-labelledby="rSplit"><div class="frh"><h2 id="rSplit">⚔️ Critics vs. the crowd</h2></div><p class="hint">Where the voters and the Wackometer don't agree. Pick a side.</p><ol>${split.map(({ r, c }) => `<li><a href="/reviews/${esc(r.slug)}"><b>${esc(r.title)}</b> <span class="rv-ca">${esc(r.artist)}</span></a><span class="fvs">We said ${pill(tierOf(r.score), `${TIERS[tierOf(r.score)].n} ${r.score}`)} Crowd said ${pill(c.tier, `${TIERS[c.tier].n} ${c.avg}`)}</span></li>`).join("")}</ol></section>` : ""}
 ${SUBMIT}
@@ -331,6 +336,7 @@ export async function artistsPage(req, env, path, ensureSchema) {
 <h1>Who writes the best lyrics?</h1>
 <p class="lead">Every song we weigh counts toward its artist. Their score is the average of all their songs, so <b>lower is better</b>: 0 is as Wicked as it gets, 100 is all-out Wack.</p>
 ${list.length ? `<ol class="lb-list">${leaderRows(list)}</ol>` : `<div class="warn"><b>The leaderboard fills up as reviews go live.</b><p><a href="/reviews">Read the reviews</a> so far.</p></div>`}
+<div class="ad-slot" hidden></div>
 <p class="hint">Artists with one song weighed can move a lot. The more songs we review, the steadier their spot.</p>
 ${SUBMIT}
 </article>`;
@@ -350,6 +356,7 @@ ${SUBMIT}
 <div class="rv-scores one"><div class="rv-score"><span class="rv-sl">Average score</span>${gaugeSVG(a.avg)}<span class="rv-num">${a.avg}</span>${pill(t, t === 0 ? "Wicked" : TIERS[t].n)}<span class="rv-char" data-tier="${t}" aria-hidden="true"></span></div></div>
 <p class="hint">Ranked ${a.rank === 1 ? "first" : "#" + a.rank} of ${list.length} artists we've reviewed. Lower is better.</p></div></div>
 <section class="rv-more" aria-labelledby="arH"><h2 id="arH">Every song we've weighed</h2><div class="rv-grid">${a.songs.map(card).join("")}</div></section>
+<div class="ad-slot" hidden></div>
 <p><a href="/artists">See the full leaderboard →</a></p>
 </article>`;
   const ld = { "@context": "https://schema.org", "@type": "MusicGroup", name: a.name, url: `${BASE}/artists/${a.slug}`, ...(ext ? { sameAs: [ext] } : {}), ...(a.cover ? { image: a.cover } : {}) };

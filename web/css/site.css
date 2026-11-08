@@ -977,3 +977,10 @@ a.rchip:hover{border-color:var(--ink)}
 .sub-done b{font-family:var(--display);font-size:26px}.sub-done p{margin:0}
 @media (max-width:760px){.rv-submit .sub-grid{grid-template-columns:1fr;gap:18px}.paycard .price,.seoart .paycard .price{font-size:96px}}
 .rv-submit{max-width:1040px}.front .rv-submit{max-width:none}
+/* ===== ad spaces (hidden until an ad account is connected) ===== */
+.ad-slot{margin:10px 0;padding:8px 8px 10px;border:1px solid var(--line);border-radius:16px;background:var(--surface);text-align:center;min-height:120px}
+.ad-slot.is-note{min-height:0;border:0;padding:0;background:none}
+.ad-label{display:block;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.adnote{display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;background:var(--bile-wash);border:2px dashed var(--bile);border-radius:16px;padding:10px 14px;font-size:14.5px}
+.adnote button{border:0;background:none;font-size:22px;line-height:1;cursor:pointer;color:var(--muted);padding:4px 8px}
+.adnote a{color:var(--bile-ink);font-weight:600}
