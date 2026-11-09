@@ -1354,3 +1354,8 @@ header .util .ubtn{box-sizing:border-box;height:34px;min-width:34px;min-height:3
 header .util .albl{display:inline-block;max-width:14ch;min-width:5.2ch;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
 @media (max-width:760px){header .util .ubtn{height:38px;min-height:38px;min-width:38px;padding:0 10px}}
 @media (max-width:480px){header .util .albl{display:none}}
+
+/* logo W: drawn inline (no image to load on each page) and still; a small wiggle only on hover */
+.logo .w{animation:none}
+.logo .w img,.logo .w .wsvg{display:block;height:1.12em;width:auto;aspect-ratio:194/214}
+@media (hover:hover) and (prefers-reduced-motion:no-preference){.logo:hover .w{animation:wob .9s ease-in-out}}
