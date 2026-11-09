@@ -800,6 +800,16 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
     return json({ ok: true });
   }
   // Several reviews at once: make live, move to drafts, or delete. Anything that isn't ready is skipped with a reason.
+  // The review desk finds covers in the browser (Apple's catalog doesn't answer our server) and saves them here.
+  if (path === "/api/reviews-admin/set-cover" && method === "POST") {
+    const slug = slugify(body.slug), cover = safeUrl(String(body.cover || "")), apple = safeUrl(String(body.apple_url || ""));
+    if (!cover || !/^https:\/\/([a-z0-9-]+\.)*(mzstatic\.com|scdn\.co|spotifycdn\.com)\//i.test(cover)) return bad("That isn't a cover from Apple or Spotify.");
+    const r = await DB.prepare("SELECT slug, reviewer, status FROM reviews WHERE slug=?").bind(slug).first();
+    if (!r) return bad("No review with that link.", 404);
+    if (!mine(r)) return bad("That review belongs to another critic.", 403);
+    await DB.prepare("UPDATE reviews SET cover_url=COALESCE(NULLIF(cover_url,''), ?), apple_url=COALESCE(apple_url, ?), cover_checked=? WHERE slug=?").bind(cover, apple && /^https:\/\/music\.apple\.com\//.test(apple) ? apple : null, Date.now(), slug).run();
+    return json({ ok: true });
+  }
   if (path === "/api/reviews-admin/bulk" && method === "POST") {
     const action = String(body.action || "");
     if (!["live", "draft", "delete"].includes(action)) return bad("Pick make live, move to drafts or delete.");

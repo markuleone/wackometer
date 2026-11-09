@@ -385,7 +385,7 @@ async function load() {
       $("heroP").textContent = "Write and edit your reviews, pick up drafts from the queue, and keep your critic page fresh."; document.title = "Critic desk · Wackometer";
       $("fReviewer").readOnly = true; $("fReviewer").value = DATA.me.name; fillMe(DATA.me);
     } else { $("subCount").textContent = `(${DATA.subscribers || 0} signed up)`; if (!$("nlSubject").value) nlLoad(); }
-    renderList();
+    renderList(); autoCovers();
   }
   catch (e) { $("err").innerHTML = esc(e.message) + ' <a href="/write#weigh">Sign in on the main site</a> (top right, “Sign in”) with your admin or critic email, then come back.'; }
 }
@@ -415,7 +415,37 @@ $("qGo").onclick = async () => {
   try { const r = await api("/api/reviews-admin/queue", { lines: $("qLines").value }); $("qLines").value = ""; $("qNote").textContent = `Added ${r.added}.`; load(); }
   catch (e) { $("qNote").textContent = e.message; }
 };
+// Apple's catalog, searched from this browser. Only accepts a real match: a wrong cover is worse than none.
+const nrm = (x) => String(x || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\(.*?\)|\[.*?\]/g, " ").replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+const itj = async (u) => { try { return (await (await fetch(u)).json()).results || []; } catch (e) { return []; } };
+async function findCover(artist, title, kind) {
+  const A = nrm(String(artist).split(/,|&| x | feat\.?| ft\.?/i)[0]), T = nrm(title), t3 = T.split(" ").slice(0, 3).join(" "), a1 = A.split(" ")[0];
+  if (!A || !T) return null;
+  const pick = (h) => ({ cover: String(h.artworkUrl100).replace(/\/\d+x\d+bb\./, "/600x600bb."), apple_url: kind === "album" ? (h.collectionViewUrl || "").split("?")[0] : `https://music.apple.com/album/${h.collectionId}?i=${h.trackId}`, title: kind === "album" ? h.collectionName : h.trackName, artist: h.artistName });
+  const ok = (h) => h.artworkUrl100 && nrm(h.artistName).includes(a1) && (kind === "album" ? nrm(h.collectionName).startsWith(t3) : nrm(h.trackName).startsWith(t3));
+  let hit = (await itj(`https://itunes.apple.com/search?media=music&entity=song&limit=50&term=${encodeURIComponent(A + " " + T)}`)).find(ok);
+  if (!hit && kind === "album") hit = (await itj(`https://itunes.apple.com/search?media=music&entity=album&limit=25&term=${encodeURIComponent(A + " " + T)}`)).find(ok);
+  if (!hit) { // smaller artists: go through their catalog
+    const art = (await itj(`https://itunes.apple.com/search?media=music&entity=musicArtist&limit=3&term=${encodeURIComponent(A)}`)).find((x) => nrm(x.artistName).includes(a1));
+    if (art) hit = (await itj(`https://itunes.apple.com/lookup?id=${art.artistId}&entity=song&limit=200`)).find(ok);
+  }
+  return hit ? pick(hit) : null;
+}
+// Missing covers get filled in quietly each time the desk opens.
+let coverRun = false;
+async function autoCovers() {
+  if (coverRun) return; coverRun = true;
+  const miss = DATA.reviews.filter((r) => !r.cover_url && !(r.cover_checked && Date.now() - r.cover_checked < 86400000)).slice(0, 25);
+  let n = 0;
+  for (const r of miss) { const f = await findCover(r.artist, r.title, r.kind); if (f) { try { await api("/api/reviews-admin/set-cover", { slug: r.slug, cover: f.cover, apple_url: f.apple_url }); n++; } catch (e) {} } }
+  if (n) { $("bulkNote").textContent = `Found ${n} missing cover${n === 1 ? "" : "s"}.`; await load(); }
+}
 $("lookupBtn").onclick = async () => {
+  if (!($("fSpotify").value.trim() || $("fYoutube").value.trim()) && $("fArtist").value.trim() && $("fTitle").value.trim()) {
+    $("note").textContent = "Looking it up…";
+    const f = await findCover($("fArtist").value, $("fTitle").value, $("fKind").value);
+    if (f) { $("fCover").value = f.cover; if (!$("fApple").value) $("fApple").value = f.apple_url; showCover(); $("note").textContent = `Found “${f.title}” by ${f.artist} on Apple Music. Check it's the right one (the cover is on the right).`; return; }
+  }
   const link = $("fSpotify").value.trim() || $("fYoutube").value.trim(), q = `${$("fArtist").value.trim()} ${$("fTitle").value.trim()}`.trim();
   if (!link && !q) { $("note").textContent = "Paste a Spotify or YouTube link, or type the artist and title first."; return; }
   $("note").textContent = "Looking it up…";
@@ -437,6 +467,7 @@ $("lookupBtn").onclick = async () => {
 };
 $("ed").onsubmit = async (e) => {
   e.preventDefault();
+  if (!$("fCover").value.trim() && $("fArtist").value.trim() && $("fTitle").value.trim()) { const f = await findCover($("fArtist").value, $("fTitle").value, $("fKind").value); if (f) { $("fCover").value = f.cover; if (!$("fApple").value) $("fApple").value = f.apple_url; showCover(); } }
   const body = { original, instrumental: $("fInst").checked, ai_made: $("fAi").checked, featured: $("fFeatured").checked, submitted: $("fSubmitted").checked, request_id: startedFrom, listened: $("fListened").checked }; for (const [k, id] of Object.entries(F)) body[k] = $(id).value;
   $("saveBtn").disabled = true; $("note").textContent = "Saving…";
   try {
