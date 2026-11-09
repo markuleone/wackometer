@@ -22,3 +22,5 @@
   X-Robots-Tag: noindex
 /admin-reviews
   X-Robots-Tag: noindex
+/admin-quick
+  X-Robots-Tag: noindex

@@ -110,7 +110,7 @@ const REACTIONS = ["🔥", "😭", "💀", "🤢"];
 const HUMAN_PATHS = [/^\/api\/wall$/, /^\/api\/daily$/, /^\/api\/login$/, /^\/api\/profile$/, /^\/api\/report$/, /^\/api\/u\/[a-z0-9_.]+\/report$/, /^\/api\/waitlist$/, /^\/api\/reviews\/submit$/, /^\/api\/critics\/apply$/, /^\/api\/subscribe$/, /^\/api\/reviews\/[a-z0-9-]+\/comment$/, /^\/api\/artists\/claim$/, /^\/api\/reviews\/[a-z0-9-]+\/vote$/];
 const BLOCKED_MSG = "That includes language we don't allow on Wackometer. Try different words.";
 const EVENT_TYPES = ["share_card", "save_card", "save_video", "copy_caption", "copy_daily", "copy_roast", "pen_share", "pen_start", "swap_used", "emoji_starter", "best_line", "storm_start", "storm_done", "wash", "humanize", "lesson_pass", "install", "waitlist"];
-EVENT_TYPES.push("view", "weigh", "weigh_example", "signup_sent", "signup_done", "wall_post", "roast", "wingman_msg", "daily_submit", "ai_locked", "pro_click", "review_vote", "review_share", "review_card", "review_badge", "review_submit", "hub_reviews", "hub_write", "hub_plugin", "submit_checkout", "submit_paid", "critic_apply", "subscribe", "review_video", "pro_paid", "review_react", "review_comment", "artist_claim", "list_share", "artist_badge", "hub_submit", "hub_workout", "hub_nav_reviews", "hub_nav_write", "hub_nav_submit", "hub_nav_pro", "hub_yourturn_vs", "hub_yourturn_workout", "vs_open", "vs_weigh", "bridge_review", "bridge_submit");
+EVENT_TYPES.push("view", "weigh", "weigh_example", "signup_sent", "signup_done", "wall_post", "roast", "wingman_msg", "daily_submit", "ai_locked", "pro_click", "review_vote", "review_share", "review_card", "review_badge", "review_submit", "hub_reviews", "hub_write", "hub_plugin", "submit_checkout", "submit_paid", "critic_apply", "subscribe", "review_video", "pro_paid", "review_react", "review_comment", "artist_claim", "list_share", "artist_badge", "hub_submit", "hub_workout", "hub_nav_reviews", "hub_nav_write", "hub_nav_submit", "hub_nav_pro", "play_card", "quick_publish", "quick_skip", "hub_yourturn_vs", "hub_yourturn_workout", "vs_open", "vs_weigh", "bridge_review", "bridge_submit");
 // Prefixed counters: where visits come from, which page they land on, which tools get opened. Fixed lists only.
 const EVENT_PREFIXED = /^(src:(google|bing|duckduckgo|yahoo|instagram|tiktok|facebook|x|reddit|youtube|discord|linkedin|pinterest|snapchat|threads|whatsapp|chatgpt|perplexity|email|sticker|direct|other)|land:(home|write|artist|profile|rhymes|cliches|syllables|reviews|review)|tool:(home|weigh|community|storm|workshop|workout|wingman|why|pro|lost|profile|me))$/;
 const cleanHandle = (h) => String(h || "").replace(/[^A-Za-z0-9_.\- ]/g, "").trim().slice(0, 20);
@@ -188,13 +188,13 @@ export default {
     if (path.startsWith("/badge/artist/") && path.endsWith(".svg")) return artistBadge(env, path.slice(14, -4).toLowerCase(), ensureSchema);
     if (path.startsWith("/badge/") && path.endsWith(".svg")) return badgeSVG(env, path.slice(7, -4).toLowerCase(), ensureSchema);
     // Back office pages: only staff get the page; everyone else gets a sign-in gate.
-    if ((path === "/admin" || path === "/admin-reviews" || path === "/admin.html" || path === "/admin-reviews.html") && (method === "GET" || method === "HEAD")) {
+    if ((path === "/admin" || path === "/admin-reviews" || path === "/admin.html" || path === "/admin-reviews.html" || path === "/admin-quick" || path === "/admin-quick.html") && (method === "GET" || method === "HEAD")) {
       await ensureSchema(env);
       const s0 = await session(req, env, false), u0 = s0.user;
       const role = await roleOf(u0, env);
-      const reviews = path.startsWith("/admin-reviews");
+      const reviews = path.startsWith("/admin-reviews") || path.startsWith("/admin-quick");
       if (!role && !(reviews && await isCriticEmail(u0, env))) return gatePage(u0, reviews ? "reviews" : "admin");
-      const page = await env.ASSETS.fetch(new Request(new URL(reviews ? "/admin-reviews" : "/admin", req.url), req));
+      const page = await env.ASSETS.fetch(new Request(new URL(path.startsWith("/admin-quick") ? "/admin-quick" : reviews ? "/admin-reviews" : "/admin", req.url), req));
       const h = new Headers(page.headers); h.set("cache-control", "no-store"); h.set("x-robots-tag", "noindex, nofollow");
       return new Response(page.body, { status: page.status, headers: h });
     }

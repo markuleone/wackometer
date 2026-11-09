@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Quick Weigh queue · Wackometer</title><meta name="robots" content="noindex,nofollow"><link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/site.css">
+<style>
+body{margin:0}[hidden]{display:none!important}
+.qw{display:flex;flex-direction:column;gap:18px;padding-top:clamp(10px,2vh,22px)}
+.qw-hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px 24px;align-items:center;background:var(--bile-wash);border:2px solid var(--ink);box-shadow:0 6px 0 var(--ink);border-radius:28px;padding:clamp(18px,3vw,28px)}
+.qw-hero h1{margin:0;font-family:var(--display);font-size:clamp(30px,4vw,46px);line-height:1;letter-spacing:-.02em}.qw-hero h1 em{font-style:normal;color:var(--bile-ink)}
+.qw-hero p{margin:6px 0 0}
+.goal{min-width:240px;display:flex;flex-direction:column;gap:6px}
+.goal b{font-family:var(--display);font-size:28px;line-height:1}.goal .bar{height:12px;border-radius:999px;background:#fff;border:2px solid var(--ink);overflow:hidden}.goal .bar i{display:block;height:100%;background:var(--bile)}
+.goal small{color:var(--muted)}
+.card{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:22px;background:#fff;border:2px solid var(--ink);box-shadow:0 6px 0 var(--ink);border-radius:28px;padding:clamp(16px,2.5vw,26px)}
+.card .left{display:flex;flex-direction:column;gap:12px;min-width:0}
+.card .right{display:flex;flex-direction:column;gap:12px;min-width:0}
+.song{display:grid;grid-template-columns:96px minmax(0,1fr);gap:14px;align-items:center}
+.song img,.song .ph{width:96px;height:96px;border-radius:14px;object-fit:cover;border:2px solid var(--ink);background:var(--bile-wash);display:grid;place-items:center;font-size:30px}
+.song h2{margin:0;font-family:var(--display);font-size:clamp(22px,2.4vw,30px);line-height:1.05}.song .by{color:var(--muted);margin:2px 0 0}
+.note{background:var(--surface);border:2px dashed var(--line);border-radius:16px;padding:10px 12px;font-size:14px}
+.note b{font-family:var(--display)}
+.player iframe{display:block;width:100%;border:0;border-radius:14px}
+.player .vid{aspect-ratio:16/9;height:auto}
+.noplay{border:2px dashed var(--line);border-radius:14px;padding:14px;color:var(--muted)}
+.links{display:flex;flex-wrap:wrap;gap:6px}.links a{font-size:13px;font-weight:600;border:2px solid var(--line);border-radius:999px;padding:4px 10px;text-decoration:none;color:var(--ink)}
+label.f{display:flex;flex-direction:column;gap:4px;font-weight:600;font-size:14px}
+label.f input,label.f textarea,label.f select{width:100%;background:var(--bg);border:2px solid var(--line);border-radius:12px;padding:9px 11px;font-weight:400;font:inherit;min-height:0}
+label.f textarea{min-height:84px;line-height:1.5}
+.scoreRow{display:flex;align-items:center;gap:14px}.scoreRow input{flex:1;accent-color:var(--bile-deep)}
+#sOut{font-family:var(--display);font-weight:700;border-radius:999px;padding:5px 14px;min-width:150px;text-align:center;border:2px solid var(--ink)}
+#sOut.unset{background:#fff!important;color:var(--muted);border-style:dashed}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.chk{display:flex;align-items:center;gap:8px;font-weight:600}.chk input{width:20px;height:20px;accent-color:var(--bile-deep)}
+.acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.acts .btn[disabled]{opacity:.45;cursor:not-allowed}
+kbd{font-family:var(--body);font-size:11px;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:0 4px;color:var(--muted);margin-left:4px}
+.next{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+.ni{display:grid;grid-template-columns:44px minmax(0,1fr);gap:10px;align-items:center;border:2px solid var(--line);border-radius:14px;padding:6px;background:#fff;cursor:pointer;text-align:left;font:inherit}
+.ni:hover{border-color:var(--ink)}.ni img,.ni .ph{width:44px;height:44px;border-radius:8px;object-fit:cover;background:var(--bile-wash)}
+.ni b{font-family:var(--display);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}.ni small{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.empty{background:#fff;border:2px solid var(--ink);box-shadow:0 6px 0 var(--ink);border-radius:28px;padding:28px;text-align:center}
+.empty h2{font-family:var(--display);margin:0 0 6px}
+@media (max-width:860px){.card{grid-template-columns:1fr}.qw-hero{grid-template-columns:1fr}.two{grid-template-columns:1fr}}
+</style>
+</head><body><div class="wrap seo">
+<!--SITE_HEADER-->
+<main id="main"><div class="qw">
+<div class="qw-hero">
+  <div><p class="eyebrow">Review desk</p><h1>⚡ Quick Weigh <em>queue</em></h1>
+  <p>Listen, set the score, fix the two lines, publish. About two minutes a song. Nothing goes live until you tick “I listened.” <a href="/admin-reviews">Full review editor →</a></p></div>
+  <div class="goal" id="goal"></div>
+</div>
+<p class="hint" id="err"></p>
+<div id="app" hidden>
+  <div class="card" id="card" hidden>
+    <div class="left">
+      <div class="song"><span id="cov"></span><div><p class="eyebrow" id="eye"></p><h2 id="title"></h2><p class="by" id="by"></p></div></div>
+      <div class="player" id="player"></div>
+      <div class="links" id="links"></div>
+      <div class="note" id="note" hidden></div>
+    </div>
+    <form class="right" id="form" autocomplete="off">
+      <label class="f">Score <span class="hint">Your call on the whole song. 0 is Wicked, 100 is Wack. Move it after you listen.</span>
+        <span class="scoreRow"><input id="score" type="range" min="0" max="100" value="50"><span id="sOut" class="unset">Not scored yet</span></span></label>
+      <label class="f">One-line verdict <span class="hint">Claude's starting take, from what's public about the song. Make it what you heard.</span><input id="verdict" maxlength="220" required></label>
+      <label class="f">Two-line take <span class="hint">Shows on the review page.</span><textarea id="body" maxlength="1200"></textarea></label>
+      <div class="two">
+        <label class="f">Genre<input id="genre" maxlength="60"></label>
+        <label class="f">Artist Instagram<input id="ig" maxlength="80" placeholder="@handle"></label>
+      </div>
+      <label class="f" id="byRow">Reviewed by<select id="reviewer"><option value="">Wackometer</option></select></label>
+      <div class="two">
+        <label class="chk"><input type="checkbox" id="ai"> 🤖 Made with AI</label>
+        <label class="chk"><input type="checkbox" id="big"> ⚖️ Big One (mainstream)</label>
+      </div>
+      <label class="chk"><input type="checkbox" id="listened"> I listened to the whole song</label>
+      <div class="acts">
+        <button class="btn bile" type="submit" id="pub" disabled>Publish<kbd>Enter</kbd></button>
+        <button class="btn" type="button" id="later">Later<kbd>L</kbd></button>
+        <button class="btn quiet" type="button" id="skip">Skip (delete)<kbd>S</kbd></button>
+        <span class="hint" id="msg" role="status"></span>
+      </div>
+    </form>
+  </div>
+  <div class="empty" id="empty" hidden><h2>Queue's clear. 🎧</h2><p>The scout drops a fresh batch every morning. Want more now? Add songs on the <a href="/admin-reviews">review desk</a>.</p></div>
+  <h2 class="hint" id="nextH" style="margin:6px 0 0">Up next</h2>
+  <div class="next" id="next"></div>
+</div>
+</div></main></div>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const TIERS = ["Wicked", "Well put", "Whatever", "Weird", "Wack"], TC = ["#3D8BFF", "#22C29B", "#A9A2DA", "#FF8A3D", "#A8C42E"];
+const tierOf = (s) => (s >= 80 ? 4 : s >= 60 ? 3 : s >= 40 ? 2 : s >= 20 ? 1 : 0);
+const GOAL = 1000, GOAL_DATE = new Date("2026-12-31T23:59:59-05:00");
+async function api(path, body) {
+  const r = await fetch(path, body ? { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : {});
+  const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || "Something went wrong."); return d;
+}
+const track = (type) => { try { fetch("/api/event", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ type }), keepalive: true }); } catch (e) {} };
+
+/* players: same order as the site's play buttons */
+const yt = (u) => (String(u || "").match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/))([A-Za-z0-9_-]{11})/) || [])[1];
+const sp = (u) => { const m = String(u || "").match(/open\.spotify\.com\/(?:intl-[a-z-]+\/)?(track|album|playlist)\/([A-Za-z0-9]{22})/); return m ? { t: m[1], src: `https://open.spotify.com/embed/${m[1]}/${m[2]}` } : null; };
+const sc = (u) => (/^https:\/\/(www\.|m\.|on\.)?soundcloud\.com\//i.test(String(u || "")) ? `https://w.soundcloud.com/player/?url=${encodeURIComponent(u)}&color=%23a8c42e&visual=false&show_comments=false&hide_related=true` : null);
+const am = (u) => { const m = String(u || "").match(/^https:\/\/music\.apple\.com\/(.+)$/); return m ? `https://embed.music.apple.com/${m[1]}` : null; };
+function playerHTML(r) {
+  const out = [];
+  if (yt(r.youtube_url)) out.push(`<iframe class="vid" src="https://www.youtube-nocookie.com/embed/${yt(r.youtube_url)}?rel=0" allow="encrypted-media; picture-in-picture; fullscreen" title="YouTube"></iframe>`);
+  const s = sp(r.spotify_url);
+  if (s) out.push(`<iframe src="${esc(s.src)}" height="${s.t === "track" ? 152 : 352}" allow="autoplay; clipboard-write; encrypted-media; fullscreen" title="Spotify"></iframe>`);
+  else if (sc(r.soundcloud_url)) out.push(`<iframe src="${esc(sc(r.soundcloud_url))}" height="166" allow="autoplay" title="SoundCloud"></iframe>`);
+  else if (am(r.apple_url)) out.push(`<iframe src="${esc(am(r.apple_url))}" height="175" allow="autoplay *; encrypted-media *" sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-top-navigation-by-user-activation" title="Apple Music"></iframe>`);
+  return out.length ? out.join("") : `<p class="noplay">No playable link yet. Open one of the links below to listen, or skip it.</p>`;
+}
+const PL = [["spotify_url", "Spotify"], ["apple_url", "Apple Music"], ["youtube_url", "YouTube"], ["soundcloud_url", "SoundCloud"], ["bandcamp_url", "Bandcamp"], ["tidal_url", "Tidal"], ["amazon_url", "Amazon"], ["deezer_url", "Deezer"], ["artist_url", "Artist site"]];
+
+/* covers: Apple's catalog, searched from this browser (it doesn't answer our server). Only an exact match. */
+const nrm = (x) => String(x || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\(.*?\)|\[.*?\]/g, " ").replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+const itj = async (u) => { try { return (await (await fetch(u)).json()).results || []; } catch (e) { return []; } };
+async function findCover(r) {
+  const A = nrm(String(r.artist).split(/,|&| x | feat\.?| ft\.?/i)[0]), T = nrm(r.title), t3 = T.split(" ").slice(0, 3).join(" "), a1 = A.split(" ")[0];
+  if (!A || !T) return null;
+  const ok = (h) => h.artworkUrl100 && nrm(h.artistName).includes(a1) && nrm(h.trackName).startsWith(t3);
+  const h = (await itj(`https://itunes.apple.com/search?media=music&entity=song&limit=50&term=${encodeURIComponent(A + " " + T)}`)).find(ok);
+  return h ? { cover: String(h.artworkUrl100).replace(/\/\d+x\d+bb\./, "/600x600bb."), apple_url: `https://music.apple.com/album/${h.collectionId}?i=${h.trackId}` } : null;
+}
+
+let D = null, Q = [], cur = null, touched = false;
+function goal() {
+  const days = Math.max(1, Math.ceil((GOAL_DATE - Date.now()) / 86400000)), left = Math.max(0, GOAL - D.live);
+  $("goal").innerHTML = `<b>${D.live.toLocaleString()} <small>/ ${GOAL.toLocaleString()} songs</small></b><span class="bar"><i style="width:${Math.min(100, (D.live / GOAL) * 100).toFixed(1)}%"></i></span>
+<small>${D.today} published in the last 24 hours · ${left ? `${Math.ceil(left / days)} a day gets you there by Dec 31` : "Goal reached 🎉"} · ${Q.length} waiting</small>`;
+}
+function setScore(v, mark) {
+  $("score").value = v; const t = tierOf(v);
+  if (mark) touched = true;
+  $("sOut").className = touched ? "" : "unset";
+  $("sOut").textContent = touched ? `${TIERS[t]} · ${v}` : "Not scored yet";
+  $("sOut").style.background = touched ? TC[t] : ""; ready();
+}
+function ready() { $("pub").disabled = !(cur && touched && $("listened").checked && $("verdict").value.trim()); }
+async function show(r) {
+  cur = r; touched = false; $("msg").textContent = "";
+  $("card").hidden = !r; $("empty").hidden = !!r || !D; if (!r) { renderNext(); goal(); return; }
+  $("cov").innerHTML = r.cover_url ? `<img src="${esc(r.cover_url)}" alt="">` : `<span class="ph">♪</span>`;
+  $("eye").textContent = [r.kind === "album" ? "Album" : "Song", r.genre, r.released, r.scout_batch ? "Scout " + r.scout_batch : ""].filter(Boolean).join(" · ");
+  $("title").textContent = r.title; $("by").textContent = "by " + r.artist;
+  $("player").innerHTML = playerHTML(r);
+  $("links").innerHTML = PL.filter(([k]) => r[k]).map(([k, n]) => `<a href="${esc(r[k])}" target="_blank" rel="noopener">${n} ↗</a>`).join("") + (r.artist_ig ? `<a href="https://instagram.com/${esc(r.artist_ig)}" target="_blank" rel="noopener">@${esc(r.artist_ig)} ↗</a>` : "");
+  $("note").hidden = !r.scout_note; $("note").innerHTML = r.scout_note ? `<b>Why it's in the queue:</b> ${esc(r.scout_note)}` : "";
+  $("verdict").value = r.verdict || ""; $("body").value = r.body || ""; $("genre").value = r.genre || ""; $("ig").value = r.artist_ig ? "@" + r.artist_ig : "";
+  $("ai").checked = !!r.ai_made; $("big").checked = !!r.big; $("listened").checked = false;
+  $("reviewer").value = D.role === "critic" ? D.me : (r.reviewer || "");
+  setScore(r.assist ? 50 : r.score, !r.assist);
+  renderNext(); goal();
+  if (!r.cover_url) { const f = await findCover(r); if (f && cur === r) { r.cover_url = f.cover; r.apple_url = r.apple_url || f.apple_url; $("cov").innerHTML = `<img src="${esc(f.cover)}" alt="">`; try { await api("/api/reviews-admin/set-cover", { slug: r.slug, cover: f.cover, apple_url: f.apple_url }); } catch (e) {} if (!r.spotify_url && !r.youtube_url && !r.soundcloud_url) $("player").innerHTML = playerHTML(r); } }
+}
+function renderNext() {
+  const rest = Q.filter((x) => x !== cur);
+  $("nextH").hidden = !rest.length;
+  $("next").innerHTML = rest.slice(0, 24).map((x, i) => `<button type="button" class="ni" data-i="${Q.indexOf(x)}">${x.cover_url ? `<img src="${esc(x.cover_url)}" alt="">` : `<span class="ph"></span>`}<span><b>${esc(x.title)}</b><small>${esc(x.artist)}</small></span></button>`).join("");
+  $("next").querySelectorAll(".ni").forEach((b) => (b.onclick = () => { show(Q[+b.dataset.i]); window.scrollTo({ top: 0, behavior: "smooth" }); }));
+}
+const advance = () => { Q = Q.filter((x) => x !== cur); show(Q[0] || null); };
+$("score").oninput = () => setScore(+$("score").value, true);
+$("listened").onchange = ready; $("verdict").oninput = ready;
+$("form").onsubmit = async (e) => {
+  e.preventDefault(); if ($("pub").disabled) return;
+  const r = cur, b = $("pub"); b.disabled = true; $("msg").textContent = "Publishing…";
+  const body = { ...r, original: r.slug, score: +$("score").value, verdict: $("verdict").value.trim(), body: $("body").value.trim(), genre: $("genre").value.trim(), artist_ig: $("ig").value.trim(),
+    reviewer: $("reviewer").value, ai_made: $("ai").checked, big: $("big").checked, quick: true, listened: true, status: "live", featured: false, submitted: false, instrumental: !!r.instrumental };
+  for (const k of ["s_lyrics", "s_melody", "s_vocals", "s_production", "s_replay"]) body[k] = r[k] ?? "";
+  try { await api("/api/reviews-admin/save", body); D.live++; D.today++; track("quick_publish"); $("msg").textContent = "Live ✓"; advance(); }
+  catch (err) { $("msg").textContent = err.message; b.disabled = false; }
+};
+$("later").onclick = () => { if (!cur) return; Q = Q.filter((x) => x !== cur).concat(cur); show(Q[0]); };
+$("skip").onclick = async () => {
+  if (!cur || !confirm(`Skip “${cur.title}”? It's deleted from the queue.`)) return;
+  try { await api("/api/reviews-admin/delete", { slug: cur.slug }); track("quick_skip"); advance(); } catch (e) { $("msg").textContent = e.message; }
+};
+document.addEventListener("keydown", (e) => {
+  if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) && e.key !== "Escape") return;
+  if (e.key === "l" || e.key === "L") $("later").click();
+  else if (e.key === "s" || e.key === "S") $("skip").click();
+  else if (e.key === "Enter") $("form").requestSubmit();
+});
+(async () => {
+  try {
+    D = await api("/api/reviews-admin/quick"); Q = D.queue; $("app").hidden = false;
+    if (D.role === "critic") $("byRow").hidden = true;
+    else $("reviewer").innerHTML = `<option value="">Wackometer</option>` + D.critics.map((n) => `<option>${esc(n)}</option>`).join("");
+    show(Q[0] || null);
+  } catch (e) { $("err").innerHTML = esc(e.message) + ' <a href="/write?account=1">Sign in</a> with your admin or critic email, then come back.'; }
+})();
+</script>
+</body></html>

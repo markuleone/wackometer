@@ -83,7 +83,7 @@ body{margin:0}[hidden]{display:none!important}
 <!--SITE_HEADER-->
 <main id="main"><div class="doc">
 <div class="ed-hero"><p class="eyebrow" id="heroEye">Admin</p><h1 id="heroH">Review <em>editor</em></h1><p class="lead" id="heroP">Write reviews, work the queue, and manage critics.</p>
-<nav class="rchips" aria-label="Jump to"><a class="rchip" href="#desk" data-go="queue">📥 Queue</a><a class="rchip" href="#desk" data-go="drafts">📝 Drafts</a><a class="rchip" href="#desk" data-go="live">✅ Live</a><a class="rchip admin-only" href="#critH">🎧 Critics</a><a class="rchip admin-only" href="#appH">📝 Applications</a><a class="rchip admin-only" href="#listH">💌 Email list</a><a class="rchip admin-only" href="#wlH">📅 Wicked lists</a><a class="rchip admin-only" href="#claimH">🎤 Artist claims</a><a class="rchip admin-only" href="#cmH">💬 Comments</a><a class="rchip critic-only" href="#meH" hidden>🙋 My critic page</a></nav></div>
+<nav class="rchips" aria-label="Jump to"><a class="rchip" href="/admin-quick">⚡ Quick Weigh queue</a><a class="rchip" href="#desk" data-go="queue">📥 Queue</a><a class="rchip" href="#desk" data-go="drafts">📝 Drafts</a><a class="rchip" href="#desk" data-go="live">✅ Live</a><a class="rchip admin-only" href="#critH">🎧 Critics</a><a class="rchip admin-only" href="#appH">📝 Applications</a><a class="rchip admin-only" href="#listH">💌 Email list</a><a class="rchip admin-only" href="#wlH">📅 Wicked lists</a><a class="rchip admin-only" href="#claimH">🎤 Artist claims</a><a class="rchip admin-only" href="#cmH">💬 Comments</a><a class="rchip critic-only" href="#meH" hidden>🙋 My critic page</a></nav></div>
 <p class="hint" id="err"></p>
 <div id="app" hidden>
 <div class="desk" id="desk">
@@ -117,6 +117,7 @@ body{margin:0}[hidden]{display:none!important}
     <span class="scoreRow"><input id="fScore" type="range" min="0" max="100" value="15"><span id="scoreOut"></span></span></label>
   <fieldset class="full brk"><legend>The breakdown <span class="hint">0 = Wicked, 100 = Wack. Leave a part blank to skip it. The overall above is your call, not an average.</span></legend>
     <label class="chk" style="grid-column:1/-1;align-self:start"><input type="checkbox" id="fAi"> Made with AI <span class="hint">(adds a 🤖 badge)</span></label>
+    <label class="chk" style="grid-column:1/-1;align-self:start"><input type="checkbox" id="fQuick"> ⚡ Quick Weigh <span class="hint">(score, a two-line take and the player; no breakdown needed)</span></label>
     <label class="chk" style="grid-column:1/-1;align-self:start"><input type="checkbox" id="fBig"> ⚖️ Big One <span class="hint">(a mainstream song: shows under Weighing the Big Ones, kept off the charts, lists, genres and leaderboard)</span></label>
     <label class="chk" style="grid-column:1/-1;align-self:start"><input type="checkbox" id="fInst"> Instrumental <span class="hint">(scores Hook, Build &amp; drop, Sound design and Groove instead of lyrics and vocals)</span></label>
     <label><span id="lbl_s_lyrics">Lyrics</span><input type="number" min="0" max="100" id="fS_lyrics" placeholder="—"></label>
@@ -139,6 +140,11 @@ body{margin:0}[hidden]{display:none!important}
   <label>Artist website or link-in-bio <span class="hint">(optional)</span><input id="fArtistUrl" type="url" maxlength="300"></label>
   <label>Apple Music link <span class="hint">(optional)</span><input id="fApple" type="url" maxlength="300"></label>
   <label>Music video (YouTube link) <span class="hint">(optional: shows on the review and in Music videos)</span><input id="fYoutube" type="url" maxlength="300"></label>
+  <label>SoundCloud link <span class="hint">(optional: plays on the page when there's no Spotify)</span><input id="fSoundcloud" type="url" maxlength="300"></label>
+  <label>Bandcamp link <span class="hint">(optional)</span><input id="fBandcamp" type="url" maxlength="300"></label>
+  <label>Tidal link <span class="hint">(optional)</span><input id="fTidal" type="url" maxlength="300"></label>
+  <label>Amazon Music link <span class="hint">(optional)</span><input id="fAmazon" type="url" maxlength="300"></label>
+  <label>Deezer link <span class="hint">(optional)</span><input id="fDeezer" type="url" maxlength="300"></label>
   <label>Cover image <span class="hint">(Fill in finds it, or upload your own)</span><span class="up"><input id="fCover" type="url" maxlength="500" placeholder="https://…"><label class="btn" for="fCoverFile">Upload</label><input type="file" id="fCoverFile" accept="image/jpeg,image/png,image/webp"></span></label>
   <span><img id="coverPrev" alt="" hidden></span>
   <label>Page link <span class="hint">wackometer.com/reviews/… (blank = artist-title)</span><input id="fSlug" maxlength="80"></label>
@@ -226,7 +232,7 @@ async function api(path, body) {
   const r = await fetch(path, body ? { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : {});
   const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || "Something went wrong."); return d;
 }
-const F = { spotify_url: "fSpotify", artist: "fArtist", title: "fTitle", kind: "fKind", genre: "fGenre", released: "fReleased", reviewer: "fReviewer", s_lyrics: "fS_lyrics", s_melody: "fS_melody", s_vocals: "fS_vocals", s_production: "fS_production", s_replay: "fS_replay", score: "fScore", verdict: "fVerdict", body: "fBody", best_line: "fBest", standouts: "fStand", artist_ig: "fIg", artist_url: "fArtistUrl", apple_url: "fApple", youtube_url: "fYoutube", cover_url: "fCover", slug: "fSlug", status: "fStatus" };
+const F = { soundcloud_url: "fSoundcloud", bandcamp_url: "fBandcamp", tidal_url: "fTidal", amazon_url: "fAmazon", deezer_url: "fDeezer", spotify_url: "fSpotify", artist: "fArtist", title: "fTitle", kind: "fKind", genre: "fGenre", released: "fReleased", reviewer: "fReviewer", s_lyrics: "fS_lyrics", s_melody: "fS_melody", s_vocals: "fS_vocals", s_production: "fS_production", s_replay: "fS_replay", score: "fScore", verdict: "fVerdict", body: "fBody", best_line: "fBest", standouts: "fStand", artist_ig: "fIg", artist_url: "fArtistUrl", apple_url: "fApple", youtube_url: "fYoutube", cover_url: "fCover", slug: "fSlug", status: "fStatus" };
 let DATA = { reviews: [], requests: [] }, original = null, startedFrom = null, ROLE = "admin";
 // Shrink a picture in the browser (longest side 800px, JPEG) and upload it. Returns its new URL.
 async function upload(file) {
@@ -255,7 +261,7 @@ function showCover() { const u = $("fCover").value.trim(); $("coverPrev").hidden
 function fill(r) {
   original = r ? r.slug : null;
   for (const [k, id] of Object.entries(F)) $(id).value = r ? (r[k] ?? "") : k === "score" ? 15 : k === "kind" ? "song" : k === "status" ? "draft" : "";
-  $("fFeatured").checked = !!(r && r.featured); $("fSubmitted").checked = !!(r && r.submitted); $("fInst").checked = !!(r && r.instrumental); $("fAi").checked = !!(r && r.ai_made); $("fBig").checked = !!(r && r.big); relabel();
+  $("fFeatured").checked = !!(r && r.featured); $("fSubmitted").checked = !!(r && r.submitted); $("fInst").checked = !!(r && r.instrumental); $("fAi").checked = !!(r && r.ai_made); $("fBig").checked = !!(r && r.big); $("fQuick").checked = !!(r && r.quick); relabel();
   $("ogBox").hidden = !(r && r.og_url); if (r && r.og_url) $("ogPrev").src = r.og_url.replace(/^https:\/\/wackometer\.com/, "");
   $("assistBox").hidden = !(r && r.assist); $("fListened").checked = false;
   $("delBtn").hidden = !r || ROLE !== "admin"; $("viewBtn").hidden = !r; $("tell").hidden = true;
@@ -469,7 +475,7 @@ $("lookupBtn").onclick = async () => {
 $("ed").onsubmit = async (e) => {
   e.preventDefault();
   if (!$("fCover").value.trim() && $("fArtist").value.trim() && $("fTitle").value.trim()) { const f = await findCover($("fArtist").value, $("fTitle").value, $("fKind").value); if (f) { $("fCover").value = f.cover; if (!$("fApple").value) $("fApple").value = f.apple_url; showCover(); } }
-  const body = { original, instrumental: $("fInst").checked, ai_made: $("fAi").checked, big: $("fBig").checked, featured: $("fFeatured").checked, submitted: $("fSubmitted").checked, request_id: startedFrom, listened: $("fListened").checked }; for (const [k, id] of Object.entries(F)) body[k] = $(id).value;
+  const body = { original, instrumental: $("fInst").checked, ai_made: $("fAi").checked, big: $("fBig").checked, quick: $("fQuick").checked, featured: $("fFeatured").checked, submitted: $("fSubmitted").checked, request_id: startedFrom, listened: $("fListened").checked }; for (const [k, id] of Object.entries(F)) body[k] = $(id).value;
   $("saveBtn").disabled = true; $("note").textContent = "Saving…";
   try {
     const r = await api("/api/reviews-admin/save", body);

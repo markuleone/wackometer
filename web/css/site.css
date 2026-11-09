@@ -1326,3 +1326,25 @@ nav.rchips{background:none;border:0;padding:0;box-shadow:none;border-radius:0}
 header.top .rsearch{margin-left:auto}
 @media (max-width:900px){.rtop .util{margin-left:auto}header.top .rsearch{order:5;flex-basis:100%;max-width:none;margin:0}}
 @media (max-width:520px){header.top .rsearch{display:none}}
+
+/* ===== play buttons on cards + the mini player ===== */
+.pcard{position:relative;display:flex;min-width:0}.pcard>a{flex:1;min-width:0}
+.pbox{position:absolute;left:0;right:0;top:0;aspect-ratio:1;pointer-events:none}
+.pbox.pad{left:10px;right:10px;top:10px}
+.pplay{pointer-events:auto;position:absolute;left:8px;bottom:8px;width:44px;height:44px;border-radius:50%;border:2px solid var(--ink);background:var(--bile);color:#1D2013;box-shadow:0 3px 0 var(--ink);cursor:pointer;display:grid;place-items:center;font-size:16px;padding:0 0 0 3px;transition:transform .12s}
+.pplay:hover{transform:scale(1.08)}.pplay.on{background:#fff}
+.mini{position:fixed;right:16px;bottom:16px;z-index:60;width:min(380px,calc(100vw - 32px));background:#fff;border:2px solid var(--ink);box-shadow:0 6px 0 var(--ink);border-radius:20px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.mini.vid{width:min(440px,calc(100vw - 32px))}
+.mini-top{display:flex;align-items:center;gap:10px}
+.mini-t{flex:1;min-width:0;display:flex;flex-direction:column}.mini-t b{font-family:var(--display);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mini-t span{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mini-go{font-size:13px;font-weight:600;color:var(--bile-ink);white-space:nowrap}
+.mini-x{border:2px solid var(--line);background:var(--surface);border-radius:50%;width:32px;height:32px;font-size:18px;line-height:1;cursor:pointer;flex:none}
+.mini-frame iframe{display:block;width:100%;border:0;border-radius:12px}
+.mini.vid .mini-frame iframe{aspect-ratio:16/9;height:auto}
+@media (max-width:600px){.mini{left:8px;right:8px;bottom:8px;width:auto}.mini.vid{width:auto}.mini-go{display:none}}
+/* listen on every platform */
+.rv-plats{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0}
+.rv-plats .rv-sl{margin-right:4px}
+.lp{font-family:var(--display);font-weight:600;font-size:14px;text-decoration:none;color:var(--ink)!important;border:2px solid var(--ink);border-radius:999px;padding:5px 12px;background:#fff;box-shadow:0 2px 0 var(--ink)}
+.lp:hover{background:var(--bile-wash)}
+.lp.find{border-color:var(--line);box-shadow:none;color:var(--muted)!important;font-weight:500;font-size:13px}

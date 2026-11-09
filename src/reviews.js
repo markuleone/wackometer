@@ -4,6 +4,7 @@
 //   /badge/<slug>.svg     embeddable badge for artists ("Certified Wicked on Wackometer")
 //   /api/reviews/...      crowd votes, cover image proxy (for the share card), artist submissions
 //   /api/reviews-admin/...  the editor at /admin-reviews (admins only)
+import QUEUE from "./queue-data.js";
 import { adsenseTag } from "./ads-tag.js";
 import { TIERS, tierOf, MID } from "../web/js/score.js";
 import META from "./build-meta.js";
@@ -62,6 +63,25 @@ export async function ensureCover(DB, r) {
   return f ? { ...r, cover_url: f.cover, apple_url: r.apple_url || f.apple_url || null } : r;
 }
 
+/* ---------- daily scout: import each batch from queue/*.json once, as Claude starting drafts ---------- */
+export async function importQueue(DB) {
+  const t = Date.now();
+  for (const b of QUEUE) {
+    const key = "scout:" + b.batch;
+    if (await DB.prepare("SELECT 1 FROM settings WHERE k=?").bind(key).first()) continue;
+    const s = (v, n) => String(v ?? "").trim().slice(0, n), u = (v) => safeUrl(s(v, 300)) || null;
+    const stmts = b.songs.filter((x) => x && x.artist && x.title).map((x, i) => {
+      const slug = slugify(`${s(x.artist, 120)} ${s(x.title, 160)}`);
+      return DB.prepare(`INSERT OR IGNORE INTO reviews (slug,kind,artist,title,genre,released,score,verdict,body,cover_url,spotify_url,youtube_url,apple_url,soundcloud_url,bandcamp_url,tidal_url,amazon_url,deezer_url,artist_ig,artist_url,status,assist,quick,scout_note,scout_batch,created_at,updated_at)
+        SELECT ?,?,?,?,?,?,50,?,?,?,?,?,?,?,?,?,?,?,?,?,'draft',1,1,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM reviews WHERE lower(trim(artist))=lower(?) AND lower(trim(title))=lower(?))`).bind(slug, x.kind === "album" ? "album" : "song", s(x.artist, 120), s(x.title, 160), s(x.genre, 60) || null, s(x.released, 40) || null,
+        s(x.verdict, 220), s(x.body, 1200) || null, u(x.cover_url), u(x.spotify_url), u(x.youtube_url), u(x.apple_url), u(x.soundcloud_url), u(x.bandcamp_url), u(x.tidal_url), u(x.amazon_url), u(x.deezer_url),
+        igHandle(x.artist_ig) || null, u(x.artist_url), s(x.scout_note, 600) || null, b.batch, t + i, t + i, s(x.artist, 120), s(x.title, 160));
+    }).filter((st) => st);
+    stmts.push(DB.prepare("INSERT OR IGNORE INTO settings (k,v) VALUES (?,?)").bind(key, String(b.songs.length)));
+    await DB.batch(stmts);
+  }
+}
+
 /* ---------- links ---------- */
 export function spotifyEmbed(u) {
   const m = String(u || "").match(/open\.spotify\.com\/(?:intl-[a-z-]+\/)?(track|album|playlist|episode)\/([A-Za-z0-9]{22})/);
@@ -71,6 +91,33 @@ export function youtubeId(u) {
   const m = String(u || "").match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/))([A-Za-z0-9_-]{11})/);
   return m ? m[1] : null;
 }
+export function soundcloudEmbed(u) {
+  return /^https:\/\/(www\.|m\.|on\.)?soundcloud\.com\/[^\s"'<>]+$/i.test(String(u || "")) ? `https://w.soundcloud.com/player/?url=${encodeURIComponent(u)}&color=%23a8c42e&visual=false&show_comments=false&show_reposts=false&hide_related=true` : null;
+}
+export function appleEmbed(u) {
+  const m = String(u || "").match(/^https:\/\/music\.apple\.com\/([^\s"'<>]+)$/);
+  return m ? `https://embed.music.apple.com/${m[1]}` : null;
+}
+// One player per song for the play buttons on cards: a video first, then Spotify, SoundCloud, Apple Music.
+export function playerOf(r) {
+  const yt = youtubeId(r.youtube_url); if (yt) return { k: "yt", src: `https://www.youtube-nocookie.com/embed/${yt}?autoplay=1&rel=0` };
+  const sp = spotifyEmbed(r.spotify_url); if (sp) return { k: "sp", src: sp.src };
+  const sc = soundcloudEmbed(r.soundcloud_url); if (sc) return { k: "sc", src: sc + "&auto_play=true" };
+  const am = appleEmbed(r.apple_url); if (am) return { k: "am", src: am };
+  return null;
+}
+// Every platform people actually listen on. Direct links where we have them, a search everywhere else.
+const PLATFORMS = [["spotify_url", "Spotify", "https://open.spotify.com/search/"], ["apple_url", "Apple Music", "https://music.apple.com/us/search?term="], ["youtube_url", "YouTube", "https://www.youtube.com/results?search_query="],
+  ["soundcloud_url", "SoundCloud", "https://soundcloud.com/search?q="], ["bandcamp_url", "Bandcamp", ""], ["tidal_url", "Tidal", "https://tidal.com/search?q="], ["amazon_url", "Amazon Music", "https://music.amazon.com/search/"], ["deezer_url", "Deezer", "https://www.deezer.com/search/"]];
+export function listenHTML(r) {
+  const q = encodeURIComponent(`${String(r.artist || "").split(/,| x | feat/i)[0]} ${r.title}`.trim());
+  const chips = PLATFORMS.map(([k, name, search]) => { const u = safeUrl(r[k]);
+    if (u) return `<a class="lp" href="${esc(u)}" target="_blank" rel="noopener">${name}</a>`;
+    return search ? `<a class="lp find" href="${esc(search + q)}" target="_blank" rel="noopener nofollow" title="Search ${name}">Find on ${name}</a>` : ""; }).join("");
+  return `<div class="rv-links rv-plats" aria-label="Listen on"><span class="rv-sl">Listen on</span>${chips}</div>`;
+}
+const playBtn = (r, pad) => { const p = playerOf(r); if (!p) return "";
+  return `<span class="pbox${pad ? " pad" : ""}"><button type="button" class="pplay" data-play="${esc(JSON.stringify({ ...p, t: r.title, a: r.artist, s: r.slug }))}" aria-label="Play ${esc(r.title)} by ${esc(r.artist)}"><span aria-hidden="true">▶</span></button></span>`; };
 const safeUrl = (u) => (/^https:\/\/[^\s"'<>]+$/i.test(String(u || "").trim()) ? String(u).trim() : "");
 const igHandle = (h) => String(h || "").trim().replace(/^@/, "").replace(/^https?:\/\/(www\.)?instagram\.com\//i, "").replace(/\/.*$/, "").replace(/[^A-Za-z0-9._]/g, "").slice(0, 30);
 
@@ -167,11 +214,11 @@ function bodyHTML(text) {
 
 function card(r) {
   const t = tierOf(r.score);
-  return `<a class="rv-card" href="/reviews/${esc(r.slug)}">
+  return `<div class="pcard"><a class="rv-card" href="/reviews/${esc(r.slug)}">
 <span class="rv-cover">${coverOf(r) ? `<img src="${esc(coverOf(r))}" alt="" loading="lazy" width="300" height="300">` : `<span class="rv-nocover" aria-hidden="true">♪</span>`}${certified(r) ? '<span class="rv-cert">Certified Wicked</span>' : ""}</span>
 <span class="rv-meta">${pill(t, `${TIERS[t].n} · ${r.score}`)}<span class="rv-kind">${kindLabel(r)}</span>${r.ai_made ? '<span class="ai-tag sm">🤖 AI</span>' : ""}${r.big ? '<span class="ai-tag sm">⚖️ Big One</span>' : ""}</span>
 <b class="rv-ct">${esc(r.title)}</b><span class="rv-ca">${esc(r.artist)}</span>
-<span class="rv-cv">${esc(r.verdict)}</span></a>`;
+<span class="rv-cv">${esc(r.verdict)}</span></a>${playBtn(r, true)}</div>`;
 }
 
 // What we ask readers to do: get their own song weighed (paid), weigh their lyrics, or train (free).
@@ -261,13 +308,12 @@ ${SUB}
   // A Big One links to the underground songs that beat it (lower is better).
   const beat = r.big ? (await DB.prepare("SELECT * FROM reviews WHERE status='live' AND big=0 AND score<? ORDER BY score ASC, published_at DESC LIMIT 3").bind(r.score).all()).results : [];
   const ig = igHandle(r.artist_ig), artistUrl = safeUrl(r.artist_url) || (ig ? `https://instagram.com/${ig}` : "");
-  const listen = [["Spotify", safeUrl(r.spotify_url)], ["Apple Music", safeUrl(r.apple_url)], ["YouTube", safeUrl(r.youtube_url)]].filter(([, u]) => u);
   const date = new Date(r.published_at || r.updated_at);
   const standouts = String(r.standouts || "").split(",").map((s) => s.trim()).filter(Boolean);
   const crowdLabel = crowd.n ? `${TIERS[crowd.tier].n} · ${crowd.avg}` : "No votes yet";
   const body = `${draft ? '<div class="warn"><b>Draft preview.</b><p>Only people with this link can see it. Publish it from <a href="/admin-reviews">the editor</a>.</p></div>' : ""}
 <article class="rv" data-slug="${esc(slug)}">
-<p class="eyebrow">${r.big ? '<a href="/reviews?f=big">⚖️ Weighing the Big Ones</a>' : '<a href="/reviews">Song reviews</a>'} · ${kindLabel(r)}${r.genre ? " · " + esc(r.genre) : ""}${r.ai_made ? ' · <span class="ai-tag">🤖 Made with AI</span>' : ""}</p>
+<p class="eyebrow">${r.big ? '<a href="/reviews?f=big">⚖️ Weighing the Big Ones</a>' : '<a href="/reviews">Song reviews</a>'}${r.quick ? " · ⚡ Quick Weigh" : ""} · ${kindLabel(r)}${r.genre ? " · " + esc(r.genre) : ""}${r.ai_made ? ' · <span class="ai-tag">🤖 Made with AI</span>' : ""}</p>
 <div class="rv-hero">
 <div class="rv-art">${coverOf(r) ? `<img src="${esc(coverOf(r))}" alt="Cover art for ${esc(r.title)} by ${esc(r.artist)}" width="640" height="640">` : `<span class="rv-nocover" aria-hidden="true">♪</span>`}${certified(r) ? '<span class="rv-cert big">Certified Wicked</span>' : ""}</div>
 <div class="rv-head">
@@ -283,7 +329,9 @@ ${SUB}
 </div>
 ${sp ? `<div class="rv-listen"><iframe title="Listen to ${esc(r.title)} on Spotify" src="${esc(sp.src)}" width="100%" height="${sp.type === "track" ? 152 : 352}" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" style="border:0;border-radius:14px"></iframe></div>` : ""}
 ${yt ? `<div class="rv-listen yt" id="watch"><iframe title="Watch ${esc(r.title)} on YouTube" src="https://www.youtube-nocookie.com/embed/${yt}" loading="lazy" allow="encrypted-media; picture-in-picture; fullscreen" style="border:0"></iframe></div>` : ""}
-${listen.length ? `<p class="rv-links">Listen on ${listen.map(([n, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener">${n}</a>`).join(" · ")}</p>` : ""}
+${!sp && soundcloudEmbed(r.soundcloud_url) ? `<div class="rv-listen"><iframe title="Listen to ${esc(r.title)} on SoundCloud" src="${esc(soundcloudEmbed(r.soundcloud_url))}" width="100%" height="166" loading="lazy" allow="autoplay" style="border:0;border-radius:14px"></iframe></div>` : ""}
+${!sp && !soundcloudEmbed(r.soundcloud_url) && appleEmbed(r.apple_url) ? `<div class="rv-listen"><iframe title="Listen to ${esc(r.title)} on Apple Music" src="${esc(appleEmbed(r.apple_url))}" width="100%" height="${/[?&]i=/.test(r.apple_url) ? 175 : 450}" loading="lazy" allow="autoplay *; encrypted-media *; clipboard-write" sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-top-navigation-by-user-activation" style="border:0;border-radius:14px;overflow:hidden"></iframe></div>` : ""}
+${listenHTML(r)}
 <div class="rv-body">
 ${bodyHTML(r.body)}
 ${r.best_line ? `<figure class="rv-best"><figcaption>⭐ Best line</figcaption><blockquote>${esc(r.best_line)}</blockquote></figure>` : ""}
@@ -334,10 +382,10 @@ function crowdMap(rows) {
 const ytThumb = (id) => `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
 function rowCard(r, crowd) {
   const t = tierOf(r.score), c = crowd[r.slug];
-  return `<a class="rcard" href="/reviews/${esc(r.slug)}">
+  return `<div class="pcard"><a class="rcard" href="/reviews/${esc(r.slug)}">
 <span class="rv-cover">${coverOf(r) ? `<img src="${esc(coverOf(r))}" alt="" loading="lazy" width="300" height="300">` : `<span class="rv-nocover" aria-hidden="true">♪</span>`}${certified(r) ? '<span class="rv-cert">Certified Wicked</span>' : ""}</span>
 <span class="rsc"><span class="rsw" title="Wackometer score">${pill(t, `${TIERS[t].n} ${r.score}`)}</span><span class="rsc-c" title="Crowd score">👥 ${c ? esc(TIERS[c.tier].n) : "No votes"}</span></span>
-<b class="rv-ct">${esc(r.title)}</b><span class="rv-ca">${esc(r.artist)}</span></a>`;
+<b class="rv-ct">${esc(r.title)}</b><span class="rv-ca">${esc(r.artist)}</span></a>${playBtn(r, false)}</div>`;
 }
 function videoCard(r) {
   const t = tierOf(r.score), id = youtubeId(r.youtube_url);
@@ -720,7 +768,16 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
       DB.prepare("UPDATE reviews SET og_url=? WHERE slug=?").bind(`${env.APP_URL || url.origin}/img/${id}`, r.slug)]);
     return json({ ok: true });
   }
+  // The Quick Weigh queue: today's scout drafts, oldest first, plus progress toward the goal.
+  if (path === "/api/reviews-admin/quick" && method === "GET") {
+    await importQueue(DB).catch((e) => console.error("queue import", e));
+    const queue = (await DB.prepare("SELECT * FROM reviews WHERE status='draft' AND quick=1 AND (reviewer IS NULL OR reviewer='' OR lower(reviewer)=?) ORDER BY created_at ASC LIMIT 200").bind(critic ? critic.name.toLowerCase() : "").all()).results;
+    const live = (await DB.prepare("SELECT COUNT(*) c FROM reviews WHERE status='live'").first()).c;
+    const today = (await DB.prepare("SELECT COUNT(*) c FROM reviews WHERE status='live' AND published_at>?").bind(Date.now() - 86400000).first()).c;
+    return json({ role: critic ? "critic" : "admin", me: critic ? critic.name : "", queue, live, today, critics: critic ? [] : (await DB.prepare("SELECT name FROM critics WHERE active=1 ORDER BY sort, name").all()).results.map((c) => c.name) });
+  }
   if (path === "/api/reviews-admin/list" && method === "GET") {
+    await importQueue(DB).catch((e) => console.error("queue import", e));
     if (critic) {
       const reviews = (await DB.prepare("SELECT r.*, (SELECT COUNT(*) FROM review_votes v WHERE v.slug=r.slug) votes FROM reviews r WHERE lower(r.reviewer)=? OR (r.status='draft' AND (r.reviewer IS NULL OR r.reviewer='')) ORDER BY updated_at DESC LIMIT 500").bind(critic.name.toLowerCase()).all()).results;
       const requests = (await DB.prepare("SELECT id,artist,title,link,note,status,created_at,paid,amount,critic FROM review_requests WHERE status<>'pending' AND (critic IS NULL OR critic=?) ORDER BY status='done', paid DESC, created_at DESC LIMIT 300").bind(critic.slug).all()).results;
@@ -815,7 +872,8 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
       if (r && !r.notified_at) notified = await tellArtist(env, DB, r, requestId, url);
     }
     if (body.listened) await DB.prepare("UPDATE reviews SET assist=0 WHERE slug=?").bind(slug).run();
-    await DB.prepare("UPDATE reviews SET ai_made=?, big=? WHERE slug=?").bind(body.ai_made ? 1 : 0, body.big ? 1 : 0, slug).run();
+    await DB.prepare("UPDATE reviews SET ai_made=?, big=?, quick=?, soundcloud_url=?, bandcamp_url=?, tidal_url=?, amazon_url=?, deezer_url=? WHERE slug=?").bind(body.ai_made ? 1 : 0, body.big ? 1 : 0, body.quick ? 1 : 0,
+      ...["soundcloud_url", "bandcamp_url", "tidal_url", "amazon_url", "deezer_url"].map((k) => safeUrl(f(k, 300)) || null), slug).run();
     { const fresh = await DB.prepare("SELECT * FROM reviews WHERE slug=?").bind(slug).first(); if (fresh && !fresh.cover_url) await ensureCover(DB, { ...fresh, cover_checked: null }); }
     return json({ ok: true, slug, status, notified });
   }

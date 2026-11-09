@@ -38,6 +38,24 @@ if (acct && !IS_BOT) api("/api/me").then((me) => {
 // Header buttons and front-page cards that lead to the writing tools or the plugin.
 document.querySelectorAll("[data-hub]").forEach((el) => el.addEventListener("click", () => track("hub_" + el.dataset.hub)));
 
+/* ---------- play buttons on cards: a mini player that opens right on the page ---------- */
+const PH = { yt: 0, sp: 152, sc: 166, am: 175 };
+function openPlayer(p) {
+  let box = $("miniPlayer");
+  if (!box) { box = document.createElement("aside"); box.id = "miniPlayer"; box.className = "mini"; box.setAttribute("aria-label", "Now playing"); document.body.appendChild(box); }
+  const e = (s) => String(s || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  box.className = "mini" + (p.k === "yt" ? " vid" : "");
+  box.innerHTML = `<div class="mini-top"><span class="mini-t"><b>${e(p.t)}</b><span>${e(p.a)}</span></span><a class="mini-go" href="/reviews/${e(p.s)}">Read the review →</a><button type="button" class="mini-x" aria-label="Close the player">×</button></div>
+<div class="mini-frame"><iframe title="Play ${e(p.t)}" src="${e(p.src)}" ${p.k === "yt" ? "" : `height="${PH[p.k] || 152}"`} allow="autoplay; encrypted-media; clipboard-write; fullscreen; picture-in-picture" ${p.k === "am" ? 'sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-top-navigation-by-user-activation"' : ""}></iframe></div>`;
+  box.querySelector(".mini-x").onclick = () => box.remove();
+  document.querySelectorAll(".pplay.on").forEach((b) => b.classList.remove("on"));
+}
+document.addEventListener("click", (ev) => {
+  const b = ev.target.closest && ev.target.closest(".pplay"); if (!b) return;
+  ev.preventDefault(); ev.stopPropagation();
+  try { openPlayer(JSON.parse(b.dataset.play)); b.classList.add("on"); track("play_card"); } catch (e) {}
+});
+
 /* ---------- front page: featured carousel ---------- */
 const slides = $("fSlides");
 if (slides && slides.children.length > 1) {

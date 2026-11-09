@@ -44,6 +44,16 @@ export const MIGRATIONS = [
   "ALTER TABLE reviews ADD COLUMN ai_made INTEGER NOT NULL DEFAULT 0",
   // "Weighing the Big Ones": mainstream songs we put on the meter as a side lane. Kept off the charts, lists, leaderboard and genres.
   "ALTER TABLE reviews ADD COLUMN big INTEGER NOT NULL DEFAULT 0",
+  // Quick Weighs (score + two lines + player) and links to every platform people listen on
+  "ALTER TABLE reviews ADD COLUMN quick INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE reviews ADD COLUMN soundcloud_url TEXT",
+  "ALTER TABLE reviews ADD COLUMN bandcamp_url TEXT",
+  "ALTER TABLE reviews ADD COLUMN tidal_url TEXT",
+  "ALTER TABLE reviews ADD COLUMN amazon_url TEXT",
+  "ALTER TABLE reviews ADD COLUMN deezer_url TEXT",
+  // Daily scout drafts: why the song was picked (desk only, never public) and which batch it came in
+  "ALTER TABLE reviews ADD COLUMN scout_note TEXT",
+  "ALTER TABLE reviews ADD COLUMN scout_batch TEXT",
   // One time only (Nov 9): the first batch of Big Ones, the clearly mainstream/classic artists. Untick ⚖️ Big One in the editor to undo one.
   "UPDATE reviews SET big=1 WHERE lower(trim(artist)) IN ('prince','frank ocean','portishead','air','milky chance','empire of the sun') AND NOT EXISTS (SELECT 1 FROM admin_log WHERE path='migrate:big-batch-1')",
   "INSERT INTO admin_log (at,email,path,detail) SELECT 1794260000000,'system','migrate:big-batch-1','First Big Ones flagged' WHERE NOT EXISTS (SELECT 1 FROM admin_log WHERE path='migrate:big-batch-1')",
