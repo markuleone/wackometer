@@ -250,3 +250,19 @@ CREATE TABLE IF NOT EXISTS review_requests (
   stripe_session TEXT,
   created_at  INTEGER NOT NULL
 );
+
+-- critics: the people who write reviews; artists can pick one when they submit
+CREATE TABLE IF NOT EXISTS critics (
+  slug        TEXT PRIMARY KEY,
+  name        TEXT NOT NULL,
+  tagline     TEXT,                            -- one line, e.g. "Producer, Miami"
+  bio         TEXT,
+  photo_url   TEXT,
+  genres      TEXT,                            -- comma separated
+  ig          TEXT,
+  link        TEXT,
+  active      INTEGER NOT NULL DEFAULT 1,
+  sort        INTEGER NOT NULL DEFAULT 0,
+  created_at  INTEGER NOT NULL
+);
+-- review_requests.critic: slug of the critic the artist picked (migration)

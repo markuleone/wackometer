@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Review editor · Wackometer</title><meta name="robots" content="noindex,nofollow"><link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/css/site.84558faa98.css">
+<link rel="stylesheet" href="/css/site.a0aecb96cc.css">
 <style>
 body{margin:0}[hidden]{display:none!important}
 .doc{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
@@ -25,6 +25,7 @@ body{margin:0}[hidden]{display:none!important}
 .tag2{font-size:12px;font-weight:700;border-radius:999px;padding:2px 8px;background:var(--line)}.tag2.live{background:var(--bile);color:#1D2013}
 .req{background:var(--surface);border:2px solid var(--line);border-radius:16px;padding:10px 14px;display:flex;flex-direction:column;gap:4px}
 .req.done{opacity:.55}.req.paid{border-color:var(--bile)}
+.crf{box-shadow:none;border:0;padding:8px 0 0}
 .qadd{background:var(--surface);border:2px solid var(--line);border-radius:16px;padding:10px 14px}.qadd summary{cursor:pointer;font-family:var(--display);font-weight:700}.qadd[open]{display:flex;flex-direction:column;gap:8px}.qadd textarea{width:100%;min-height:110px;border:2px solid var(--line);border-radius:12px;padding:8px 10px;background:var(--bg)}
 @media (max-width:760px){.ed{grid-template-columns:1fr}}
 </style>
@@ -40,7 +41,7 @@ body{margin:0}[hidden]{display:none!important}
 <label>Song or album<select id="fKind"><option value="song">Song</option><option value="album">Album</option></select></label>
 <label>Genre <span class="hint">(optional)</span><input id="fGenre" maxlength="60" placeholder="indie pop, trap, R&amp;B…"></label>
 <label>Released <span class="hint">(optional)</span><input id="fReleased" maxlength="40" placeholder="Oct 2026"></label>
-<label>Reviewed by <span class="hint">(blank = Wackometer)</span><input id="fReviewer" maxlength="60"></label>
+<label>Reviewed by <span class="hint">(pick a critic, or blank = Wackometer)</span><input id="fReviewer" maxlength="60" list="criticNames"><datalist id="criticNames"></datalist></label>
 <label class="full">Score <span class="hint">0 is Wicked, 100 is Wack. Under 20 earns “Certified Wicked”.</span>
 <span class="scoreRow"><input id="fScore" type="range" min="0" max="100" value="15"><span id="scoreOut"></span></span></label>
 <label class="full">One-line verdict <span class="hint">Shows on cards, link previews and the share card. One sentence.</span><input id="fVerdict" maxlength="220" required placeholder="Every verse is a photograph. The hook is the only thing you've heard before."></label>
@@ -65,6 +66,21 @@ body{margin:0}[hidden]{display:none!important}
 <textarea id="qLines" rows="5" placeholder="One per line: Title - Artist, or paste a link&#10;Lauren - Men I Trust&#10;https://open.spotify.com/track/..."></textarea>
 <div class="row"><button class="btn" type="button" id="qGo">Add to the list</button><span class="hint" id="qNote" role="status"></span></div></details>
 <div class="list" id="reqs"></div>
+<h2>Critics <span class="hint">(people artists can pick on the Get reviewed page)</span></h2>
+<details class="qadd" id="crBox"><summary id="crSum">Add a critic</summary>
+<form class="ed crf" id="crForm" autocomplete="off">
+<label>Name<input id="cName" required maxlength="80" placeholder="Their artist or writer name"></label>
+<label>One-line tagline <span class="hint">(shows under their name)</span><input id="cTag" maxlength="100" placeholder="Producer & songwriter, Miami"></label>
+<label class="full">Short bio <span class="hint">(their page; blank line = new paragraph)</span><textarea id="cBio" maxlength="3000"></textarea></label>
+<label>Photo URL <span class="hint">(square works best)</span><input id="cPhoto" type="url" maxlength="500"></label>
+<label>Genres they love <span class="hint">(comma separated)</span><input id="cGenres" maxlength="200" placeholder="indie, R&amp;B, alt pop"></label>
+<label>Instagram<input id="cIg" maxlength="80" placeholder="@handle"></label>
+<label>Website or music link<input id="cLink" type="url" maxlength="300"></label>
+<label>Order <span class="hint">(lower shows first)</span><input id="cSort" type="number" value="0"></label>
+<label class="chk"><input type="checkbox" id="cActive" checked> Taking submissions</label>
+<div class="row full"><button class="btn bile" type="submit">Save critic</button><button class="btn" type="button" id="cNew">New critic</button><button class="btn quiet" type="button" id="cDel" hidden>Remove</button><span class="hint" id="cNote" role="status"></span></div>
+</form></details>
+<div class="list" id="crList"></div>
 <h2>All reviews</h2>
 <div class="list" id="list"></div>
 </div>
@@ -93,18 +109,32 @@ $("delBtn").hidden = !r; $("viewBtn").hidden = !r; if (r) $("viewBtn").href = `/
 $("standRow").hidden = $("fKind").value !== "album";
 $("note").textContent = r ? `Editing “${r.title}”.` : ""; showScore(); showCover();
 }
+let crOriginal = null;
+function fillCritic(c) {
+crOriginal = c ? c.slug : null;
+$("cName").value = c ? c.name : ""; $("cTag").value = c ? c.tagline || "" : ""; $("cBio").value = c ? c.bio || "" : ""; $("cPhoto").value = c ? c.photo_url || "" : "";
+$("cGenres").value = c ? c.genres || "" : ""; $("cIg").value = c ? c.ig || "" : ""; $("cLink").value = c ? c.link || "" : ""; $("cSort").value = c ? c.sort || 0 : 0; $("cActive").checked = c ? !!c.active : true;
+$("cDel").hidden = !c; $("crSum").textContent = c ? `Editing ${c.name}` : "Add a critic"; $("cNote").textContent = "";
+}
+function renderCritics() {
+const cs = DATA.critics || [];
+$("criticNames").innerHTML = cs.map((c) => `<option value="${esc(c.name)}">`).join("");
+$("crList").innerHTML = cs.length ? cs.map((c, i) => `<div class="it">${c.photo_url ? `<img src="${esc(c.photo_url)}" alt="">` : '<span class="ph"></span>'}<span><b>${esc(c.name)}</b>${c.tagline ? " · " + esc(c.tagline) : ""}<br><span class="hint">${c.active ? "Taking submissions" : "Hidden"} · <a href="/critics/${esc(c.slug)}" target="_blank">/critics/${esc(c.slug)}</a></span></span><span class="row"><button class="btn" data-cedit="${i}">Edit</button></span></div>`).join("") : '<p class="hint">No critics yet. Add yourself first, then anyone whose taste you trust. Until then the Get reviewed page shows “The Wackometer team”.</p>';
+$("crList").querySelectorAll("[data-cedit]").forEach((b) => (b.onclick = () => { fillCritic(cs[Number(b.dataset.cedit)]); $("crBox").open = true; $("crBox").scrollIntoView({ behavior: "smooth" }); }));
+}
 function renderList() {
+renderCritics();
 $("list").innerHTML = DATA.reviews.length ? DATA.reviews.map((r, i) => `<div class="it">${r.cover_url ? `<img src="${esc(r.cover_url)}" alt="">` : '<span class="ph"></span>'}
 <span><b>${esc(r.title)}</b> · ${esc(r.artist)}<br><span class="hint">${r.score} ${TIERS[tierOf(r.score)]} · ${r.votes} crowd vote${r.votes === 1 ? "" : "s"} · </span><span class="tag2 ${r.status}">${r.status}</span>${r.featured ? ' <span class="tag2">★ featured</span>' : ""}</span>
 <span class="row"><a class="btn" href="/reviews/${esc(r.slug)}${r.status === "live" ? "" : "?preview=1"}" target="_blank">View</a><button class="btn" data-edit="${i}">Edit</button></span></div>`).join("") : '<p class="hint">No reviews yet. Write the first one above.</p>';
 $("list").querySelectorAll("[data-edit]").forEach((b) => (b.onclick = () => { fill(DATA.reviews[Number(b.dataset.edit)]); window.scrollTo({ top: 0, behavior: "smooth" }); }));
 const open = DATA.requests.filter((q) => q.status !== "done").length, paidOpen = DATA.requests.filter((q) => q.status !== "done" && q.paid).length;
 $("reqCount").textContent = open ? `(${open} waiting${paidOpen ? `, ${paidOpen} paid: they're owed feedback within 7 days` : ""})` : "";
-$("reqs").innerHTML = DATA.requests.length ? DATA.requests.map((q) => `<div class="req ${q.status}${q.paid ? " paid" : ""}"><b>${q.paid ? `<span class="tag2 live">💵 Paid $${((q.amount || 1000) / 100).toFixed(0)}</span> ` : ""}${q.title ? esc(q.title) + " · " : ""}${esc(q.artist)}</b><a href="${esc(q.link)}" target="_blank" rel="noopener">${/open\.spotify\.com\/search\//.test(q.link) ? "Find it on Spotify ↗" : esc(q.link)}</a>
+$("reqs").innerHTML = DATA.requests.length ? DATA.requests.map((q) => `<div class="req ${q.status}${q.paid ? " paid" : ""}">${q.critic ? `<span class="hint">For: <b>${esc(((DATA.critics || []).find((c) => c.slug === q.critic) || { name: q.critic }).name)}</b></span>` : ""}<b>${q.paid ? `<span class="tag2 live">💵 Paid $${((q.amount || 1000) / 100).toFixed(0)}</span> ` : ""}${q.title ? esc(q.title) + " · " : ""}${esc(q.artist)}</b><a href="${esc(q.link)}" target="_blank" rel="noopener">${/open\.spotify\.com\/search\//.test(q.link) ? "Find it on Spotify ↗" : esc(q.link)}</a>
 ${q.note ? `<span>${esc(q.note)}</span>` : ""}<span class="hint">${q.email ? esc(q.email) + " · " : ""}${new Date(q.created_at).toLocaleDateString()}</span>
 <span class="row"><button class="btn" data-req="${esc(q.id)}" data-s="${q.status === "done" ? "new" : "done"}">${q.status === "done" ? "Mark as new" : "Mark done"}</button><button class="btn" data-start="${esc(q.id)}">Start a review</button></span></div>`).join("") : '<p class="hint">No submissions yet.</p>';
 $("reqs").querySelectorAll("[data-req]").forEach((b) => (b.onclick = async () => { await api("/api/reviews-admin/request", { id: b.dataset.req, status: b.dataset.s }); load(); }));
-$("reqs").querySelectorAll("[data-start]").forEach((b) => (b.onclick = () => { const q = DATA.requests.find((x) => x.id === b.dataset.start); fill(null); $("fArtist").value = q.artist === "Unknown" ? "" : q.artist.replace(/…$/, ""); $("fTitle").value = (q.title || "").replace(/\s*\(.*?\)\s*$/, "").replace(/…$/, ""); startedFrom = q.id; $("fSubmitted").checked = !!q.paid;
+$("reqs").querySelectorAll("[data-start]").forEach((b) => (b.onclick = () => { const q = DATA.requests.find((x) => x.id === b.dataset.start); fill(null); $("fArtist").value = q.artist === "Unknown" ? "" : q.artist.replace(/…$/, ""); $("fTitle").value = (q.title || "").replace(/\s*\(.*?\)\s*$/, "").replace(/…$/, ""); startedFrom = q.id; if (q.critic) { const c = (DATA.critics || []).find((x) => x.slug === q.critic); if (c) $("fReviewer").value = c.name; } $("fSubmitted").checked = !!q.paid;
 if (/open\.spotify\.com\/(intl-[a-z-]+\/)?(track|album)\//.test(q.link)) $("fSpotify").value = q.link; else if (/youtu/.test(q.link)) $("fYoutube").value = q.link;
 $("note").textContent = `Started from your list${q.note ? ": " + q.note : "."}`; window.scrollTo({ top: 0, behavior: "smooth" }); }));
 }
@@ -114,6 +144,15 @@ catch (e) { $("err").innerHTML = esc(e.message) + ' <a href="/">Sign in on the m
 }
 $("fScore").oninput = showScore; $("fCover").oninput = showCover;
 $("fKind").onchange = () => ($("standRow").hidden = $("fKind").value !== "album");
+$("cNew").onclick = () => fillCritic(null);
+$("crForm").onsubmit = async (e) => {
+e.preventDefault();
+try {
+const r = await api("/api/reviews-admin/critic-save", { original: crOriginal, name: $("cName").value, tagline: $("cTag").value, bio: $("cBio").value, photo_url: $("cPhoto").value, genres: $("cGenres").value, ig: $("cIg").value, link: $("cLink").value, sort: $("cSort").value, active: $("cActive").checked });
+await load(); fillCritic((DATA.critics || []).find((c) => c.slug === r.slug)); $("cNote").innerHTML = `Saved. <a href="/critics/${esc(r.slug)}" target="_blank">See their page</a>`;
+} catch (err) { $("cNote").textContent = err.message; }
+};
+$("cDel").onclick = async () => { if (!crOriginal || !confirm("Remove this critic? Their reviews stay up.")) return; await api("/api/reviews-admin/critic-delete", { slug: crOriginal }); fillCritic(null); load(); };
 $("newBtn").onclick = () => { fill(null); startedFrom = null; };
 $("qGo").onclick = async () => {
 try { const r = await api("/api/reviews-admin/queue", { lines: $("qLines").value }); $("qLines").value = ""; $("qNote").textContent = `Added ${r.added}.`; load(); }

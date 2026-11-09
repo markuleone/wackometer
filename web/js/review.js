@@ -191,3 +191,10 @@ if (form) {
   }
   else if (note && qs.get("submit") === "cancelled") { note.textContent = "Checkout cancelled. Nothing was charged."; history.replaceState(null, "", location.pathname + "#submit"); }
 }
+
+// Get reviewed page: "Get reviewed by …" buttons pick that critic in the form without reloading.
+document.querySelectorAll("[data-critic]").forEach((a) => a.addEventListener("click", (e) => {
+  const sel = $("subCritic"); if (!sel) return;
+  e.preventDefault(); sel.value = a.dataset.critic;
+  $("submit").scrollIntoView({ behavior: "smooth", block: "start" }); setTimeout(() => sel.focus({ preventScroll: true }), 400);
+}));

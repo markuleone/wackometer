@@ -5,7 +5,7 @@ import { handleSocial, profileMeta } from "./social.js";
 import { cleanLyrics, cleanIdentity } from "./moderation.js";
 import SEO_URLS from "./seo-urls.js";
 import { checkUnsubscribe } from "./notify.js";
-import { reviewsPage, badgeSVG, reviewApi, reviewUrls, frontPage, artistsPage, artistTable } from "./reviews.js";
+import { reviewsPage, badgeSVG, reviewApi, reviewUrls, frontPage, artistsPage, artistTable, getReviewedPage, criticsPage, activeCritics } from "./reviews.js";
 import { analyze, tierOf, clamp, MID, TIERS, METRICS, words, dailyKey, dailyPrompt } from "../web/js/score.js";
 
 const json = (data, status = 200, headers = {}) =>
@@ -174,6 +174,8 @@ export default {
     }
     if ((path === "" || path === "/") && (req.method === "GET" || req.method === "HEAD")) { try { return await frontPage(req, env, ensureSchema); } catch (e) { console.error(e); return env.ASSETS.fetch(new Request(new URL("/write", req.url), req)); } }
     if (path === "/reviews" || path.startsWith("/reviews/")) { try { return await reviewsPage(req, env, path, ensureSchema); } catch (e) { console.error(e); return new Response("Something broke on our side. Try again in a moment.", { status: 500 }); } }
+    if (path === "/get-reviewed") { try { return await getReviewedPage(req, env, ensureSchema); } catch (e) { console.error(e); return new Response("Something broke on our side. Try again in a moment.", { status: 500 }); } }
+    if (path === "/critics" || path.startsWith("/critics/")) { try { return await criticsPage(req, env, path, ensureSchema); } catch (e) { console.error(e); return new Response("Something broke on our side. Try again in a moment.", { status: 500 }); } }
     if (path === "/artists" || path.startsWith("/artists/")) { try { return await artistsPage(req, env, path, ensureSchema); } catch (e) { console.error(e); return new Response("Something broke on our side. Try again in a moment.", { status: 500 }); } }
     if (path.startsWith("/badge/") && path.endsWith(".svg")) return badgeSVG(env, path.slice(7, -4).toLowerCase(), ensureSchema);
     if (!path.startsWith("/api/")) {
@@ -616,13 +618,14 @@ async function route(path, method, url, body, u, env, req) {
 
 // Sitemap: the main pages plus every public profile.
 async function sitemap(env) {
-  let users = [], reviews = [], artists = [];
-  try { await ensureSchema(env); reviews = await reviewUrls(env.DB); artists = await artistTable(env.DB); } catch (e) {}
+  let users = [], reviews = [], artists = [], critics = [];
+  try { await ensureSchema(env); reviews = await reviewUrls(env.DB); artists = await artistTable(env.DB); critics = await activeCritics(env.DB); } catch (e) {}
   try { users = (await env.DB.prepare("SELECT username FROM users WHERE username IS NOT NULL ORDER BY created_at DESC LIMIT 45000").all()).results; } catch (e) {}
   const base = env.APP_URL || "https://wackometer.com";
   const urls = [["/", "daily", "1.0"], ["/terms", "yearly", "0.2"], ["/privacy", "yearly", "0.2"]].map(([p, f, pr]) => `<url><loc>${base}${p}</loc><changefreq>${f}</changefreq><priority>${pr}</priority></url>`)
     .concat(SEO_URLS.map((p) => `<url><loc>${base}${p}</loc><changefreq>monthly</changefreq><priority>${p.endsWith("/") || p === "/syllable-counter" ? "0.8" : "0.6"}</priority></url>`))
-    .concat([`<url><loc>${base}/reviews</loc><changefreq>daily</changefreq><priority>0.9</priority></url>`, `<url><loc>${base}/write</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>`, `<url><loc>${base}/artists</loc><changefreq>daily</changefreq><priority>0.8</priority></url>`])
+    .concat([`<url><loc>${base}/reviews</loc><changefreq>daily</changefreq><priority>0.9</priority></url>`, `<url><loc>${base}/write</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>`, `<url><loc>${base}/artists</loc><changefreq>daily</changefreq><priority>0.8</priority></url>`, `<url><loc>${base}/get-reviewed</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>`, `<url><loc>${base}/critics</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>`])
+    .concat(critics.map((c) => `<url><loc>${base}/critics/${c.slug}</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>`))
     .concat(artists.map((a) => `<url><loc>${base}/artists/${a.slug}</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>`))
     .concat(reviews.map((r) => `<url><loc>${base}/reviews/${r.slug}</loc><lastmod>${new Date(r.updated_at).toISOString().slice(0, 10)}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>`))
     .concat(users.map((u) => `<url><loc>${base}/u/${encodeURIComponent(u.username)}</loc><changefreq>weekly</changefreq><priority>0.5</priority></url>`));

@@ -78,7 +78,7 @@ ${siteHeader(active, q)}
 <main id="main">
 ${body}
 </main>
-<footer><p class="flinks">Wackometer · <a href="/reviews">Lyric reviews</a> · <a href="/rhymes/">Fresh rhymes</a> · <a href="/cliches/">Cliché fixer</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a></p>${DBV}</footer>
+<footer><p class="flinks">Wackometer · <a href="/reviews">Lyric reviews</a> · <a href="/critics">Critics</a> · <a href="/get-reviewed">Get reviewed</a> · <a href="/rhymes/">Fresh rhymes</a> · <a href="/cliches/">Cliché fixer</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a></p>${DBV}</footer>
 </div>
 <div class="modal" id="humanModal" hidden role="dialog" aria-labelledby="humanH"><div class="mbox"><div class="mch" id="humanChar"></div><h3 id="humanH">Quick check: are you a human?</h3><p class="tag">Keeps bots out of the votes. You only do this once a month.</p><div id="turnstileBox"></div><span class="hint" id="humanNote"></span></div></div>
 </body>
@@ -115,7 +115,9 @@ function card(r) {
 }
 
 // Paid submissions: the card form (Stripe Payment Element) sits right in the page; see review.js.
-const SUBMIT = `<section class="rv-submit" id="submit" aria-labelledby="subH">
+function submitHTML(critics = [], picked = "", more = true) {
+  const opts = critics.map((c) => `<option value="${esc(c.slug)}"${c.slug === picked ? " selected" : ""}>${esc(c.name)}${c.tagline ? " · " + esc(c.tagline) : ""}</option>`).join("");
+  return `<section class="rv-submit" id="submit" aria-labelledby="subH">
 <form id="subForm" class="sub-grid">
 <div class="sub-left">
 <h2 id="subH">Want your music weighed?</h2>
@@ -123,7 +125,9 @@ const SUBMIT = `<section class="rv-submit" id="submit" aria-labelledby="subH">
 <label>Artist name<input name="artist" required maxlength="80" autocomplete="off"></label>
 <label>Link to the song or album<input name="link" type="url" required maxlength="300" placeholder="Spotify, SoundCloud, Apple Music, YouTube…"></label>
 <label>Your email <span class="hint">(your feedback goes here)</span><input name="email" type="email" required maxlength="120" autocomplete="email"></label>
+${critics.length ? `<label>Who should review it?<select name="critic" id="subCritic"><option value="">Any critic (fastest)</option>${opts}</select></label>` : ""}
 <label>Anything we should know? <span class="hint">(optional)</span><textarea name="note" rows="3" maxlength="600"></textarea></label>
+${more ? '<a class="sub-more" href="/get-reviewed">What you get and who reviews it →</a>' : ""}
 </div>
 <div class="paycard" role="group" aria-labelledby="payH">
 <h3 id="payH" class="price" aria-label="10 dollars"><span class="cur" aria-hidden="true">$</span><span aria-hidden="true">10</span><span class="spark" aria-hidden="true">✦</span></h3>
@@ -136,10 +140,12 @@ const SUBMIT = `<section class="rv-submit" id="submit" aria-labelledby="subH">
 </form>
 <div class="sub-done" id="subDone" hidden tabindex="-1"><b>You're in. 🎧</b><p>Payment received. Your feedback lands in your inbox within 7 days, and Stripe is emailing your receipt now.</p><button class="btn" type="button" id="subAgain">Send another song</button></div>
 </section>`;
+}
 
 /* ---------- HTML routes ---------- */
 export async function reviewsPage(req, env, path, ensureSchema) {
   await ensureSchema(env);
+  const critics = await activeCritics(env.DB), SUB = submitHTML(critics);
   const DB = env.DB, url = new URL(req.url);
   if (path === "/reviews") {
     const f = url.searchParams.get("f") || "", q = (url.searchParams.get("q") || "").trim().slice(0, 80);
@@ -156,7 +162,7 @@ export async function reviewsPage(req, env, path, ensureSchema) {
 <p class="lead">${lead}</p>
 <nav class="rchips" aria-label="Filter reviews">${chip("", "All")}${chip("wicked", "✨ Certified Wicked")}${chip("videos", "🎬 Music videos")}${chip("songs", "Songs")}${chip("albums", "Albums")}</nav>
 ${list.length ? `<div class="rv-grid">${list.map(card).join("")}</div><div class="ad-slot" hidden></div>` : `<div class="warn"><b>${f || q ? "Nothing here yet." : "The first reviews drop soon."}</b><p>${f || q ? `<a href="/reviews">See all reviews</a>, or send us your music below.` : "Know an artist whose writing deserves more ears? Send them our way below."}</p></div>`}
-${SUBMIT}
+${SUB}
 </article>`;
     const ld = { "@context": "https://schema.org", "@type": "CollectionPage", name: "Wackometer lyric reviews", url: `${BASE}/reviews`, hasPart: list.slice(0, 30).map((r) => ({ "@type": "Review", url: `${BASE}/reviews/${r.slug}`, name: `${r.artist}: ${r.title}` })) };
     return html(shell({ active: q ? "" : f === "wicked" ? "wicked" : f === "videos" ? "videos" : "reviews", q, noindex: !!q, path: "/reviews" + (f ? "?f=" + f : ""), title: q ? `“${q}” · Wackometer reviews` : f === "videos" ? "Music videos with lyric reviews · Wackometer" : f === "wicked" ? "Certified Wicked songs and albums · Wackometer reviews" : "Lyric reviews: new songs and albums, Wicked to Wack · Wackometer", desc: "Honest reviews of the songwriting on new songs and albums, scored from Wicked to Wack, with a crowd score you can vote on. Indie artists first.", body, ld, data: JSON.stringify({ index: true }) }));
@@ -203,7 +209,7 @@ ${bodyHTML(r.body)}
 ${r.best_line ? `<figure class="rv-best"><figcaption>⭐ Best line</figcaption><blockquote>${esc(r.best_line)}</blockquote></figure>` : ""}
 ${standouts.length ? `<h2>Standout tracks</h2><ul class="rv-stand">${standouts.map((s) => `<li>${esc(s)}</li>`).join("")}</ul>` : ""}
 ${r.submitted ? '<p class="hint rv-paid">💵 The artist sent this in through paid submissions. Paying gets a listen, not a better score.</p>' : ""}
-<p class="hint rv-sig">Reviewed by ${esc(r.reviewer || "Wackometer")} · <time datetime="${date.toISOString().slice(0, 10)}">${date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" })}</time></p>
+<p class="hint rv-sig">Reviewed by ${(() => { const c = critics.find((x) => x.name.toLowerCase() === String(r.reviewer || "").trim().toLowerCase()); return c ? `<a href="/critics/${esc(c.slug)}">${esc(c.name)}</a>` : esc(r.reviewer || "Wackometer"); })()} · <time datetime="${date.toISOString().slice(0, 10)}">${date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" })}</time></p>
 </div>
 <div class="ad-slot" hidden></div>
 <section class="rv-share" aria-labelledby="shareH"><h2 id="shareH">Pass it on</h2>
@@ -218,7 +224,7 @@ ${r.submitted ? '<p class="hint rv-paid">💵 The artist sent this in through pa
 ${more.length ? `<section class="rv-more" aria-labelledby="moreH"><h2 id="moreH">More reviews</h2><div class="rv-grid">${more.map(card).join("")}</div><p><a href="/reviews">All reviews →</a></p></section>` : ""}
 <div class="ad-slot" hidden></div>
 <div class="cta"><b>Now weigh your own.</b><p>Paste a verse into the Wackometer. It scores it from Wicked to Wack, circles the clichés and lazy rhymes, and shows you how to fix them.</p><a class="btn bile" href="/write#weigh">Weigh my lyrics, free</a></div>
-${SUBMIT}
+${SUB}
 </article>`;
   const item = { "@type": r.kind === "album" ? "MusicAlbum" : "MusicRecording", name: r.title, byArtist: { "@type": "MusicGroup", name: r.artist, ...(artistUrl ? { url: artistUrl } : {}) }, ...(r.cover_url ? { image: r.cover_url } : {}), ...(r.genre ? { genre: r.genre } : {}) };
   if (crowd.n >= 5) item.aggregateRating = { "@type": "AggregateRating", ratingValue: 100 - crowd.avg, bestRating: 100, worstRating: 0, ratingCount: crowd.n };
@@ -256,6 +262,7 @@ const row = (id, title, more, inner, cls = "") => `<section class="frow${cls}" a
 
 export async function frontPage(req, env, ensureSchema) {
   await ensureSchema(env);
+  const SUB = submitHTML(await activeCritics(env.DB));
   const DB = env.DB;
   const all = (await DB.prepare("SELECT * FROM reviews WHERE status='live' ORDER BY published_at DESC LIMIT 200").all()).results;
   const crowd = crowdMap((await DB.prepare("SELECT v.slug, v.tier, COUNT(*) c FROM review_votes v JOIN reviews r ON r.slug=v.slug AND r.status='live' GROUP BY v.slug, v.tier").all()).results);
@@ -289,7 +296,7 @@ ${artists.length ? `<section class="flb" aria-labelledby="rLb"><div class="frh">
 <div class="ad-slot" hidden></div>
 ${videos.length ? row("rVid", "🎬 Music videos", "/reviews?f=videos", videos.map(videoCard).join(""), " fvids") : ""}
 ${split.length ? `<section class="fsplit" aria-labelledby="rSplit"><div class="frh"><h2 id="rSplit">⚔️ Critics vs. the crowd</h2></div><p class="hint">Where the voters and the Wackometer don't agree. Pick a side.</p><ol>${split.map(({ r, c }) => `<li><a href="/reviews/${esc(r.slug)}"><b>${esc(r.title)}</b> <span class="rv-ca">${esc(r.artist)}</span></a><span class="fvs">We said ${pill(tierOf(r.score), `${TIERS[tierOf(r.score)].n} ${r.score}`)} Crowd said ${pill(c.tier, `${TIERS[c.tier].n} ${c.avg}`)}</span></li>`).join("")}</ol></section>` : ""}
-${SUBMIT}
+${SUB}
 </div>`;
   const ld = [{ "@context": "https://schema.org", "@type": "WebSite", name: "Wackometer", url: BASE + "/", potentialAction: { "@type": "SearchAction", target: `${BASE}/reviews?q={search_term_string}`, "query-input": "required name=search_term_string" } },
     { "@context": "https://schema.org", "@type": "Organization", name: "Wackometer", url: BASE + "/", logo: BASE + "/favicon.svg" }];
@@ -329,6 +336,7 @@ export function leaderRows(list) {
 
 export async function artistsPage(req, env, path, ensureSchema) {
   await ensureSchema(env);
+  const SUB = submitHTML(await activeCritics(env.DB));
   const list = await artistTable(env.DB);
   if (path === "/artists") {
     const body = `<article class="seoart lb">
@@ -338,14 +346,14 @@ export async function artistsPage(req, env, path, ensureSchema) {
 ${list.length ? `<ol class="lb-list">${leaderRows(list)}</ol>` : `<div class="warn"><b>The leaderboard fills up as reviews go live.</b><p><a href="/reviews">Read the reviews</a> so far.</p></div>`}
 <div class="ad-slot" hidden></div>
 <p class="hint">Artists with one song weighed can move a lot. The more songs we review, the steadier their spot.</p>
-${SUBMIT}
+${SUB}
 </article>`;
     const ld = { "@context": "https://schema.org", "@type": "ItemList", name: "Wackometer artist leaderboard", itemListOrder: "https://schema.org/ItemListOrderAscending", numberOfItems: list.length, itemListElement: list.slice(0, 100).map((a, i) => ({ "@type": "ListItem", position: i + 1, url: `${BASE}/artists/${a.slug}`, name: a.name })) };
     return html(shell({ active: "artists", path: "/artists", title: "Artist leaderboard: who writes the best lyrics? · Wackometer", desc: "Artists ranked by the average Wackometer score of their reviewed songs, from Wicked to Wack. Lower is better.", body, ld }));
   }
   const slug = decodeURIComponent(path.slice("/artists/".length)).toLowerCase();
   const a = list.find((x) => x.slug === slug);
-  if (!a) return html(shell({ path, title: "Artist not found · Wackometer", desc: "We haven't reviewed this artist yet.", noindex: true, active: "artists", body: `<article class="seoart"><h1>We haven't weighed this artist yet.</h1><p class="lead"><a href="/artists">See the leaderboard</a>, or send us their music below.</p>${SUBMIT}</article>` }), 404, "no-store");
+  if (!a) return html(shell({ path, title: "Artist not found · Wackometer", desc: "We haven't reviewed this artist yet.", noindex: true, active: "artists", body: `<article class="seoart"><h1>We haven't weighed this artist yet.</h1><p class="lead"><a href="/artists">See the leaderboard</a>, or send us their music below.</p>${SUB}</article>` }), 404, "no-store");
   const t = tierOf(a.avg), ig = igHandle(a.ig), ext = safeUrl(a.url) || (ig ? `https://instagram.com/${ig}` : "");
   const body = `<article class="rv artist">
 <p class="eyebrow"><a href="/artists">Artist leaderboard</a> · ${medal(a.rank)} of ${list.length}</p>
@@ -361,6 +369,97 @@ ${SUBMIT}
 </article>`;
   const ld = { "@context": "https://schema.org", "@type": "MusicGroup", name: a.name, url: `${BASE}/artists/${a.slug}`, ...(ext ? { sameAs: [ext] } : {}), ...(a.cover ? { image: a.cover } : {}) };
   return html(shell({ active: "artists", path: `/artists/${a.slug}`, title: `${a.name}: lyric reviews and score (${t === 0 ? "Wicked" : TIERS[t].n}, ${a.avg}/100) · Wackometer`, desc: `${a.name} averages ${a.avg}/100 on the Wackometer across ${a.n} reviewed song${a.n === 1 ? "" : "s"}, #${a.rank} on the artist leaderboard. Read every review.`, image: a.cover, body, ld, data: JSON.stringify({ artist: a.slug }) }));
+}
+
+/* ---------- critics (/critics, /critics/<slug>) and the Get reviewed page (/get-reviewed) ---------- */
+export async function activeCritics(DB) {
+  try { return (await DB.prepare("SELECT * FROM critics WHERE active=1 ORDER BY sort, name").all()).results; } catch (e) { return []; }
+}
+const criticPhoto = (c, size = 120) => c.photo_url && safeUrl(c.photo_url) ? `<img src="${esc(c.photo_url)}" alt="" width="${size}" height="${size}" loading="lazy">` : `<span class="cr-initial" aria-hidden="true">${esc((c.name || "?").trim()[0] || "?")}</span>`;
+const genreChips = (g) => String(g || "").split(",").map((x) => x.trim()).filter(Boolean).slice(0, 5).map((x) => `<span class="cr-genre">${esc(x)}</span>`).join("");
+async function criticCounts(DB) {
+  const rows = (await DB.prepare("SELECT lower(trim(reviewer)) k, COUNT(*) n FROM reviews WHERE status='live' AND reviewer IS NOT NULL GROUP BY k").all()).results;
+  return Object.fromEntries(rows.map((r) => [r.k, r.n]));
+}
+function criticCard(c, n, pick) {
+  return `<article class="cr-card">
+<a class="cr-photo" href="/critics/${esc(c.slug)}" tabindex="-1" aria-hidden="true">${criticPhoto(c)}</a>
+<div class="cr-text"><h3><a href="/critics/${esc(c.slug)}">${esc(c.name)}</a></h3>${c.tagline ? `<p class="cr-tag">${esc(c.tagline)}</p>` : ""}
+<div class="cr-genres">${genreChips(c.genres)}</div>
+<p class="hint">${n ? `${n} review${n === 1 ? "" : "s"} on Wackometer` : "New critic"}</p></div>
+${pick ? `<a class="btn bile cr-pick" href="/get-reviewed?critic=${esc(c.slug)}#submit" data-critic="${esc(c.slug)}">Get reviewed by ${esc(c.name.split(" ")[0])}</a>` : ""}
+</article>`;
+}
+
+export async function getReviewedPage(req, env, ensureSchema) {
+  await ensureSchema(env);
+  const DB = env.DB, url = new URL(req.url), critics = await activeCritics(DB), counts = await criticCounts(DB);
+  const picked = critics.some((c) => c.slug === url.searchParams.get("critic")) ? url.searchParams.get("critic") : "";
+  const perks = [
+    ["🎧", "A guaranteed listen", "A real person plays your song start to finish and reads every word. No bots, no skimming."],
+    ["✍️", "Written feedback in 7 days", "What lands, what's wack and what to fix, in plain words, straight to your inbox."],
+    ["📄", "Your own review page", "If the writing makes the cut, it gets a permanent page with both scores, your player and your links, built to show up on Google."],
+    ["🏆", "A spot on the leaderboard", "Every reviewed song counts toward your artist page and your rank on the Top artists board."],
+    ["✨", "A badge and a story card", "Certified Wicked? Get a badge for your website and link-in-bio and a ready-made card for your story."],
+    ["👥", "A crowd score", "Listeners vote on your lyrics too, so you see how the critic and the crowd compare."],
+  ];
+  const body = `<article class="seoart gr">
+<div class="gr-hero">
+<p class="eyebrow">Get reviewed</p>
+<h1>Get your lyrics weighed by a critic you're a <em>fan</em> of.</h1>
+<p class="lead">Pick who reviews your song. Every critic here is a writer or artist whose taste we trust. <b>$10</b> gets you a guaranteed listen and real feedback on your writing.</p>
+<div class="row"><a class="btn bile" href="#submit">Send my song, $10</a><a class="btn" href="#critics">Meet the critics</a></div>
+</div>
+<section aria-labelledby="perksH"><h2 id="perksH">What you get</h2>
+<div class="gr-perks">${perks.map(([i, t, d], k) => `<div class="gr-perk${k > 1 ? " maybe" : ""}"><span class="gr-i" aria-hidden="true">${i}</span><b>${t}</b><p>${d}</p></div>`).join("")}</div>
+<p class="hint">The first two come with every submission. The rest happen when the writing earns them. Paying gets you heard, not a better score.</p></section>
+<section id="critics" aria-labelledby="critH"><h2 id="critH">Who reviews it</h2>
+${critics.length ? `<p class="lead">Choose a critic, or leave it on “Any critic” for the fastest turnaround.</p><div class="cr-grid">${critics.map((c) => criticCard(c, counts[c.name.trim().toLowerCase()] || 0, true)).join("")}</div>`
+  : `<div class="cr-grid"><article class="cr-card"><span class="cr-photo"><span class="cr-initial" aria-hidden="true">W</span></span><div class="cr-text"><h3>The Wackometer team</h3><p class="cr-tag">Songwriters who read every lyric</p></div></article></div><p class="hint">More critics are joining soon, so you'll be able to pick someone you're a fan of.</p>`}
+<p class="gr-join">Write about music, or make it, and want to review for Wackometer? <a href="mailto:hello@wackometer.com?subject=I%27d%20like%20to%20be%20a%20Wackometer%20critic">Tell us about yourself</a>.</p></section>
+<section aria-labelledby="howH"><h2 id="howH">How it works</h2>
+<ol class="gr-steps"><li><b>Send it.</b> Your link, your email, and who you'd like to review it.</li><li><b>Pay $10.</b> Right here on the page: card, Apple Pay or Google Pay.</li><li><b>They listen.</b> Your critic reads every word and scores the writing from Wicked to Wack.</li><li><b>Feedback lands.</b> Within 7 days. If it's Wicked, your review page goes live and you get your badge.</li></ol></section>
+${submitHTML(critics, picked, false)}
+<section aria-labelledby="faqH" class="gr-faq"><h2 id="faqH">Questions</h2>
+<details><summary>Does paying get me a better score?</summary><p>No. Paying gets you a guaranteed listen and written feedback. Scores are the critic's honest take, and reviews that came in through paid submissions say so on the page.</p></details>
+<details><summary>What if my song doesn't get a review page?</summary><p>You still get written feedback on your lyrics within 7 days. Public pages are for writing the critic loves, which is what makes the badge worth having.</p></details>
+<details><summary>Can I send it to more than one critic?</summary><p>Yes. Each submission goes to one critic, so send it again and pick someone else.</p></details>
+<details><summary>What kind of music?</summary><p>Any genre, as long as there are words. Songs, EPs and albums are all welcome. For an album, tell us your favorite tracks in the notes.</p></details>
+<details><summary>Something else?</summary><p>Email <a href="mailto:hello@wackometer.com">hello@wackometer.com</a>.</p></details>
+</section>
+</article>`;
+  const ld = { "@context": "https://schema.org", "@type": "Service", name: "Get your lyrics reviewed", provider: { "@type": "Organization", name: "Wackometer", url: BASE }, url: `${BASE}/get-reviewed`, description: "A guaranteed listen and written feedback on your song lyrics within 7 days from a Wackometer critic.", offers: { "@type": "Offer", price: "10.00", priceCurrency: "USD" } };
+  return html(shell({ active: "submit", path: "/get-reviewed", title: "Get your lyrics reviewed by a critic · $10 · Wackometer", desc: "Pick a critic you're a fan of. $10 gets your song a guaranteed listen and written feedback on the lyrics within 7 days, plus a shot at a review page, the leaderboard and a Certified Wicked badge.", body, ld, data: JSON.stringify({ getReviewed: true }) }));
+}
+
+export async function criticsPage(req, env, path, ensureSchema) {
+  await ensureSchema(env);
+  const DB = env.DB, critics = await activeCritics(DB), counts = await criticCounts(DB);
+  if (path === "/critics") {
+    const body = `<article class="seoart gr"><p class="eyebrow">Critics</p><h1>The people behind the scores</h1>
+<p class="lead">Every review on Wackometer is written by a real person. Find one whose taste you trust, read their reviews, or send them your music.</p>
+${critics.length ? `<div class="cr-grid">${critics.map((c) => criticCard(c, counts[c.name.trim().toLowerCase()] || 0, true)).join("")}</div>` : `<div class="warn"><b>Critic profiles are on the way.</b><p>Until then, every review is by the Wackometer team. <a href="/get-reviewed">Get reviewed</a>.</p></div>`}
+<p class="gr-join">Want to review for Wackometer? <a href="mailto:hello@wackometer.com?subject=I%27d%20like%20to%20be%20a%20Wackometer%20critic">Tell us about yourself</a>.</p></article>`;
+    return html(shell({ active: "submit", path: "/critics", title: "Wackometer critics: who reviews the lyrics", desc: "Meet the critics who weigh the lyrics on Wackometer, read their reviews, and send them your music.", body }));
+  }
+  const slug = decodeURIComponent(path.slice("/critics/".length)).toLowerCase();
+  const c = critics.find((x) => x.slug === slug);
+  if (!c) return html(shell({ path, title: "Critic not found · Wackometer", desc: "That critic isn't here.", noindex: true, body: `<article class="seoart"><h1>That critic isn't here.</h1><p class="lead"><a href="/critics">See all critics</a>.</p></article>` }), 404, "no-store");
+  const reviews = (await DB.prepare("SELECT * FROM reviews WHERE status='live' AND lower(trim(reviewer))=? ORDER BY published_at DESC LIMIT 200").bind(c.name.trim().toLowerCase()).all()).results;
+  const ig = igHandle(c.ig), link = safeUrl(c.link);
+  const avg = reviews.length ? Math.round(reviews.reduce((a, r) => a + r.score, 0) / reviews.length) : null;
+  const body = `<article class="rv critic">
+<p class="eyebrow"><a href="/critics">Critics</a></p>
+<div class="cr-head"><div class="cr-big">${criticPhoto(c, 240)}</div>
+<div class="rv-head"><h1>${esc(c.name)}</h1>${c.tagline ? `<p class="rv-by">${esc(c.tagline)}</p>` : ""}
+<div class="cr-genres">${genreChips(c.genres)}</div>
+${c.bio ? bodyHTML(c.bio) : ""}
+<p class="hint">${reviews.length} review${reviews.length === 1 ? "" : "s"}${avg !== null ? ` · gives an average of ${avg} (${TIERS[tierOf(avg)].n})` : ""}${ig ? ` · <a href="https://instagram.com/${esc(ig)}" target="_blank" rel="noopener">@${esc(ig)} ↗</a>` : ""}${link ? ` · <a href="${esc(link)}" target="_blank" rel="noopener">Website ↗</a>` : ""}</p>
+<a class="btn bile" href="/get-reviewed?critic=${esc(c.slug)}#submit">Get reviewed by ${esc(c.name.split(" ")[0])}, $10</a></div></div>
+${reviews.length ? `<section class="rv-more" aria-labelledby="crRevH"><h2 id="crRevH">Reviews by ${esc(c.name)}</h2><div class="rv-grid">${reviews.map(card).join("")}</div></section>` : ""}
+</article>`;
+  const ld = { "@context": "https://schema.org", "@type": "Person", name: c.name, url: `${BASE}/critics/${c.slug}`, ...(c.tagline ? { jobTitle: c.tagline } : {}), ...(ig || link ? { sameAs: [link, ig ? `https://instagram.com/${ig}` : ""].filter(Boolean) } : {}) };
+  return html(shell({ active: "submit", path: `/critics/${c.slug}`, title: `${c.name}: lyric reviews · Wackometer critic`, desc: `${c.name}${c.tagline ? `, ${c.tagline},` : ""} reviews lyrics on Wackometer. Read their reviews or send them your music for $10.`, image: safeUrl(c.photo_url), body, ld }));
 }
 
 function notFound() {
@@ -418,16 +517,18 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
     if (!artist) return bad("Add the artist name.");
     if (!link) return bad("Add a link that starts with https://");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return bad("Add your email so we can send your feedback.");
+    const criticSlug = String(body.critic || "").slice(0, 80);
+    const critic = criticSlug ? await DB.prepare("SELECT slug,name FROM critics WHERE slug=? AND active=1").bind(criticSlug).first() : null;
     if (!env.STRIPE_SECRET_KEY) return bad("Paid submissions open very soon. Check back in a day or two.", 503);
     const recent = await DB.prepare("SELECT COUNT(*) c FROM review_requests WHERE user_id=? AND created_at>?").bind(u.id, Date.now() - 86400000).first();
     if (recent.c >= 10) return bad("That's plenty for today. Try again tomorrow.", 429);
     // Saved as "pending" until Stripe confirms the payment, so unpaid ones never reach the queue.
     // The page's card form then confirms this PaymentIntent in place (no redirect to a checkout page).
     const id = newId(), cents = Number(env.SUBMIT_PRICE_CENTS) || 1000;
-    await DB.prepare("INSERT INTO review_requests (id,artist,link,email,note,user_id,status,created_at) VALUES (?,?,?,?,?,?,'pending',?)").bind(id, artist, link, email, note || null, u.id, Date.now()).run();
+    await DB.prepare("INSERT INTO review_requests (id,artist,link,email,note,user_id,critic,status,created_at) VALUES (?,?,?,?,?,?,?,'pending',?)").bind(id, artist, link, email, note || null, u.id, critic ? critic.slug : null, Date.now()).run();
     const pi = await stripe(env, "payment_intents", {
       amount: cents, currency: "usd", "automatic_payment_methods[enabled]": "true", receipt_email: email,
-      description: `Wackometer: get your music weighed (${artist})`, statement_descriptor_suffix: "WACKOMETER",
+      description: `Wackometer: get your music weighed (${artist})${critic ? `, reviewed by ${critic.name}` : ""}`, statement_descriptor_suffix: "WACKOMETER",
       metadata: { kind: "review_submission", request: id, user: u.id },
     });
     await DB.prepare("UPDATE review_requests SET stripe_session=? WHERE id=?").bind(pi.id, id).run();
@@ -453,8 +554,9 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
   if (!admin) return bad("Admins only. Sign in with an admin email.", 403);
   if (path === "/api/reviews-admin/list" && method === "GET") {
     const reviews = (await DB.prepare("SELECT r.*, (SELECT COUNT(*) FROM review_votes v WHERE v.slug=r.slug) votes FROM reviews r ORDER BY updated_at DESC LIMIT 500").all()).results;
+    const critics = (await DB.prepare("SELECT * FROM critics ORDER BY active DESC, sort, name").all()).results;
     const requests = (await DB.prepare("SELECT * FROM review_requests WHERE status<>'pending' ORDER BY status='done', paid DESC, created_at DESC LIMIT 300").all()).results;
-    return json({ reviews, requests });
+    return json({ reviews, requests, critics });
   }
   if (path === "/api/reviews-admin/lookup" && method === "GET") {
     const link = safeUrl(url.searchParams.get("url")), q = (url.searchParams.get("q") || "").trim().slice(0, 120);
@@ -523,6 +625,22 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
     if (!stmts.length) return bad("Add at least one song.");
     await DB.batch(stmts);
     return json({ ok: true, added: stmts.length });
+  }
+  if (path === "/api/reviews-admin/critic-save" && method === "POST") {
+    const f = (k, n = 200) => String(body[k] ?? "").trim().slice(0, n);
+    const name = f("name", 80); if (!name) return bad("Add the critic's name.");
+    const slug = slugify(f("slug", 60) || name), prev = slugify(body.original || "");
+    if (!slug) return bad("Couldn't make a link name from that.");
+    if (slug !== prev && (await DB.prepare("SELECT slug FROM critics WHERE slug=?").bind(slug).first())) return bad("Another critic already uses that link name.");
+    const vals = [slug, name, f("tagline", 100) || null, f("bio", 3000) || null, safeUrl(f("photo_url", 500)) || null, f("genres", 200) || null, igHandle(f("ig", 80)) || null, safeUrl(f("link", 300)) || null, body.active === false ? 0 : 1, Math.round(Number(body.sort) || 0)];
+    if (prev && (await DB.prepare("SELECT slug FROM critics WHERE slug=?").bind(prev).first())) {
+      await DB.batch([DB.prepare("UPDATE critics SET slug=?,name=?,tagline=?,bio=?,photo_url=?,genres=?,ig=?,link=?,active=?,sort=? WHERE slug=?").bind(...vals, prev), DB.prepare("UPDATE review_requests SET critic=? WHERE critic=?").bind(slug, prev)]);
+    } else await DB.prepare("INSERT INTO critics (slug,name,tagline,bio,photo_url,genres,ig,link,active,sort,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)").bind(...vals, Date.now()).run();
+    return json({ ok: true, slug });
+  }
+  if (path === "/api/reviews-admin/critic-delete" && method === "POST") {
+    await DB.prepare("DELETE FROM critics WHERE slug=?").bind(slugify(body.slug)).run();
+    return json({ ok: true });
   }
   if (path === "/api/reviews-admin/request" && method === "POST") {
     await DB.prepare("UPDATE review_requests SET status=? WHERE id=?").bind(body.status === "done" ? "done" : "new", String(body.id || "")).run();
