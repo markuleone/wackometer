@@ -119,6 +119,15 @@ export const MIGRATIONS = [
   "INSERT OR IGNORE INTO settings (k,v) VALUES ('seed_assist_1','1')",
   // 1200x630 link-preview image for each review, drawn in the editor and stored in images
   "ALTER TABLE reviews ADD COLUMN og_url TEXT",
+  // artists claim their page: links shown on the artist page once an admin approves
+  "CREATE TABLE IF NOT EXISTS artist_claims ( id TEXT PRIMARY KEY, artist_slug TEXT NOT NULL, name TEXT, email TEXT NOT NULL, role TEXT, ig TEXT, spotify TEXT, website TEXT, tiktok TEXT, proof TEXT, user_id TEXT, status TEXT NOT NULL DEFAULT 'new', created_at INTEGER NOT NULL )",
+  "CREATE TABLE IF NOT EXISTS artist_profiles ( slug TEXT PRIMARY KEY, ig TEXT, spotify TEXT, website TEXT, tiktok TEXT, bio TEXT, email TEXT, claimed_at INTEGER )",
+  // crowd reactions and short comments on reviews
+  "CREATE TABLE IF NOT EXISTS review_reactions ( slug TEXT NOT NULL, user_id TEXT NOT NULL, emoji TEXT NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY (slug, user_id, emoji) )",
+  "CREATE TABLE IF NOT EXISTS review_comments ( id TEXT PRIMARY KEY, slug TEXT NOT NULL, user_id TEXT NOT NULL, name TEXT, body TEXT NOT NULL, hidden INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL )",
+  "CREATE INDEX IF NOT EXISTS review_comments_slug ON review_comments (slug, created_at)",
+  // paid submitters get a thank-you email once
+  "ALTER TABLE review_requests ADD COLUMN thanked_at INTEGER",
   // songs Marku asked to have queued for review (Nov 2026). OR IGNORE: runs once, never overwrites.
   "INSERT OR IGNORE INTO review_requests (id,artist,title,link,note,status,created_at) VALUES ('seed-gabi-015cc9b6dc','Air','Cherry Blossom Girl','https://open.spotify.com/search/Cherry%20Blossom%20Girl%20Air','From Gabi''s links. Title was cut off in the screenshot (\"Cherry Blossom\u2026\"). Cover looks like Air, double-check.','new',1762640000000)",
   "INSERT OR IGNORE INTO review_requests (id,artist,title,link,note,status,created_at) VALUES ('seed-gabi-565a7f044d','Louke\u2026','Snoopy','https://open.spotify.com/search/Snoopy%20Louke','From Gabi''s links. Artist name was cut off in the screenshot (\"Louke\u2026\"). Find the right artist.','new',1762640000001)",

@@ -8,6 +8,7 @@ import { adsenseTag } from "./ads-tag.js";
 import { TIERS, tierOf, MID } from "../web/js/score.js";
 import META from "./build-meta.js";
 import { siteHeader } from "./site-header.js";
+import { GENRE_KEYS, genrePage, genreCounts, reviewSocialHTML, artistProfile, artistLinksHTML, artistExtrasHTML, thankSubmitter } from "./hub.js";
 
 const BASE = "https://wackometer.com";
 const TC = ["#3D8BFF", "#22C29B", "#A9A2DA", "#FF8A3D", "#A8C42E"];
@@ -82,7 +83,7 @@ ${body}
 </main>
 <section class="wotw" aria-labelledby="wotwH"><span class="cm cm-side" data-tier="0" aria-hidden="true"></span><div><h2 id="wotwH">Wicked of the week</h2><p>One email on Fridays: the best song we weighed that week, plus the one that got wrecked. No spam, leave anytime.</p></div>
 <form id="wotwForm" class="wotw-f"><label class="sr" for="wotwEmail">Your email</label><input id="wotwEmail" name="email" type="email" required maxlength="200" placeholder="you@email.com" autocomplete="email"><input type="hidden" name="source" value="${esc(String(path || "").split("/")[1] || "home")}"><button class="btn bile" type="submit">Get it</button><span class="hint" id="wotwNote" role="status"></span></form></section>
-<footer><p class="flinks">Wackometer · <a href="/reviews">Song reviews</a> · <a href="/get-reviewed">Get reviewed</a> · <a href="/critics">Become a critic</a> · <a href="/rhymes/">Fresh rhymes</a> · <a href="/cliches/">Cliché fixer</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="https://instagram.com/wackometer" rel="me noopener" target="_blank">Instagram @wackometer</a></p>${DBV}</footer>
+<footer><p class="flinks">Wackometer · <a href="/reviews">Song reviews</a> · <a href="/get-reviewed">Get reviewed</a> · <a href="/lists">Wicked lists</a> · <a href="/critics">Become a critic</a> · <a href="/rhymes/">Fresh rhymes</a> · <a href="/cliches/">Cliché fixer</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="https://instagram.com/wackometer" rel="me noopener" target="_blank">Instagram @wackometer</a></p>${DBV}</footer>
 </div>
 <div class="modal" id="humanModal" hidden role="dialog" aria-labelledby="humanH"><div class="mbox"><div class="mch" id="humanChar"></div><h3 id="humanH">Quick check: are you a human?</h3><p class="tag">Keeps bots out of the votes. You only do this once a month.</p><div id="turnstileBox"></div><span class="hint" id="humanNote"></span></div></div>
 </body>
@@ -174,7 +175,8 @@ export async function reviewsPage(req, env, path, ensureSchema) {
 <p class="eyebrow">Song reviews</p>
 <h1>${h1}</h1>
 <p class="lead">${lead}</p>
-<nav class="rchips" aria-label="Filter reviews">${chip("", "All")}${chip("wicked", "✨ Certified Wicked")}${chip("videos", "🎬 Music videos")}${chip("songs", "Songs")}${chip("albums", "Albums")}</nav>
+<nav class="rchips" aria-label="Filter reviews">${chip("", "All")}${chip("wicked", "✨ Certified Wicked")}${chip("videos", "🎬 Music videos")}${chip("songs", "Songs")}${chip("albums", "Albums")}<a class="rchip" href="/lists">📅 Wicked lists</a></nav>
+${(await genreCounts(DB)).length ? `<nav class="rchips rchips-g" aria-label="Genres">${(await genreCounts(DB)).map(([k, n, nm]) => `<a class="rchip" href="/reviews/${k}">${esc(nm)} <span class="hint">${n}</span></a>`).join("")}</nav>` : ""}
 ${list.length ? `<div class="rv-grid">${list.map(card).join("")}</div><div class="ad-slot" hidden></div>` : `<div class="warn"><b>${f || q ? "Nothing here yet." : "The first reviews drop soon."}</b><p>${f || q ? `<a href="/reviews">See all reviews</a>, or send us your music below.` : "Know an artist whose writing deserves more ears? Send them our way below."}</p></div>`}
 ${SUB}
 </article>`;
@@ -185,6 +187,7 @@ ${SUB}
   const slug = decodeURIComponent(path.slice("/reviews/".length)).toLowerCase();
   if (!/^[a-z0-9-]{1,80}$/.test(slug)) return html(notFound(), 404);
   const r = await DB.prepare("SELECT * FROM reviews WHERE slug=?").bind(slug).first();
+  if (!r && GENRE_KEYS.includes(slug)) return genrePage(req, env, slug, async () => {});
   if (!r || (r.status !== "live" && url.searchParams.get("preview") !== "1")) return html(notFound(), 404, "no-store");
   const draft = r.status !== "live";
   const crowd = await crowdOf(DB, slug);
@@ -216,6 +219,7 @@ ${breakdownHTML(r)}
 <section class="rv-vote" aria-labelledby="voteH"><h2 id="voteH">Your call: how's the song?</h2>
 <div class="rv-tiers" role="group" aria-label="Vote on the song">${TIERS.map((T, i) => `<button type="button" class="rv-t" data-t="${i}" style="--tc:${TC[i]};--to:${TEXT_ON[i]}" aria-pressed="false">${esc(T.n)}</button>`).join("")}</div>
 <span class="hint" id="voteNote" role="status"></span></section>
+${draft ? "" : await reviewSocialHTML(DB, slug)}
 ${sp ? `<div class="rv-listen"><iframe title="Listen to ${esc(r.title)} on Spotify" src="${esc(sp.src)}" width="100%" height="${sp.type === "track" ? 152 : 352}" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" style="border:0;border-radius:14px"></iframe></div>` : ""}
 ${yt ? `<div class="rv-listen yt" id="watch"><iframe title="Watch ${esc(r.title)} on YouTube" src="https://www.youtube-nocookie.com/embed/${yt}" loading="lazy" allow="encrypted-media; picture-in-picture; fullscreen" style="border:0"></iframe></div>` : ""}
 ${listen.length ? `<p class="rv-links">Listen on ${listen.map(([n, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener">${n}</a>`).join(" · ")}</p>` : ""}
@@ -301,6 +305,8 @@ export async function frontPage(req, env, ensureSchema) {
 ${hero.length ? `<section class="fhero" aria-roledescription="carousel" aria-label="Featured reviews"><div class="fslides" id="fSlides">${hero.map(slide).join("")}</div>${hero.length > 1 ? `<div class="fdots" role="group" aria-label="Choose a featured review">${hero.map((r, i) => `<button type="button" data-i="${i}" aria-label="Show ${esc(r.title)}"${i ? "" : ' aria-current="true"'}></button>`).join("")}</div>` : ""}</section>`
       : `<section class="fempty"><b>The first reviews drop soon.</b><p>Know an artist whose writing deserves more ears? <a href="#submit">Send them our way</a>.</p></section>`}
 ${all.length ? row("rNew", "Latest reviews", "/reviews", all.slice(0, 12).map((r) => rowCard(r, crowd)).join("")) : ""}
+${(() => { if (!all.length) return ""; const k = new Date(all[0].published_at).toISOString().slice(0, 7), mo = ["January","February","March","April","May","June","July","August","September","October","November","December"][Number(k.slice(5)) - 1] + " " + k.slice(0, 4), top = all.filter((r) => new Date(r.published_at).toISOString().slice(0, 7) === k).sort((x, y) => x.score - y.score).slice(0, 4);
+  return `<a class="fwl" href="/lists/${k}"><span class="fwl-covers">${top.map((r) => r.cover_url ? `<img src="${esc(r.cover_url)}" alt="" width="56" height="56" loading="lazy">` : `<span class="rv-nocover">♪</span>`).join("")}</span><span class="fwl-t"><span class="eyebrow">📅 The Wicked list</span><b>The best songs we weighed in ${mo}</b></span><span class="fwl-go">See the list →</span></a>`; })()}
 <div class="ad-slot" hidden></div>
 <section class="fpromo" aria-label="More from Wackometer">
 <a class="fp fp-weigh" href="/write#weigh" data-hub="write"><span class="fp-char" data-tier="4" aria-hidden="true"></span><span class="hey">✍️ For writers · Free</span><b>How wack are <em>your</em> lyrics?</b><span>Paste a verse and the Wackometer scores it in a second, circles the clichés, then helps you fix them with Wingman, the Workshop and Wordstorm.</span><span class="fpgo">Weigh my lyrics <span aria-hidden="true">→</span></span></a>
@@ -369,7 +375,8 @@ ${SUB}
   const slug = decodeURIComponent(path.slice("/artists/".length)).toLowerCase();
   const a = list.find((x) => x.slug === slug);
   if (!a) return html(shell({ path, title: "Artist not found · Wackometer", desc: "We haven't reviewed this artist yet.", noindex: true, active: "artists", body: `<article class="seoart"><h1>We haven't weighed this artist yet.</h1><p class="lead"><a href="/artists">See the leaderboard</a>, or send us their music below.</p>${SUB}</article>` }), 404, "no-store");
-  const t = tierOf(a.avg), ig = igHandle(a.ig), ext = safeUrl(a.url) || (ig ? `https://instagram.com/${ig}` : "");
+  const prof = await artistProfile(env.DB, a.slug);
+  const t = tierOf(a.avg), ig = igHandle((prof && prof.ig) || a.ig), ext = safeUrl((prof && prof.website) || a.url) || (ig ? `https://instagram.com/${ig}` : "");
   const body = `<article class="rv artist">
 <p class="eyebrow"><a href="/artists">Artist leaderboard</a> · ${medal(a.rank)} of ${list.length}</p>
 <div class="ar-head">
@@ -377,9 +384,11 @@ ${SUB}
 <div class="rv-head"><h1>${esc(a.name)}</h1>
 <p class="rv-by">${a.n} song${a.n === 1 ? "" : "s"} weighed${ext ? ` · <a href="${esc(ext)}" target="_blank" rel="noopener">${ig ? "@" + esc(ig) : "Website"} ↗</a>` : ""}</p>
 <div class="rv-scores one"><div class="rv-score"><span class="rv-sl">Average score</span>${gaugeSVG(a.avg)}<span class="rv-num">${a.avg}</span>${pill(t, t === 0 ? "Wicked" : TIERS[t].n)}<span class="rv-char" data-tier="${t}" aria-hidden="true"></span></div></div>
+${artistLinksHTML(prof)}
 <p class="hint">Ranked ${a.rank === 1 ? "first" : "#" + a.rank} of ${list.length} artists we've reviewed. Lower is better.</p></div></div>
 <section class="rv-more" aria-labelledby="arH"><h2 id="arH">Every song we've weighed</h2><div class="rv-grid">${a.songs.map(card).join("")}</div></section>
 <div class="ad-slot" hidden></div>
+${artistExtrasHTML(a, prof)}
 <p><a href="/artists">See the full leaderboard →</a></p>
 </article>`;
   const ld = { "@context": "https://schema.org", "@type": "MusicGroup", name: a.name, url: `${BASE}/artists/${a.slug}`, ...(ext ? { sameAs: [ext] } : {}), ...(a.cover ? { image: a.cover } : {}) };
@@ -508,10 +517,10 @@ export async function badgeSVG(env, slug, ensureSchema) {
   return new Response(`<svg xmlns="http://www.w3.org/2000/svg" width="240" height="64" viewBox="0 0 240 64" role="img" aria-label="${top === "CERTIFIED" ? "Certified Wicked" : word} on Wackometer">
 <rect x="1.5" y="1.5" width="237" height="61" rx="30.5" fill="#1F2340"/>
 <rect x="98" y="7" width="134" height="50" rx="25" fill="${TC[t]}"/>
-<text x="18" y="29" ${F} font-size="12" fill="#A4A8CC" letter-spacing=".5">WACK</text><text x="18" y="45" ${F} font-size="13" fill="#FFFFFF">OMETER</text>
+<text x="51" y="25" ${F} font-size="9.5" fill="#A4A8CC" text-anchor="middle" letter-spacing=".6">WACKOMETER</text>
 <text x="165" y="27" ${F} font-size="10" fill="${TEXT_ON[t]}" text-anchor="middle" letter-spacing="1" opacity=".85">${top}</text>
 <text x="165" y="46" ${F} font-size="${word.length > 6 ? 16 : 19}" fill="${TEXT_ON[t]}" text-anchor="middle">${word}</text>
-<text x="76" y="40" ${F} font-size="18" fill="#BCD83C" text-anchor="middle">${r.score}</text>
+<text x="51" y="48" ${F} font-size="22" fill="#BCD83C" text-anchor="middle">${r.score}</text>
 </svg>`, { headers });
 }
 
@@ -590,6 +599,7 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
     if (!res.ok) return bad("Couldn't check that payment.", 502);
     if (pi.status !== "succeeded" || pi.metadata?.kind !== "review_submission") return json({ ok: false, status: pi.status });
     await DB.prepare("UPDATE review_requests SET paid=1, amount=?, status='new' WHERE id=? AND status='pending'").bind(pi.amount_received || pi.amount, pi.metadata.request).run();
+    await thankSubmitter(env, pi.metadata.request);
     return json({ ok: true });
   }
 
@@ -947,3 +957,6 @@ export async function imageResponse(env, id) {
 export async function reviewUrls(DB) {
   return (await DB.prepare("SELECT slug, updated_at FROM reviews WHERE status='live' ORDER BY published_at DESC LIMIT 20000").all()).results;
 }
+
+// Shared with src/hub.js (lists, genres, artist claims, comments).
+export { html, json, bad, esc, card, pill, gaugeSVG, safeUrl, igHandle, BASE, TC, tierName, submitHTML, notFound, emailShell, eCard, eBtn, emailHeadline, heroCard, certified };

@@ -274,3 +274,45 @@ if (wf) wf.onsubmit = async (e) => {
   catch (err) { note.textContent = err.message; }
   btn.disabled = false;
 };
+
+/* ---------- reactions + comments (review pages) ---------- */
+const rxBox = document.querySelector(".rx");
+function renderSocial(s) {
+  document.querySelectorAll(".rx-b").forEach((b) => { const k = b.dataset.rx; $("rx-" + k).textContent = s.counts[k] || ""; b.setAttribute("aria-pressed", s.mine.includes(k) ? "true" : "false"); });
+  const list = $("cmList"); if (!list) return;
+  const fmt = (ts) => new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  list.replaceChildren(...s.comments.map((c) => { const li = document.createElement("li"); li.className = "cm-item"; const b = document.createElement("b"); b.textContent = c.name; const h = document.createElement("span"); h.className = "hint"; h.textContent = " " + fmt(c.at) + (c.me ? " · you" : ""); const p = document.createElement("p"); p.textContent = c.body; li.append(b, h, p); return li; }));
+  if ($("cmEmpty")) $("cmEmpty").hidden = s.comments.length > 0;
+}
+if (rxBox && R.slug) {
+  api(`/api/reviews/${R.slug}/social`).then(renderSocial).catch(() => {});
+  document.querySelectorAll(".rx-b").forEach((b) => (b.onclick = async () => {
+    b.disabled = true;
+    try { renderSocial(await api(`/api/reviews/${R.slug}/react`, { body: { emoji: b.dataset.rx } })); track("review_react"); } catch (e) {}
+    b.disabled = false;
+  }));
+  const cf = $("cmForm");
+  if (cf) cf.onsubmit = async (e) => {
+    e.preventDefault(); const btn = cf.querySelector("button"), note = $("cmNote"); btn.disabled = true; note.textContent = "";
+    try { renderSocial(await api(`/api/reviews/${R.slug}/comment`, { body: { body: $("cmBody").value, name: $("cmName").value } })); $("cmBody").value = ""; note.textContent = "Posted."; track("review_comment"); try { localStorage.setItem("wk-cmname", $("cmName").value); } catch (e2) {} }
+    catch (err) { note.textContent = err.message; }
+    btn.disabled = false;
+  };
+  try { const n = localStorage.getItem("wk-cmname"); if (n && $("cmName")) $("cmName").value = n; } catch (e) {}
+}
+
+/* ---------- artist pages: claim form + badge code ---------- */
+const claim = $("claimForm");
+if (claim) claim.onsubmit = async (e) => {
+  e.preventDefault(); const btn = claim.querySelector("button"), note = $("claimNote"); btn.disabled = true; note.textContent = "";
+  try { await api("/api/artists/claim", { body: Object.fromEntries(new FormData(claim)) }); claim.innerHTML = "<b>Claim sent.</b><p>We check every claim by hand and email you within a few days. Once it's approved, your links show up on this page.</p>"; track("artist_claim"); }
+  catch (err) { note.textContent = err.message; btn.disabled = false; }
+};
+if ($("arBadgeCopy")) $("arBadgeCopy").onclick = () => { copyText($("arBadgeCode").value, $("arBadgeCopy"), "Copy the code"); track("artist_badge"); };
+
+/* ---------- Wicked list pages: share ---------- */
+if ($("wlShare")) $("wlShare").onclick = async () => {
+  const text = $("wlShare").dataset.text, url = location.href.split("#")[0]; track("list_share");
+  if (navigator.share) { try { await navigator.share({ title: document.title, text, url }); return; } catch (e) { if (e.name === "AbortError") return; } }
+  try { await navigator.clipboard.writeText(`${text} ${url}`); $("wlNote").textContent = "Link copied. Paste it anywhere."; } catch (e) { $("wlNote").textContent = url; }
+};

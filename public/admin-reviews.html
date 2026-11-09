@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Review editor · Wackometer</title><meta name="robots" content="noindex,nofollow"><link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/css/site.964fedb009.css">
+<link rel="stylesheet" href="/css/site.2b2de66290.css">
 <style>
 body{margin:0}[hidden]{display:none!important}
 .doc{display:flex;flex-direction:column;gap:16px;padding-top:clamp(10px,2vh,22px)}
@@ -54,7 +54,7 @@ body{margin:0}[hidden]{display:none!important}
 </header>
 <main id="main"><div class="doc">
 <div class="ed-hero"><p class="eyebrow" id="heroEye">Admin</p><h1 id="heroH">Review <em>editor</em></h1><p class="lead" id="heroP">Write reviews, work the queue, and manage critics.</p>
-<nav class="rchips" aria-label="Jump to"><a class="rchip" href="#ed">✍️ Write a review</a><a class="rchip" href="#queueH">📥 To review</a><a class="rchip admin-only" href="#critH">🎧 Critics</a><a class="rchip admin-only" href="#appH">📝 Applications</a><a class="rchip admin-only" href="#listH">💌 Email list</a><a class="rchip critic-only" href="#meH" hidden>🙋 My critic page</a><a class="rchip" href="#allH">📚 All reviews</a></nav></div>
+<nav class="rchips" aria-label="Jump to"><a class="rchip" href="#ed">✍️ Write a review</a><a class="rchip" href="#queueH">📥 To review</a><a class="rchip admin-only" href="#critH">🎧 Critics</a><a class="rchip admin-only" href="#appH">📝 Applications</a><a class="rchip admin-only" href="#listH">💌 Email list</a><a class="rchip admin-only" href="#wlH">📅 Wicked lists</a><a class="rchip admin-only" href="#claimH">🎤 Artist claims</a><a class="rchip admin-only" href="#cmH">💬 Comments</a><a class="rchip critic-only" href="#meH" hidden>🙋 My critic page</a><a class="rchip" href="#allH">📚 All reviews</a></nav></div>
 <p class="hint" id="err"></p>
 <div id="app" hidden>
 <form class="ed" id="ed" autocomplete="off">
@@ -148,6 +148,17 @@ body{margin:0}[hidden]{display:none!important}
 <span class="full hint" id="nlNote" role="status"></span>
 <iframe class="full" id="nlFrame" title="Email preview" style="width:100%;height:560px;border:2px solid var(--line);border-radius:14px;background:#fff"></iframe>
 </form>
+</div>
+<div class="admin-only">
+<h2 id="wlH">Wicked lists <span class="hint" id="wlCount"></span></h2>
+<p class="hint">Made automatically from what you publish each month, plus one list per genre. Add a short intro in your voice; it shows at the top of the page and helps it rank. Lists with fewer than 3 songs stay out of Google until they fill up.</p>
+<div class="list" id="wlAdmin"></div>
+<h2 id="claimH">Artist claims <span class="hint" id="claimCount"></span></h2>
+<p class="hint">Artists claim their page from the “Are you …?” box on it. Check it's really them (their email, or a DM from their official account), then approve: their links go live on the page and they get an email.</p>
+<div class="list" id="claimsAdmin"></div>
+<h2 id="cmH">Comments <span class="hint" id="cmCount"></span></h2>
+<p class="hint">Newest first. Slurs and links are blocked before they post; hide anything else that crosses a line.</p>
+<div class="list" id="cmAdmin"></div>
 </div>
 <h2 id="allH">All reviews</h2>
 <div class="row admin-only"><button class="btn" type="button" id="ogAll">Make link previews for all live reviews</button><span class="hint" id="ogAllNote" role="status"></span></div>
@@ -365,6 +376,31 @@ $("ogAll").disabled = true; let n = 0;
 for (const r of live) { $("ogAllNote").textContent = `Drawing ${++n} of ${live.length}…`; try { await window.wkOG.saveOG(r); } catch (e) { $("ogAllNote").textContent = e.message; } }
 $("ogAllNote").textContent = `Done: ${live.length} link previews updated.`; $("ogAll").disabled = false; load();
 };
+/* ---------- Wicked lists, artist claims, comments ---------- */
+async function loadHub() {
+if (ROLE !== "admin") return;
+let H; try { H = await api("/api/hub-admin/overview"); } catch (e) { return; }
+const intro = (key, url, label, n, v) => `<div class="req"><b><a href="${url}" target="_blank">${esc(label)}</a></b> <span class="hint">${n} song${n === 1 ? "" : "s"}${n < 3 ? " · not in Google yet" : ""}</span>
+<textarea data-intro="${esc(key)}" rows="2" maxlength="1200" placeholder="Intro (optional). Leave blank for the automatic one." style="width:100%;border:2px solid var(--line);border-radius:12px;padding:8px 10px;background:var(--bg)">${esc(v)}</textarea>
+<span class="row"><button class="btn" data-save-intro="${esc(key)}">Save intro</button><span class="hint" data-intro-note="${esc(key)}"></span></span></div>`;
+$("wlCount").textContent = H.lists.length ? `(${H.lists.length} month${H.lists.length === 1 ? "" : "s"})` : "";
+$("wlAdmin").innerHTML = H.lists.length ? H.lists.map((l) => intro(l.key, `/lists/${l.key}`, `The Wicked list · ${l.name}`, l.count, l.intro) + (l.genres.length ? `<details class="qadd"><summary>${esc(l.name)} by genre (${l.genres.length})</summary>${l.genres.map((g) => intro(`${l.key}:${g.key}`, `/lists/${l.key}/${g.key}`, `${g.name} · ${l.name}`, g.count, g.intro)).join("")}</details>` : "")).join("") : '<p class="hint">The first list appears when you publish a review.</p>';
+$("wlAdmin").querySelectorAll("[data-save-intro]").forEach((b) => (b.onclick = async () => {
+const k = b.dataset.saveIntro, ta = $("wlAdmin").querySelector(`[data-intro="${k}"]`), note = $("wlAdmin").querySelector(`[data-intro-note="${k}"]`);
+try { await api("/api/hub-admin/list-intro", { key: k, intro: ta.value }); note.textContent = "Saved ✓"; } catch (e) { note.textContent = e.message; }
+}));
+const open = H.claims.filter((c) => c.status === "new").length;
+$("claimCount").textContent = open ? `(${open} new)` : "";
+$("claimsAdmin").innerHTML = H.claims.length ? H.claims.map((c) => `<div class="req ${c.status !== "new" ? "done" : ""}"><b><a href="/artists/${esc(c.artist_slug)}" target="_blank">${esc(c.artist_slug)}</a></b> <span class="hint">${esc(c.name)} (${c.role === "team" ? "team" : "the artist"}) · ${esc(c.email)} · ${new Date(c.created_at).toLocaleDateString()}${c.status !== "new" ? " · " + c.status : ""}</span>
+<span>${[c.ig && "IG @" + c.ig, c.tiktok && "TikTok @" + c.tiktok, c.spotify, c.website].filter(Boolean).map(esc).join(" · ") || '<span class="hint">No links given</span>'}</span>${c.proof ? `<span class="hint">Proof: ${esc(c.proof)}</span>` : ""}
+<span class="row"><button class="btn bile" data-claim="${esc(c.id)}" data-s="approved">Approve</button><button class="btn" data-claim="${esc(c.id)}" data-s="passed">Pass</button><a class="btn" href="mailto:${esc(c.email)}?subject=${encodeURIComponent("Your Wackometer artist page")}">Email them</a></span></div>`).join("") : '<p class="hint">No claims yet. They come from the box at the bottom of every artist page.</p>';
+$("claimsAdmin").querySelectorAll("[data-claim]").forEach((b) => (b.onclick = async () => { try { await api("/api/hub-admin/claim", { id: b.dataset.claim, status: b.dataset.s }); loadHub(); } catch (e) { alert(e.message); } }));
+$("cmCount").textContent = H.comments.length ? `(${H.comments.length})` : "";
+$("cmAdmin").innerHTML = H.comments.length ? H.comments.map((c) => `<div class="req ${c.hidden ? "done" : ""}"><span class="hint">${esc(c.name || "Listener")} on <a href="/reviews/${esc(c.slug)}#talk" target="_blank">${esc(c.title || c.slug)}</a> · ${new Date(c.created_at).toLocaleString()}${c.hidden ? " · hidden" : ""}</span><span>${esc(c.body)}</span>
+<span class="row"><button class="btn" data-cm="${esc(c.id)}" data-a="${c.hidden ? "show" : "hide"}">${c.hidden ? "Show" : "Hide"}</button><button class="btn quiet" data-cm="${esc(c.id)}" data-a="delete">Delete</button></span></div>`).join("") : '<p class="hint">No comments yet.</p>';
+$("cmAdmin").querySelectorAll("[data-cm]").forEach((b) => (b.onclick = async () => { if (b.dataset.a === "delete" && !confirm("Delete this comment for good?")) return; await api("/api/hub-admin/comment", { id: b.dataset.cm, action: b.dataset.a }); loadHub(); }));
+}
+const _load = load; load = async () => { await _load(); loadHub(); };
 fill(null); load();
 </script>
 </body></html>
