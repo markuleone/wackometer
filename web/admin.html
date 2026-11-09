@@ -72,6 +72,29 @@ body{margin:0}[hidden]{display:none!important}
 .tbl th:first-child,.tbl td:first-child{text-align:left}
 .tbl th{font-weight:600;color:var(--muted);font-size:13px}
 .tscroll{overflow-x:auto}
+.wrap{max-width:1560px}
+.ovgrid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:20px;align-items:start}
+.ovmain{display:flex;flex-direction:column;gap:16px;min-width:0}
+.rail{display:flex;flex-direction:column;gap:14px;position:sticky;top:16px}
+.rcard{border:2px solid var(--line);border-radius:18px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;background:#fff}
+.rcard h3{font-family:var(--display);font-size:16px;margin:0}
+.glance{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.gl{border-radius:14px;padding:9px 11px;display:flex;flex-direction:column;gap:0}
+.gl .gi{font-size:18px;line-height:1}
+.gl b{font-family:var(--display);font-size:24px;line-height:1.15;font-variant-numeric:tabular-nums}
+.gl small{font-size:12px;color:var(--ink);opacity:.75}
+.hb{display:flex;flex-direction:column;gap:3px;margin:2px 0 6px}
+.hb-l{display:flex;justify-content:space-between;gap:8px;font-size:14px}
+.hb-l b{font-variant-numeric:tabular-nums}.hb-l small{color:var(--muted);font-weight:600}
+.hb-t{height:12px;border-radius:999px;background:#F2F3F9;overflow:hidden}
+.hb-t i{display:block;height:100%;border-radius:999px}
+.fun{display:flex;flex-direction:column;align-items:stretch;gap:2px}
+.fun-step{display:flex;flex-direction:column;align-items:center;gap:3px}
+.fun-bar{height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;min-width:44px}
+.fun-bar b{color:#fff;font-family:var(--display);font-size:15px;text-shadow:0 1px 0 rgba(0,0,0,.25)}
+.fun-step span{font-size:13px;color:var(--ink)}
+.fun-arrow{text-align:center;font-size:12px;color:var(--muted);font-weight:600}
+@media (max-width:1280px){.ovgrid{grid-template-columns:1fr}.rail{position:static;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}}
 .tgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
 .bar{display:grid;grid-template-columns:minmax(80px,120px) 1fr 46px;gap:8px;align-items:center;font-size:14px;margin:5px 0}
 .bar i{display:block;height:10px;border-radius:0 4px 4px 0;background:#2F7BEB}
@@ -108,7 +131,6 @@ body{margin:0}[hidden]{display:none!important}
 <div class="adm">
 <nav class="aside" aria-label="Back office">
   <a href="#overview" data-s="overview">📊 Overview</a>
-  <a href="#traffic" data-s="traffic">🧭 Traffic</a>
   <a href="#reviews" data-s="reviews">🎧 Reviews &amp; money <span class="ct" id="ctRev" hidden></span></a>
   <a href="#people" data-s="people">🙋 People</a>
   <a href="#moderation" data-s="moderation">🚩 Moderation <span class="ct" id="ctMod" hidden></span></a>
@@ -130,7 +152,7 @@ body{margin:0}[hidden]{display:none!important}
   <div id="err" class="hint" role="alert"></div>
 
   <!-- OVERVIEW -->
-  <section class="asec" id="s-overview">
+  <section class="asec" id="s-overview"><div class="ovgrid"><div class="ovmain">
     <div class="inbox" id="inbox"></div>
     <div class="kpis" id="kpis"></div>
     <div class="panel2">
@@ -148,18 +170,15 @@ body{margin:0}[hidden]{display:none!important}
       <div class="rowx"><button class="btn sm" type="button" id="tblBtn" aria-expanded="false">Show as table</button><button class="btn sm quiet" type="button" id="csvBtn">Download CSV (all events in range)</button><span class="hint">Your filters are saved on this device, so the chart opens the way you left it.</span></div>
       <div class="tscroll" id="tblBox" hidden></div>
     </div>
-    <div class="panel2"><h3>All-time totals</h3><div class="cards2" id="totals"></div></div>
-  </section>
-
-  <!-- TRAFFIC -->
-  <section class="asec" id="s-traffic" hidden>
-    <p class="hint">Real browsers only (bots and crawlers are skipped), counted once per visit, for the range above. For recordings and heatmaps, open <a href="https://clarity.microsoft.com/" target="_blank" rel="noopener">Microsoft Clarity</a>.</p>
-    <div class="tgrid">
-      <div class="panel2"><h3>Where visits come from</h3><div id="tSrc"></div></div>
-      <div class="panel2"><h3>Where they land</h3><div id="tLand"></div></div>
-      <div class="panel2"><h3>Tools opened</h3><div id="tTool"></div></div>
-      <div class="panel2"><h3>Funnel</h3><div id="tFunnel"></div></div>
-    </div>
+  </div>
+  <aside class="rail" aria-label="At a glance">
+    <div class="rcard"><h3>📦 All-time totals</h3><div class="glance" id="totals"></div></div>
+    <div class="rcard"><h3>🧭 Where visits come from</h3><div id="tSrc"></div></div>
+    <div class="rcard"><h3>🛬 Where they land</h3><div id="tLand"></div></div>
+    <div class="rcard"><h3>🛠️ Tools opened</h3><div id="tTool"></div></div>
+    <div class="rcard"><h3>🪜 Funnel</h3><div id="tFunnel"></div></div>
+    <p class="hint">Real browsers only, counted once per visit, for the dates above. Recordings and heatmaps: <a href="https://clarity.microsoft.com/" target="_blank" rel="noopener">Microsoft Clarity</a>.</p>
+  </aside></div>
   </section>
 
   <!-- REVIEWS & MONEY -->
@@ -263,12 +282,12 @@ async function loadSeries(){const w=window_();const need=Math.min(800,span(w.fro
   if(SERIES&&fetchedDays>=need)return;SERIES=await api("/api/admin/series?days="+need);fetchedDays=need}
 
 /* ---------- section routing ---------- */
-const SECS={overview:["Overview","How Wackometer is doing."],traffic:["Traffic","Where people come from and where they go."],reviews:["Reviews & money","The review queue, paid submissions and Pro."],people:["People","Look someone up, gift Pro or credits."],moderation:["Moderation","Reports from the Wall and profiles."],team:["Team & access","Who can open the back office."],house:["Housekeeping","Tidy-up jobs and the plugin waitlist."]};
-function show(){const k=(location.hash.slice(1)||"overview");const s=SECS[k]?k:"overview";
+const SECS={overview:["Overview","How Wackometer is doing."],reviews:["Reviews & money","The review queue, paid submissions and Pro."],people:["People","Look someone up, gift Pro or credits."],moderation:["Moderation","Reports from the Wall and profiles."],team:["Team & access","Who can open the back office."],house:["Housekeeping","Tidy-up jobs and the plugin waitlist."]};
+function show(){const k=(location.hash.slice(1)||"overview").replace("traffic","overview");const s=SECS[k]?k:"overview";
   Object.keys(SECS).forEach(x=>$("s-"+x).hidden=x!==s);
   document.querySelectorAll(".aside a[data-s]").forEach(a=>a.toggleAttribute("aria-current",a.dataset.s===s));
   $("secTitle").textContent=SECS[s][0];$("secSub").textContent=SECS[s][1];
-  $("rangeBar").hidden=!(s==="overview"||s==="traffic");
+  $("rangeBar").hidden=s!=="overview";
   if(s==="people"&&!$("pplTbl").innerHTML)people("");
   if(s==="team")team();
   if(s==="overview")drawAll()}
@@ -376,16 +395,23 @@ $("csvBtn").onclick=()=>{const w=window_(),types=allTypes(),days=daysIn(w.from,w
 let rz;new ResizeObserver(()=>{clearTimeout(rz);rz=setTimeout(()=>{if(!$("s-overview").hidden)chart()},120)}).observe($("chart"));
 
 /* ---------- traffic ---------- */
-function bars(rows,max){return rows.length?rows.map(([k,c])=>`<div class="bar"><span>${esc(k)}</span><i style="width:${Math.max(3,Math.round(c/(max||rows[0][1]||1)*100))}%"></i><b>${fmt(c)}</b></div>`).join(""):`<p class="hint">No data for this range.</p>`}
+const BRIGHT=["#2F7BEB","#E5702A","#14A383","#7A6FD0","#D9488F","#6E8A0F","#4F5BA8","#B8860B"];
+function bars(rows){if(!rows.length)return `<p class="hint">No data for these dates.</p>`;const tot=rows.reduce((a,r)=>a+r[1],0),max=rows[0][1]||1;
+  return rows.slice(0,8).map(([k,c],i)=>`<div class="hb"><div class="hb-l"><span>${esc(k)}</span><b>${fmt(c)} <small>${tot?Math.round(c/tot*100):0}%</small></b></div><div class="hb-t"><i style="width:${Math.max(2,Math.round(c/max*100))}%;background:${BRIGHT[i]}"></i></div></div>`).join("")+(rows.length>8?`<p class="hint">+ ${rows.length-8} more</p>`:"")}
+function funnel(steps){const top=steps[0][1]||0;if(!top)return `<p class="hint">No visits in these dates yet.</p>`;const C=["#2F7BEB","#14A383","#E5702A","#D9488F","#7A6FD0"];
+  return `<div class="fun">${steps.map(([k,c],i)=>{const w=Math.max(8,Math.round(c/top*100));const prev=i?steps[i-1][1]:0;
+    return `${i?`<div class="fun-arrow">↓ ${prev?Math.round(c/prev*100):0}% keep going</div>`:""}<div class="fun-step"><div class="fun-bar" style="width:${w}%;background:${C[i%C.length]}"><b>${fmt(c)}</b></div><span>${esc(k)}</span></div>`}).join("")}</div>`}
 function traffic(){const w=window_(),T={};SERIES.rows.forEach(r=>{if(r.day>=w.from&&r.day<=w.to)T[r.type]=(T[r.type]||0)+r.count});const n=k=>T[k]||0;
-  const group=pre=>Object.entries(T).filter(([k])=>k.startsWith(pre)).map(([k,c])=>[k.slice(pre.length),c]).sort((a,b)=>b[1]-a[1]);
+  const NICE={direct:"Direct / typed in",google:"Google",instagram:"Instagram",facebook:"Facebook",tiktok:"TikTok",x:"X / Twitter",youtube:"YouTube",reddit:"Reddit",chatgpt:"ChatGPT",perplexity:"Perplexity",bing:"Bing",email:"Email",other:"Other sites",home:"Home",write:"Write",reviews:"Reviews list",review:"A review",artist:"Artist page",profile:"Profiles",rhymes:"Rhymes",cliches:"Cliché book",syllables:"Syllable counter",weigh:"Weigh",community:"The Wall",storm:"Wordstorm",workshop:"Workshop",wingman:"Wingman",why:"How scoring works",pro:"Pro page",lost:"404 page"};
+  const group=pre=>Object.entries(T).filter(([k])=>k.startsWith(pre)).map(([k,c])=>[NICE[k.slice(pre.length)]||k.slice(pre.length),c]).sort((a,b)=>b[1]-a[1]);
   $("tSrc").innerHTML=bars(group("src:"));$("tLand").innerHTML=bars(group("land:"));$("tTool").innerHTML=bars(group("tool:"));
   const views=n("view"),own=n("weigh"),pct=(a,b)=>b?Math.round(a/b*100)+"%":"–";
-  $("tFunnel").innerHTML=bars([["Visited",views],["Weighed own",own],["Sign-in sent",n("signup_sent")],["Signed in",n("signup_done")],["Posted",n("wall_post")+n("daily_submit")]],views)+`<p class="hint">${pct(own,views)} of visits weigh their own lyrics · ${pct(n("signup_done"),views)} sign in</p>`}
+  $("tFunnel").innerHTML=funnel([["Visited",views],["Weighed their own lyrics",own],["Asked to sign in",n("signup_sent")],["Signed in",n("signup_done")],["Posted",n("wall_post")+n("daily_submit")]])+`<p class="hint">${pct(own,views)} of visits weigh their own lyrics · ${pct(n("signup_done"),views)} sign in</p>`}
 
 /* ---------- totals, reviews & money ---------- */
 const LABELS={users:"Visitor records",active:"Active writers",signedIn:"Signed in",pro:"Pro now",posts:"Wall posts",postsWeek:"Posts this week",votes:"Votes",dailyToday:"Daily W today",wingmanToday:"Wingman msgs today"};
-function totals(){if(!OV)return;$("totals").innerHTML=Object.entries(OV.stats).map(([k,v])=>`<div class="mini"><div class="n">${fmt(v)}</div><div class="l">${LABELS[k]||k}</div></div>`).join("")}
+const GL={users:["👀","#E7F0FF"],active:["✍️","#E2F7F0"],signedIn:["🔑","#FFF0E5"],pro:["⭐","#F1F7D6"],posts:["🧱","#F0EEFA"],postsWeek:["📆","#FDE7F1"],votes:["🗳️","#E7F0FF"],dailyToday:["☀️","#FFF6D6"],wingmanToday:["🪽","#E2F7F0"]};
+function totals(){if(!OV)return;$("totals").innerHTML=Object.entries(OV.stats).map(([k,v])=>`<div class="gl" style="background:${(GL[k]||["",'#F6F7FC'])[1]}"><span class="gi" aria-hidden="true">${(GL[k]||["•"])[0]}</span><b>${fmt(v)}</b><small>${LABELS[k]||k}</small></div>`).join("")}
 function reviews(){if(!BIZ)return;const R={};(BIZ.reviews||[]).forEach(r=>R[r.status]=r.c);
   $("bizCards").innerHTML=[[R.live||0,"Live reviews"],[R.draft||0,"Drafts"],[money(BIZ.revenue.month.c),`Review revenue, last 30 days (${BIZ.revenue.month.n||0})`],[money(BIZ.revenue.all.c),`Review revenue, all time (${BIZ.revenue.all.n||0})`],[BIZ.pro,"Pro members now"],[BIZ.subscribers,"Email list"],[BIZ.critics,"Active critics"],[BIZ.comments,"Comments, last 30 days"]].map(([v,l])=>`<div class="mini"><div class="n">${typeof v==="number"?fmt(v):v}</div><div class="l">${l}</div></div>`).join("");
   $("queue").innerHTML=(BIZ.toReview||[]).length?BIZ.toReview.map(r=>`<div class="it"><span class="grow"><b>${esc(r.artist)}</b>${r.title?` · ${esc(r.title)}`:""}<br><small>${ago(r.created_at)}</small></span>${r.paid?`<span class="pill2 pro">Paid</span>`:`<span class="pill2">Free</span>`}</div>`).join(""):`<p class="hint">Queue's empty. 🎉</p>`;

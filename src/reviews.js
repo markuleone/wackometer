@@ -8,7 +8,7 @@ import { adsenseTag } from "./ads-tag.js";
 import { TIERS, tierOf, MID } from "../web/js/score.js";
 import META from "./build-meta.js";
 import { siteHeader, siteFooterLinks } from "./site-header.js";
-import { GENRE_KEYS, genrePage, genreCounts, genreTilesHTML, reviewSocialHTML, artistProfile, artistLinksHTML, artistExtrasHTML, thankSubmitter } from "./hub.js";
+import { GENRE_KEYS, OLD_GENRES, TOP10_PLAYLIST, playlistEmbed, genrePage, genreCounts, genreTilesHTML, reviewSocialHTML, artistProfile, artistLinksHTML, artistExtrasHTML, thankSubmitter } from "./hub.js";
 
 const BASE = "https://wackometer.com";
 const TC = ["#3D8BFF", "#22C29B", "#A9A2DA", "#FF8A3D", "#A8C42E"];
@@ -194,6 +194,7 @@ ${SUB}
   const slug = decodeURIComponent(path.slice("/reviews/".length)).toLowerCase();
   if (!/^[a-z0-9-]{1,80}$/.test(slug)) return html(notFound(), 404);
   const r = await DB.prepare("SELECT * FROM reviews WHERE slug=?").bind(slug).first();
+  if (!r && OLD_GENRES[slug]) return new Response(null, { status: 301, headers: { location: `/reviews/${OLD_GENRES[slug]}` } });
   if (!r && GENRE_KEYS.includes(slug)) return genrePage(req, env, slug, async () => {});
   if (!r || (r.status !== "live" && url.searchParams.get("preview") !== "1")) return html(notFound(), 404, "no-store");
   const draft = r.status !== "live";
@@ -313,6 +314,7 @@ ${hero.length ? `<section class="fhero" aria-roledescription="carousel" aria-lab
 ${all.length ? row("rNew", "Latest reviews", "/reviews", all.slice(0, 12).map((r) => rowCard(r, crowd)).join("")) : ""}
 ${(() => { if (!all.length) return ""; const k = new Date(all[0].published_at).toISOString().slice(0, 7), mo = ["January","February","March","April","May","June","July","August","September","October","November","December"][Number(k.slice(5)) - 1] + " " + k.slice(0, 4), top = all.filter((r) => new Date(r.published_at).toISOString().slice(0, 7) === k).sort((x, y) => x.score - y.score).slice(0, 4);
   return `<a class="fwl" href="/lists/${k}"><span class="fwl-covers">${top.map((r) => r.cover_url ? `<img src="${esc(r.cover_url)}" alt="" width="56" height="56" loading="lazy">` : `<span class="rv-nocover">♪</span>`).join("")}</span><span class="fwl-t"><span class="eyebrow">📅 The Wicked list</span><b>The best songs we weighed in ${mo}</b></span><span class="fwl-go">See the list →</span></a>`; })()}
+<section class="ftop10" aria-labelledby="rTop"><div class="frh"><h2 id="rTop">🔥 The Wackometer Top 10</h2><a href="https://open.spotify.com/playlist/${TOP10_PLAYLIST}" target="_blank" rel="noopener">Open in Spotify <span aria-hidden="true">↗</span></a></div><p class="hint">The ten most Wicked songs right now, in one playlist. Follow it and it updates as the scores do.</p>${playlistEmbed(TOP10_PLAYLIST, "Wackometer Top 10", 380)}</section>
 ${await genreTilesHTML(DB, 8, true)}
 <div class="ad-slot" hidden></div>
 ${artists.length ? `<section class="flb" aria-labelledby="rLb"><div class="frh"><h2 id="rLb">🏆 Top artists</h2><a href="/artists">Full leaderboard <span aria-hidden="true">→</span></a></div><p class="hint">Each artist's score is the average of every song we've weighed. Lower is better.</p><ol class="lb-list">${leaderRows(artists.slice(0, 5))}</ol></section>` : ""}

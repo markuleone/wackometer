@@ -13,22 +13,27 @@ import { containsSlur, containsProfanity } from "./moderation.js";
 
 /* ---------- genres: free-text genres on reviews fall into a few buckets (a song can be in more than one) ---------- */
 export const GENRES = [
-  ["indie", "Indie", /indie|dream ?pop|bedroom|lo-?fi|shoegaze/i],
-  ["r-and-b", "R&B", /r&b|r ?and ?b|rnb|neo.?soul/i],
-  ["soul", "Soul", /soul/i],
-  ["hip-hop", "Hip-hop", /hip.?hop|\brap\b|trap|drill/i],
-  ["pop", "Pop", /pop/i],
-  ["rock", "Rock", /rock|punk|grunge|metal/i],
-  ["alternative", "Alternative", /\balt/i],
-  ["electronic", "Electronic", /electro|house|techno|edm|dance|trip.?hop|synth|ambient|downtempo/i],
-  ["funk-and-disco", "Funk & disco", /funk|disco|boogie/i],
-  ["latin", "Latin", /latin|salsa|reggaeton|bossa|brazil|tropical|urbano|bachata|cumbia/i],
-  ["jazz", "Jazz", /jazz/i],
-  ["folk", "Folk & acoustic", /folk|acoustic|singer.?songwriter|country/i],
+  ["walternative", "Walternative", /\balt|shoegaze|\bemo\b|post.?punk|grunge|new wave/i],
+  ["windie", "Windie", /indie|dream ?pop|bedroom|lo-?fi|folk|acoustic|singer.?songwriter|\bpop\b|pop$|^pop|electro|synth|house|dance|ambient|downtempo|latin|bossa|country/i],
+  ["wrythme-and-blues", "Wrythme & Blues", /r&b|r ?and ?b|rnb|soul|funk|disco|boogie|jazz|gospel/i],
+  ["wrock-and-wroll", "Wrock & Wroll", /rock|punk|metal|garage|grunge/i],
+  ["wrap", "Wrap", /hip.?hop|\brap\b|trap|drill|grime/i],
 ];
+// Each genre has art (web/brand/genres) and a Wackometer playlist on Spotify.
+export const GENRE_INFO = {
+  walternative: { playlist: "1M0RfvgZp1lkWCeIhHoyi6", bg: "#0E766D", tint: "#DDF4F1", blurb: "Left of the dial: alt-rock, shoegaze, post-punk and everything with a fuzz pedal." },
+  windie: { playlist: "28zLbCcAOwwMYkHrqRkYDY", bg: "#F3A261", tint: "#FFF0E5", blurb: "Bedroom pop, dream pop, folk and the indie stuff your friends haven't found yet." },
+  "wrythme-and-blues": { playlist: "6LRkeHzJTk76yHRvKeH5fu", bg: "#3A0764", tint: "#F0E8FA", blurb: "R&B, soul, funk and late-night slow jams." },
+  "wrock-and-wroll": { playlist: "6waZ4TX6p6lOoLLDj8TsyR", bg: "#DC2625", tint: "#FDE7E7", blurb: "Guitars up. Rock, punk, garage and anything that needs earplugs." },
+  wrap: { playlist: "1z4IpLlUksLRMoiMprJZLi", bg: "#6D28D9", tint: "#EEE7FC", blurb: "Hip-hop, rap, trap and drill. Bars get weighed here." },
+};
+export const TOP10_PLAYLIST = "4ljZ2a0DEpeTR4iWOO3Lnb";
+// The old genre addresses point at the new ones.
+export const OLD_GENRES = { indie: "windie", "r-and-b": "wrythme-and-blues", soul: "wrythme-and-blues", "hip-hop": "wrap", pop: "windie", rock: "wrock-and-wroll", alternative: "walternative", electronic: "windie", "funk-and-disco": "wrythme-and-blues", latin: "windie", jazz: "wrythme-and-blues", folk: "windie" };
+export const playlistEmbed = (id, title, h = 352) => `<iframe class="sp-embed" title="${title} playlist on Spotify" src="https://open.spotify.com/embed/playlist/${id}?utm_source=generator" width="100%" height="${h}" frameborder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>`;
 export const GENRE_KEYS = GENRES.map(([k]) => k);
 const genreName = (k) => (GENRES.find(([g]) => g === k) || [k, k])[1];
-export const genresOf = (g) => GENRES.filter(([, , re]) => re.test(g || "")).map(([k]) => k);
+export const genresOf = (g) => { const k = GENRES.filter(([, , re]) => re.test(g || "")).map(([k]) => k); return k.length ? k : ["windie"]; };
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const monthKey = (ts) => new Date(ts).toISOString().slice(0, 7);
 const monthName = (k) => `${MONTHS[Number(k.slice(5, 7)) - 1]} ${k.slice(0, 4)}`;
@@ -63,13 +68,15 @@ export async function listsPage(req, env, path, ensureSchema) {
 <p class="eyebrow">The Wicked list</p>
 <h1><span class="cm cm-h1" data-tier="0" aria-hidden="true"></span>The best songs we weighed, month by month</h1>
 <p class="lead">Every month we rank the songs we reviewed, most Wicked first. Pick a month, or a genre inside it.</p>
+<section class="ftop10" aria-labelledby="wlTop"><h2 id="wlTop">🔥 Listen to the Top 10</h2>${playlistEmbed(TOP10_PLAYLIST, "Wackometer Top 10", 232)}</section>
 ${keys.length ? `<ul class="wl-months">${keys.map((k) => { const top = rank(months[k]).slice(0, 3); const gs = monthGenres(months[k]);
   return `<li class="wl-month"><a class="wl-mlink" href="/lists/${k}"><span class="wl-covers">${top.map((r) => r.cover_url ? `<img src="${esc(r.cover_url)}" alt="" width="64" height="64" loading="lazy">` : `<span class="rv-nocover">♪</span>`).join("")}</span><b>${monthName(k)}</b><span class="hint">${months[k].length} song${months[k].length === 1 ? "" : "s"} · #1: ${esc(top[0].title)}</span></a>
 ${gs.length ? `<span class="rchips">${gs.map(([g, n]) => `<a class="rchip" href="/lists/${k}/${g}">${esc(genreName(g))} <span class="hint">${n}</span></a>`).join("")}</span>` : ""}</li>`; }).join("")}</ul>` : `<div class="warn"><b>The first list drops when the reviews do.</b><p><a href="/reviews">Read the reviews</a> so far.</p></div>`}
 ${SUB}</article>`;
-    return html(shell({ active: "lists", path: "/lists", title: "The Wicked list: best new songs by month · Wackometer", desc: "The best songs Wackometer reviewed each month, ranked from Wicked to Wack, with genre lists for indie, R&B, hip-hop, pop and more.", body }));
+    return html(shell({ active: "lists", path: "/lists", title: "The Wicked list: best new songs by month · Wackometer", desc: "The best songs Wackometer reviewed each month, ranked from Wicked to Wack, with genre lists for Walternative, Windie, Wrythme & Blues, Wrock & Wroll and Wrap, plus the Top 10 playlist.", body }));
   }
   const m = path.match(/^\/lists\/(\d{4}-\d{2})(?:\/([a-z-]+))?$/);
+  if (m && m[2] && OLD_GENRES[m[2]]) return new Response(null, { status: 301, headers: { location: `/lists/${m[1]}/${OLD_GENRES[m[2]]}` } });
   if (!m || !months[m[1]] || (m[2] && !GENRE_KEYS.includes(m[2]))) return html(shell({ path, title: "List not found · Wackometer", desc: "", noindex: true, body: `<article class="seoart"><h1>That list isn't here.</h1><p class="lead"><a href="/lists">See every Wicked list</a>.</p></article>` }), 404, "no-store");
   const [, k, g] = m, all = months[k], items = rank(g ? all.filter((r) => genresOf(r.genre).includes(g)) : all);
   if (!items.length) return html(shell({ path, title: "List not found · Wackometer", desc: "", noindex: true, body: `<article class="seoart"><h1>No ${esc(genreName(g))} songs that month.</h1><p class="lead"><a href="/lists/${k}">See the full ${monthName(k)} list</a>.</p></article>` }), 404, "no-store");
@@ -102,27 +109,23 @@ function monthGenres(rows) {
 }
 
 /* ---------- genres: tiles (front page, /genres) ---------- */
-const GENRE_EMOJI = { indie: "🌙", "r-and-b": "💜", soul: "🕯️", "hip-hop": "🎤", pop: "🍭", rock: "🎸", alternative: "🌀", electronic: "🎛️", "funk-and-disco": "🪩", latin: "💃", jazz: "🎷", folk: "🪕" };
-const GENRE_TINT = ["#FFF0E5", "#E2F7F0", "#EFEDFA", "#E7F0FF", "#F1F7D6"];
 export async function genreTilesHTML(DB, limit = 12, front = false) {
   const rows = await liveReviews(DB), by = {};
   for (const r of rows) for (const g of genresOf(r.genre)) (by[g] = by[g] || []).push(r);
-  const list = GENRE_KEYS.filter((g) => by[g]).sort((a, b) => by[b].length - by[a].length).slice(0, limit);
-  if (!list.length) return front ? "" : '<div class="warn"><b>Genres show up as reviews go live.</b><p><a href="/reviews">Read the reviews</a> so far.</p></div>';
-  const tiles = list.map((g, i) => { const top = rank(by[g]).slice(0, 3);
-    return `<a class="gtile" href="/reviews/${g}" style="--gt:${GENRE_TINT[i % GENRE_TINT.length]}"><span class="gt-e" aria-hidden="true">${GENRE_EMOJI[g] || "🎵"}</span><b>${esc(genreName(g))}</b><span class="hint">${by[g].length} review${by[g].length === 1 ? "" : "s"}</span><span class="gt-covers" aria-hidden="true">${top.map((r) => r.cover_url ? `<img src="${esc(r.cover_url)}" alt="" width="44" height="44" loading="lazy">` : "").join("")}</span></a>`; }).join("");
-  return front ? `<section class="fgenres" aria-labelledby="rGen"><div class="frh"><h2 id="rGen">Browse by genre</h2><a href="/genres">All genres <span aria-hidden="true">→</span></a></div><div class="gtiles">${tiles}</div></section>` : `<div class="gtiles">${tiles}</div>`;
+  const tiles = GENRE_KEYS.slice(0, limit).map((g) => { const n = (by[g] || []).length;
+    return `<a class="gtile gart" href="/reviews/${g}" style="--gt:${GENRE_INFO[g].bg}"><img src="/brand/genres/${g}-sm.jpg" alt="${esc(genreName(g))}" width="320" height="320" loading="lazy"><span class="gt-n">${n ? `${n} review${n === 1 ? "" : "s"}` : "Playlist"}</span></a>`; }).join("");
+  return front ? `<section class="fgenres" aria-labelledby="rGen"><div class="frh"><h2 id="rGen">Browse by genre</h2><a href="/genres">All genres <span aria-hidden="true">→</span></a></div><div class="gtiles g5">${tiles}</div></section>` : `<div class="gtiles g5">${tiles}</div>`;
 }
 export async function genresIndex(req, env, ensureSchema) {
   await ensureSchema(env);
   const body = `<article class="seoart">
 <p class="eyebrow">Song reviews</p>
 <h1><span class="cm cm-h1" data-tier="1" aria-hidden="true"></span>Browse by genre</h1>
-<p class="lead">Every review sorted by sound. A song can sit in more than one genre, so indie pop shows up under Indie and Pop.</p>
+<p class="lead">Five sounds, five Wackos. Every review lands in at least one, and each genre has its own Wackometer playlist on Spotify.</p>
 ${await genreTilesHTML(env.DB)}
 <p class="hint">Want the best of each month instead? <a href="/lists">See the Wicked lists</a>.</p>
 ${submitHTML()}</article>`;
-  return html(shell({ active: "genres", path: "/genres", title: "Song reviews by genre: indie, R&B, hip-hop, pop and more · Wackometer", desc: "Browse Wackometer song reviews by genre: indie, R&B, hip-hop, pop, rock, electronic, Latin and more, each scored from Wicked to Wack.", body }));
+  return html(shell({ active: "genres", path: "/genres", title: "Song reviews by genre: Walternative, Windie, Wrythme & Blues, Wrock & Wroll, Wrap · Wackometer", desc: "Browse Wackometer song reviews and playlists by genre: alternative, indie, R&B, rock and rap, each scored from Wicked to Wack.", body }));
 }
 
 /* ---------- genre pages (/reviews/indie) ---------- */
@@ -138,28 +141,29 @@ export async function genrePage(req, env, g, ensureSchema) {
   const counts = await genreCounts(DB);
   const best = rank(rows).slice(0, 3);
   const body = `<article class="seoart rv-index">
-<p class="eyebrow"><a href="/reviews">Song reviews</a> · Genre</p>
-<h1>${esc(name)} song reviews</h1>
-<p class="lead">${rows.length ? `Every ${esc(name)} song and album we've weighed, from the lyrics to the hook to the production, scored from Wicked to Wack. You get a vote too.` : `No ${esc(name)} reviews yet. Send one our way below.`}</p>
-<nav class="rchips" aria-label="Genres"><a class="rchip" href="/reviews">All</a>${counts.map(([k, n, nm]) => `<a class="rchip${k === g ? " on" : ""}" href="/reviews/${k}"${k === g ? ' aria-current="page"' : ""}>${esc(nm)} <span class="hint">${n}</span></a>`).join("")}</nav>
+<p class="eyebrow"><a href="/reviews">Song reviews</a> · <a href="/genres">Genres</a></p>
+<section class="ghero" style="--gbg:${GENRE_INFO[g].bg};--gtint:${GENRE_INFO[g].tint}"><img src="/brand/genres/${g}.jpg" alt="${esc(name)}: Wacko as a ${esc(name)} fan" width="640" height="640">
+<div class="ghero-t"><h1>${esc(name)}</h1><p class="lead">${esc(GENRE_INFO[g].blurb)} ${rows.length ? `${rows.length} review${rows.length === 1 ? "" : "s"} so far, scored from Wicked to Wack.` : "Reviews land here as they go live."}</p>
+${playlistEmbed(GENRE_INFO[g].playlist, esc(name), 232)}</div></section>
+<nav class="rchips" aria-label="Genres"><a class="rchip" href="/reviews">All</a>${GENRE_KEYS.map((k) => { const c = counts.find(([x]) => x === k); return `<a class="rchip${k === g ? " on" : ""}" href="/reviews/${k}"${k === g ? ' aria-current="page"' : ""}>${esc(genreName(k))}${c ? ` <span class="hint">${c[1]}</span>` : ""}</a>`; }).join("")}</nav>
 ${best.length >= 3 ? `<section aria-labelledby="gbH"><h2 id="gbH">The best ${esc(name)} we've heard</h2><ol class="wl-list">${best.map(listItem).join("")}</ol></section>` : ""}
 ${rows.length ? `<h2>Latest ${esc(name)} reviews</h2><div class="rv-grid">${rows.slice(0, 120).map(card).join("")}</div>` : ""}
 ${keys.length ? `<p class="hint">Monthly lists: ${keys.map((k) => `<a href="/lists/${k}/${g}">${monthName(k)}</a>`).join(" · ")}</p>` : ""}
 <div class="ad-slot" hidden></div>
 ${submitHTML()}</article>`;
   const ld = { "@context": "https://schema.org", "@type": "CollectionPage", name: `${name} song reviews`, url: `${BASE}/reviews/${g}`, hasPart: rows.slice(0, 30).map((r) => ({ "@type": "Review", url: `${BASE}/reviews/${r.slug}`, name: `${r.artist}: ${r.title}` })) };
-  return html(shell({ active: "genres", path: `/reviews/${g}`, title: `${name} song reviews: new ${name} music, Wicked to Wack · Wackometer`, desc: `Honest reviews of new ${name} songs and albums (lyrics, hook, vocals, production) scored from Wicked to Wack, plus a crowd score you can vote on.`, body, ld, noindex: rows.length < MIN_INDEX }));
+  return html(shell({ active: "genres", path: `/reviews/${g}`, title: `${name}: ${name === "Wrap" ? "rap & hip-hop" : name === "Windie" ? "indie & pop" : name === "Walternative" ? "alternative" : name === "Wrock & Wroll" ? "rock" : "R&B & soul"} song reviews and playlist · Wackometer`, desc: `Honest reviews of new ${name} songs and albums (lyrics, hook, vocals, production) scored from Wicked to Wack, plus a crowd score you can vote on.`, body, ld, noindex: false }));
 }
 
 /* ---------- sitemap entries ---------- */
 export async function hubUrls(DB) {
   const rows = await liveReviews(DB), months = byMonth(rows), out = [];
-  if (rows.length) out.push(["/lists", "weekly", "0.7"], ["/genres", "weekly", "0.7"]);
+  out.push(["/genres", "weekly", "0.7"], ...GENRE_KEYS.map((g) => [`/reviews/${g}`, "weekly", "0.7"]));
+  if (rows.length) out.push(["/lists", "weekly", "0.7"]);
   for (const [k, list] of Object.entries(months)) {
     if (list.length >= MIN_INDEX) out.push([`/lists/${k}`, "weekly", "0.7"]);
     for (const [g, n] of monthGenres(list)) if (n >= MIN_INDEX) out.push([`/lists/${k}/${g}`, "weekly", "0.6"]);
   }
-  for (const [g, n] of await genreCounts(DB)) if (n >= MIN_INDEX) out.push([`/reviews/${g}`, "weekly", "0.7"]);
   return out;
 }
 

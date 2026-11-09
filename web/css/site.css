@@ -1250,3 +1250,20 @@ a.centry:hover .chw{color:var(--rust);text-decoration:underline}
 .cmore{display:inline-block;margin-top:10px;font-weight:700;color:var(--rust)!important}
 nav.cletters{background:none;border:0;box-shadow:none;border-radius:0;padding:6px 0;border-top:1px solid var(--paper-line);border-bottom:1px solid var(--paper-line)}
 header.rtop + .wrap{padding-top:28px}
+
+/* Five genres with their own Wacko art and playlists */
+.gtiles.g5{grid-template-columns:repeat(5,minmax(0,1fr))}
+.gtile.gart{padding:0;min-height:0;overflow:hidden;background:var(--gt);gap:0}
+.gtile.gart img{display:block;width:100%;height:auto;aspect-ratio:1}
+.gtile.gart .gt-n{position:absolute;top:10px;right:10px;background:#fff;color:var(--ink);font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;border:2px solid var(--ink)}
+@media (max-width:900px){.gtiles.g5{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:560px){.gtiles.g5{grid-template-columns:1fr 1fr}}
+.ghero{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:22px;align-items:center;background:var(--gtint);border:2px solid var(--ink);box-shadow:0 4px 0 var(--ink);border-radius:24px;padding:18px}
+.ghero img{width:100%;height:auto;border-radius:16px;display:block}
+.ghero-t{display:flex;flex-direction:column;gap:10px;min-width:0}
+.ghero h1{margin:0}
+.ghero .lead{color:var(--ink)}
+.sp-embed{border:0;border-radius:12px;display:block;width:100%}
+@media (max-width:700px){.ghero{grid-template-columns:1fr}.ghero img{max-width:280px;margin:0 auto}}
+.ftop10{display:flex;flex-direction:column;gap:8px}
+nav.rchips{background:none;border:0;padding:0;box-shadow:none;border-radius:0}
