@@ -150,7 +150,7 @@ if (form) {
     if (!cfg.pk) { $("payEl").innerHTML = '<span class="hint">Card payments switch on very soon.</span>'; payBtn.disabled = true; return; }
     await loadStripe();
     stripe = window.Stripe(cfg.pk);
-    elements = stripe.elements({ mode: "payment", amount: cfg.cents, currency: "usd",
+    elements = stripe.elements({ mode: "payment", amount: cfg.cents, currency: "usd", paymentMethodTypes: ["card", "link", "cashapp"],
       appearance: { theme: "night", variables: { colorPrimary: "#BCD83C", colorBackground: "#2A2F52", colorText: "#F4F5FF", colorTextSecondary: "#C9CCEB", colorDanger: "#FF8A80", borderRadius: "12px", fontFamily: 'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif', spacingUnit: "4px" },
         rules: { ".Input": { border: "2px solid #3A4070", boxShadow: "none" }, ".Input:focus": { border: "2px solid #BCD83C", boxShadow: "none" }, ".Tab": { border: "2px solid #3A4070" }, ".Tab--selected": { border: "2px solid #BCD83C" } } } });
     const pe = elements.create("payment", { layout: { type: "tabs" }, wallets: { applePay: "auto", googlePay: "auto" } });

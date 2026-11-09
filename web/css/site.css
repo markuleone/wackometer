@@ -955,7 +955,7 @@ a.rchip:hover{border-color:var(--ink)}
   .ar-head{grid-template-columns:1fr;gap:16px}.ar-art{max-width:220px}
 }
 /* ===== paid submission: form left, $10 card right ===== */
-.rv-submit .sub-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(300px,1fr);gap:26px;align-items:start}
+.rv-submit .sub-grid{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:28px;align-items:start}
 .sub-left{display:flex;flex-direction:column;gap:12px}.sub-left h2{margin:0}.sub-left p{margin:0}
 .sub-left label{display:flex;flex-direction:column;gap:4px;font-weight:600;font-size:14px}
 .sub-left input,.sub-left textarea{width:100%;background:var(--bg);border:2px solid var(--line);border-radius:12px;padding:10px 12px;font-weight:400;min-height:0}
@@ -976,7 +976,7 @@ a.rchip:hover{border-color:var(--ink)}
 .sub-done{display:flex;flex-direction:column;gap:8px;align-items:flex-start;background:var(--bile-wash);border:2px solid var(--bile);border-radius:20px;padding:20px}
 .sub-done b{font-family:var(--display);font-size:26px}.sub-done p{margin:0}
 @media (max-width:760px){.rv-submit .sub-grid{grid-template-columns:1fr;gap:18px}.paycard .price,.seoart .paycard .price{font-size:96px}}
-.rv-submit{max-width:1040px}.front .rv-submit{max-width:none}
+.rv-submit{max-width:1200px}.front .rv-submit{max-width:none}
 /* ===== ad spaces (hidden until an ad account is connected) ===== */
 .ad-slot{margin:10px 0;padding:8px 8px 10px;border:1px solid var(--line);border-radius:16px;background:var(--surface);text-align:center;min-height:120px}
 .ad-slot.is-note{min-height:0;border:0;padding:0;background:none}
@@ -985,7 +985,7 @@ a.rchip:hover{border-color:var(--ink)}
 .adnote button{border:0;background:none;font-size:22px;line-height:1;cursor:pointer;color:var(--muted);padding:4px 8px}
 .adnote a{color:var(--bile-ink);font-weight:600}
 /* ===== get reviewed + critics ===== */
-.gr{display:flex;flex-direction:column;gap:30px;max-width:1040px}
+.gr{display:flex;flex-direction:column;gap:30px;max-width:1200px}
 .gr section{display:flex;flex-direction:column;gap:12px}.gr section>h2{margin:0;font-size:28px}
 .gr-hero{display:flex;flex-direction:column;gap:12px;background:var(--bile-wash);border:2px solid var(--ink);box-shadow:0 6px 0 var(--ink);border-radius:28px;padding:clamp(20px,4vw,40px)}
 .gr-hero h1{margin:0;font-size:clamp(32px,5vw,58px);line-height:1;letter-spacing:-.02em;max-width:18ch}.gr-hero h1 em{font-style:normal;color:var(--bile-ink);display:inline-block;transform:rotate(-3deg)}
@@ -1015,3 +1015,7 @@ a.rchip:hover{border-color:var(--ink)}
 .cr-big{aspect-ratio:1;border-radius:50%;overflow:hidden;border:2px solid var(--ink);box-shadow:0 6px 0 var(--ink);background:var(--bile)}.cr-big .cr-initial{font-size:96px}
 .critic .rv-head p{margin:0}.critic .rv-head .btn{align-self:flex-start}
 @media (max-width:760px){.gr-perks{grid-template-columns:1fr}.gr-steps{grid-template-columns:1fr 1fr}.cr-head{grid-template-columns:1fr;gap:16px}.cr-big{max-width:160px}}
+.pay-top{display:flex;align-items:center;gap:8px 26px;flex-wrap:wrap}.pay-top .per{margin:0 0 6px}
+.paycard .pay-top .price{font-size:clamp(76px,7vw,104px)}
+.paycard{padding:18px 22px}
+@media (max-width:760px){.paycard .pay-top .price{font-size:84px}}

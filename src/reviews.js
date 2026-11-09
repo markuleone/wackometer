@@ -130,9 +130,9 @@ ${critics.length ? `<label>Who should review it?<select name="critic" id="subCri
 ${more ? '<a class="sub-more" href="/get-reviewed">What you get and who reviews it →</a>' : ""}
 </div>
 <div class="paycard" role="group" aria-labelledby="payH">
-<h3 id="payH" class="price" aria-label="10 dollars"><span class="cur" aria-hidden="true">$</span><span aria-hidden="true">10</span><span class="spark" aria-hidden="true">✦</span></h3>
-<p class="per">one song or album · one-time</p>
-<ul class="perks"><li>A guaranteed listen</li><li>Written feedback in 7 days</li><li>A shot at Certified Wicked</li></ul>
+<div class="pay-top"><h3 id="payH" class="price" aria-label="10 dollars"><span class="cur" aria-hidden="true">$</span><span aria-hidden="true">10</span><span class="spark" aria-hidden="true">✦</span></h3>
+<div><p class="per">one song or album · one-time</p>
+<ul class="perks"><li>A guaranteed listen</li><li>Written feedback in 7 days</li><li>A shot at Certified Wicked</li></ul></div></div>
 <div id="payEl" class="payel"><span class="hint">Loading the card form…</span></div>
 <button class="btn bile paybtn" type="submit" id="payBtn">Pay $10 &amp; send it</button>
 <span class="hint paynote" id="subNote" role="status">🔒 Secure payment by Stripe. Paying gets you heard, not a better score.</span>
@@ -527,7 +527,7 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
     const id = newId(), cents = Number(env.SUBMIT_PRICE_CENTS) || 1000;
     await DB.prepare("INSERT INTO review_requests (id,artist,link,email,note,user_id,critic,status,created_at) VALUES (?,?,?,?,?,?,?,'pending',?)").bind(id, artist, link, email, note || null, u.id, critic ? critic.slug : null, Date.now()).run();
     const pi = await stripe(env, "payment_intents", {
-      amount: cents, currency: "usd", "automatic_payment_methods[enabled]": "true", receipt_email: email,
+      amount: cents, currency: "usd", payment_method_types: ["card", "link", "cashapp"], receipt_email: email,
       description: `Wackometer: get your music weighed (${artist})${critic ? `, reviewed by ${critic.name}` : ""}`, statement_descriptor_suffix: "WACKOMETER",
       metadata: { kind: "review_submission", request: id, user: u.id },
     });
