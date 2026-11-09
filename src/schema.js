@@ -37,6 +37,8 @@ export const SCHEMA = [
 export const MIGRATIONS = [
   // staff added from the back office (owners live in ADMIN_EMAILS)
   "CREATE TABLE IF NOT EXISTS admins ( email TEXT PRIMARY KEY, added_by TEXT, created_at INTEGER NOT NULL )",
+  // instrumentals score Hook, Build & drop, Sound design, Groove, Replay instead of the song parts
+  "ALTER TABLE reviews ADD COLUMN instrumental INTEGER NOT NULL DEFAULT 0",
   // back office: who did what
   "CREATE TABLE IF NOT EXISTS admin_log ( id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, email TEXT, path TEXT NOT NULL, detail TEXT )",
   // per-review counters (views, shares, listens...) per day, never tied to a person

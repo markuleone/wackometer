@@ -104,12 +104,15 @@ function gaugeSVG(score) {
 }
 // The song breakdown: each part scored 0-100 like the overall (0 = Wicked). The overall is set by the critic, not averaged.
 export const PARTS = [["s_lyrics", "Lyrics"], ["s_melody", "Melody & hook"], ["s_vocals", "Vocals & delivery"], ["s_production", "Production"], ["s_replay", "Replay value"]];
+// Instrumentals use the same five columns with their own labels, in this order.
+export const PARTS_INST = [["s_melody", "Hook"], ["s_lyrics", "Build & drop"], ["s_production", "Sound design"], ["s_vocals", "Groove"], ["s_replay", "Replay value"]];
+const kindLabel = (r) => (r.kind === "album" ? "Album" : r.instrumental ? "Instrumental" : "Song");
 function breakdownHTML(r) {
-  const rated = PARTS.filter(([k]) => r[k] !== null && r[k] !== undefined);
+  const rated = (r.instrumental ? PARTS_INST : PARTS).filter(([k]) => r[k] !== null && r[k] !== undefined);
   if (!rated.length) return "";
   return `<section class="rv-break" aria-labelledby="brkH"><h2 id="brkH">The breakdown</h2><ul>${rated.map(([k, label]) => { const v = r[k], t = tierOf(v);
     return `<li><span class="bk-l">${label}</span><span class="bk-bar" aria-hidden="true"><i style="--w:${Math.max(4, 100 - v)}%;--tc:${TC[t]}"></i></span><span class="bk-v">${pill(t, `${TIERS[t].n} ${v}`)}</span></li>`; }).join("")}</ul>
-<p class="hint">Each part is scored from 0 (Wicked) to 100 (Wack). The overall Wackometer score is the critic's call on the whole song, not an average.</p></section>`;
+<p class="hint">Each part is scored from 0 (Wicked) to 100 (Wack). The overall Wackometer score is the critic's call on the whole ${r.kind === "album" ? "album" : r.instrumental ? "track" : "song"}, not an average.</p></section>`;
 }
 const pill = (t, label) => `<span class="rv-pill" style="--tc:${TC[t]};--to:${TEXT_ON[t]}">${esc(label)}</span>`;
 
@@ -124,7 +127,7 @@ function card(r) {
   const t = tierOf(r.score);
   return `<a class="rv-card" href="/reviews/${esc(r.slug)}">
 <span class="rv-cover">${coverOf(r) ? `<img src="${esc(coverOf(r))}" alt="" loading="lazy" width="300" height="300">` : `<span class="rv-nocover" aria-hidden="true">♪</span>`}${certified(r) ? '<span class="rv-cert">Certified Wicked</span>' : ""}</span>
-<span class="rv-meta">${pill(t, `${TIERS[t].n} · ${r.score}`)}<span class="rv-kind">${r.kind === "album" ? "Album" : "Song"}</span></span>
+<span class="rv-meta">${pill(t, `${TIERS[t].n} · ${r.score}`)}<span class="rv-kind">${kindLabel(r)}</span></span>
 <b class="rv-ct">${esc(r.title)}</b><span class="rv-ca">${esc(r.artist)}</span>
 <span class="rv-cv">${esc(r.verdict)}</span></a>`;
 }
@@ -210,7 +213,7 @@ ${SUB}
   const crowdLabel = crowd.n ? `${TIERS[crowd.tier].n} · ${crowd.avg}` : "No votes yet";
   const body = `${draft ? '<div class="warn"><b>Draft preview.</b><p>Only people with this link can see it. Publish it from <a href="/admin-reviews">the editor</a>.</p></div>' : ""}
 <article class="rv" data-slug="${esc(slug)}">
-<p class="eyebrow"><a href="/reviews">Song reviews</a> · ${r.kind === "album" ? "Album" : "Song"}${r.genre ? " · " + esc(r.genre) : ""}</p>
+<p class="eyebrow"><a href="/reviews">Song reviews</a> · ${kindLabel(r)}${r.genre ? " · " + esc(r.genre) : ""}</p>
 <div class="rv-hero">
 <div class="rv-art">${coverOf(r) ? `<img src="${esc(coverOf(r))}" alt="Cover art for ${esc(r.title)} by ${esc(r.artist)}" width="640" height="640">` : `<span class="rv-nocover" aria-hidden="true">♪</span>`}${certified(r) ? '<span class="rv-cert big">Certified Wicked</span>' : ""}</div>
 <div class="rv-head">
@@ -302,7 +305,7 @@ export async function frontPage(req, env, ensureSchema) {
     const t = tierOf(r.score), c = crowd[r.slug];
     return `<article class="fslide" id="fs${i}" aria-roledescription="slide" aria-label="${i + 1} of ${hero.length}"${coverOf(r) ? ` style="--bg:url('${esc(coverOf(r))}')"` : ""}>
 <a class="fcover" href="/reviews/${esc(r.slug)}" tabindex="-1" aria-hidden="true">${coverOf(r) ? `<img src="${esc(coverOf(r))}" alt="" width="640" height="640"${i ? ' loading="lazy"' : ""}>` : `<span class="rv-nocover">♪</span>`}${certified(r) ? '<span class="rv-cert big">Certified Wicked</span>' : ""}</a>
-<div class="ftext"><p class="eyebrow">${feat.length ? "Featured review" : "New review"} · ${r.kind === "album" ? "Album" : "Song"}${r.genre ? " · " + esc(r.genre) : ""}</p>
+<div class="ftext"><p class="eyebrow">${feat.length ? "Featured review" : "New review"} · ${kindLabel(r)}${r.genre ? " · " + esc(r.genre) : ""}</p>
 <h2><a href="/reviews/${esc(r.slug)}">${esc(r.title)}</a></h2><p class="fby">by ${esc(r.artist)}</p>
 <div class="fscores"><span class="fsc"><span class="rv-sl">Wackometer</span><span class="fnum">${r.score}</span>${pill(t, tierName(r))}</span><span class="fsc"><span class="rv-sl">The crowd</span>${c ? `<span class="fnum">${c.avg}</span>${pill(c.tier, TIERS[c.tier].n)}` : `<span class="hint">No votes yet.<br>Be the first.</span>`}</span></div>
 <p class="fverdict">“${esc(r.verdict)}”</p>
@@ -727,11 +730,11 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
       await DB.batch([
         DB.prepare("UPDATE reviews SET slug=?,kind=?,artist=?,title=?,genre=?,released=?,score=?,verdict=?,body=?,best_line=?,standouts=?,cover_url=?,spotify_url=?,youtube_url=?,apple_url=?,artist_url=?,artist_ig=?,reviewer=?,status=?,featured=?,submitted=?,updated_at=?,published_at=? WHERE slug=?").bind(slug, ...vals, t, published, prev.slug),
         DB.prepare("UPDATE review_votes SET slug=? WHERE slug=?").bind(slug, prev.slug),
-        DB.prepare(`UPDATE reviews SET ${PARTS.map(([k]) => k + "=?").join(",")}, request_id=? WHERE slug=?`).bind(...parts, requestId, slug),
+        DB.prepare(`UPDATE reviews SET ${PARTS.map(([k]) => k + "=?").join(",")}, request_id=?, instrumental=? WHERE slug=?`).bind(...parts, requestId, body.instrumental ? 1 : 0, slug),
       ]);
     } else {
       await DB.prepare("INSERT INTO reviews (slug,kind,artist,title,genre,released,score,verdict,body,best_line,standouts,cover_url,spotify_url,youtube_url,apple_url,artist_url,artist_ig,reviewer,status,featured,submitted,created_at,updated_at,published_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(slug, ...vals, t, t, published).run();
-      await DB.prepare(`UPDATE reviews SET ${PARTS.map(([k]) => k + "=?").join(",")}, request_id=? WHERE slug=?`).bind(...parts, requestId, slug).run();
+      await DB.prepare(`UPDATE reviews SET ${PARTS.map(([k]) => k + "=?").join(",")}, request_id=?, instrumental=? WHERE slug=?`).bind(...parts, requestId, body.instrumental ? 1 : 0, slug).run();
     }
     // First time a submitted song goes live: close the request and email the artist (once).
     let notified = null;
