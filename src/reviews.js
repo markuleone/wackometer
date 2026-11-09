@@ -67,16 +67,24 @@ export async function ensureCover(DB, r) {
 export async function importQueue(DB) {
   const t = Date.now();
   for (const b of QUEUE) {
-    const key = "scout:" + b.batch;
+    // A batch file can be revised (rev: 2, 3...): the new revision imports once and rewrites drafts from that batch nobody has touched yet.
+    const rev = Number(b.rev) > 1 ? Number(b.rev) : 0;
+    const key = "scout:" + b.batch + (rev ? ":r" + rev : "");
     if (await DB.prepare("SELECT 1 FROM settings WHERE k=?").bind(key).first()) continue;
     const s = (v, n) => String(v ?? "").trim().slice(0, n), u = (v) => safeUrl(s(v, 300)) || null;
-    const stmts = b.songs.filter((x) => x && x.artist && x.title).map((x, i) => {
+    const num = (v, d) => (v === undefined || v === null || v === "" || !isFinite(Number(v)) ? d : Math.max(0, Math.min(100, Math.round(Number(v)))));
+    const stmts = [];
+    b.songs.filter((x) => x && x.artist && x.title).forEach((x, i) => {
       const slug = slugify(`${s(x.artist, 120)} ${s(x.title, 160)}`);
-      return DB.prepare(`INSERT OR IGNORE INTO reviews (slug,kind,artist,title,genre,released,score,verdict,body,cover_url,spotify_url,youtube_url,apple_url,soundcloud_url,bandcamp_url,tidal_url,amazon_url,deezer_url,artist_ig,artist_url,status,assist,quick,scout_note,scout_batch,created_at,updated_at)
-        SELECT ?,?,?,?,?,?,50,?,?,?,?,?,?,?,?,?,?,?,?,?,'draft',1,1,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM reviews WHERE lower(trim(artist))=lower(?) AND lower(trim(title))=lower(?))`).bind(slug, x.kind === "album" ? "album" : "song", s(x.artist, 120), s(x.title, 160), s(x.genre, 60) || null, s(x.released, 40) || null,
-        s(x.verdict, 220), s(x.body, 1200) || null, u(x.cover_url), u(x.spotify_url), u(x.youtube_url), u(x.apple_url), u(x.soundcloud_url), u(x.bandcamp_url), u(x.tidal_url), u(x.amazon_url), u(x.deezer_url),
-        igHandle(x.artist_ig) || null, u(x.artist_url), s(x.scout_note, 600) || null, b.batch, t + i, t + i, s(x.artist, 120), s(x.title, 160));
-    }).filter((st) => st);
+      const kind = x.kind === "album" ? "album" : "song", score = num(x.score, 50), inst = x.instrumental ? 1 : 0;
+      const parts = ["s_lyrics", "s_melody", "s_vocals", "s_production", "s_replay"].map((k) => num(x[k], null));
+      stmts.push(DB.prepare(`INSERT OR IGNORE INTO reviews (slug,kind,artist,title,genre,released,score,s_lyrics,s_melody,s_vocals,s_production,s_replay,instrumental,verdict,body,cover_url,spotify_url,youtube_url,apple_url,soundcloud_url,bandcamp_url,tidal_url,amazon_url,deezer_url,artist_ig,artist_url,status,assist,quick,scout_note,scout_batch,created_at,updated_at)
+        SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'draft',1,1,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM reviews WHERE lower(trim(artist))=lower(?) AND lower(trim(title))=lower(?))`).bind(slug, kind, s(x.artist, 120), s(x.title, 160), s(x.genre, 60) || null, s(x.released, 40) || null,
+        score, ...parts, inst, s(x.verdict, 220), s(x.body, 1200) || null, u(x.cover_url), u(x.spotify_url), u(x.youtube_url), u(x.apple_url), u(x.soundcloud_url), u(x.bandcamp_url), u(x.tidal_url), u(x.amazon_url), u(x.deezer_url),
+        igHandle(x.artist_ig) || null, u(x.artist_url), s(x.scout_note, 600) || null, b.batch, t + i, t + i, s(x.artist, 120), s(x.title, 160)));
+      if (rev) stmts.push(DB.prepare(`UPDATE reviews SET kind=?, released=COALESCE(?, released), score=?, s_lyrics=?, s_melody=?, s_vocals=?, s_production=?, s_replay=?, instrumental=?, verdict=?, body=?, scout_note=COALESCE(?, scout_note)
+        WHERE lower(trim(artist))=lower(?) AND lower(trim(title))=lower(?) AND status='draft' AND assist=1 AND scout_batch=? AND updated_at=created_at`).bind(kind, s(x.released, 40) || null, score, ...parts, inst, s(x.verdict, 220), s(x.body, 1200) || null, s(x.scout_note, 600) || null, s(x.artist, 120), s(x.title, 160), b.batch));
+    });
     stmts.push(DB.prepare("INSERT OR IGNORE INTO settings (k,v) VALUES (?,?)").bind(key, String(b.songs.length)));
     await DB.batch(stmts);
   }
