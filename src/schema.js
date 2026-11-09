@@ -62,6 +62,11 @@ export const MIGRATIONS = [
   // critics: the people who write reviews; artists can pick one when they submit
   "CREATE TABLE IF NOT EXISTS critics ( slug TEXT PRIMARY KEY, name TEXT NOT NULL, tagline TEXT, bio TEXT, photo_url TEXT, genres TEXT, ig TEXT, link TEXT, active INTEGER NOT NULL DEFAULT 1, sort INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL )",
   "ALTER TABLE review_requests ADD COLUMN critic TEXT",
+  // First critics (Nov 2026). Runs once: the settings flag stops it from re-adding anyone removed later in the editor.
+  "INSERT OR IGNORE INTO critics (slug,name,tagline,active,sort,created_at) SELECT 'aaron-pino','Aaron Pino',NULL,1,1,1762650000000 WHERE NOT EXISTS (SELECT 1 FROM settings WHERE k='seed_critics_1')",
+  "INSERT OR IGNORE INTO critics (slug,name,tagline,active,sort,created_at) SELECT 'caleb-selga','Caleb Selga',NULL,1,2,1762650000000 WHERE NOT EXISTS (SELECT 1 FROM settings WHERE k='seed_critics_1')",
+  "INSERT OR IGNORE INTO critics (slug,name,tagline,active,sort,created_at) SELECT 'marku-leone','Marku Leone','Founder of Wackometer',1,3,1762650000000 WHERE NOT EXISTS (SELECT 1 FROM settings WHERE k='seed_critics_1')",
+  "INSERT OR IGNORE INTO settings (k,v) VALUES ('seed_critics_1','1')",
   // songs Marku asked to have queued for review (Nov 2026). OR IGNORE: runs once, never overwrites.
   "INSERT OR IGNORE INTO review_requests (id,artist,title,link,note,status,created_at) VALUES ('seed-gabi-015cc9b6dc','Air','Cherry Blossom Girl','https://open.spotify.com/search/Cherry%20Blossom%20Girl%20Air','From Gabi''s links. Title was cut off in the screenshot (\"Cherry Blossom\u2026\"). Cover looks like Air, double-check.','new',1762640000000)",
   "INSERT OR IGNORE INTO review_requests (id,artist,title,link,note,status,created_at) VALUES ('seed-gabi-565a7f044d','Louke\u2026','Snoopy','https://open.spotify.com/search/Snoopy%20Louke','From Gabi''s links. Artist name was cut off in the screenshot (\"Louke\u2026\"). Find the right artist.','new',1762640000001)",
