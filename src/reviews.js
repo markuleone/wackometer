@@ -14,7 +14,7 @@ const TEXT_ON = ["#1F2340", "#1F2340", "#1F2340", "#1F2340", "#1F2340"];
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...headers } });
 const bad = (msg, status = 400) => json({ error: msg }, status);
-const html = (body, status = 200, cache = "public, max-age=300") => new Response(body, { status, headers: { "content-type": "text/html; charset=utf-8", "cache-control": cache, "x-content-type-options": "nosniff", "referrer-policy": "strict-origin-when-cross-origin" } });
+const html = (body, status = 200, cache = "no-cache") => new Response(body, { status, headers: { "content-type": "text/html; charset=utf-8", "cache-control": cache, "x-content-type-options": "nosniff", "referrer-policy": "strict-origin-when-cross-origin" } });
 export const slugify = (s) => String(s || "").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80);
 const certified = (r) => tierOf(r.score) === 0;
 const tierName = (r) => (certified(r) ? "Certified Wicked" : TIERS[tierOf(r.score)].n);
@@ -233,7 +233,7 @@ ${SUB}
     { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [{ "@type": "ListItem", position: 1, name: "Lyric reviews", item: `${BASE}/reviews` }, { "@type": "ListItem", position: 2, name: `${r.artist}: ${r.title}`, item: `${BASE}/reviews/${slug}` }] }];
   const title = `${r.title} by ${r.artist}: lyric review (${tierName(r)}) · Wackometer`;
   const desc = `${tierName(r)} (${r.score}/100). ${r.verdict} Read the review of the songwriting on ${r.artist}'s ${r.kind === "album" ? "album" : "song"} “${r.title}” and cast your vote.`.slice(0, 300);
-  return html(shell({ active: "reviews", path: `/reviews/${slug}`, title, desc, image: r.cover_url || "", body, ld: draft ? null : ld, noindex: draft, data: JSON.stringify({ slug, artist: r.artist, title: r.title, kind: r.kind, score: r.score, tier: t, cert: certified(r), verdict: r.verdict, cover: !!r.cover_url, ig }) }), 200, draft ? "no-store" : "public, max-age=120");
+  return html(shell({ active: "reviews", path: `/reviews/${slug}`, title, desc, image: r.cover_url || "", body, ld: draft ? null : ld, noindex: draft, data: JSON.stringify({ slug, artist: r.artist, title: r.title, kind: r.kind, score: r.score, tier: t, cert: certified(r), verdict: r.verdict, cover: !!r.cover_url, ig }) }), 200, draft ? "no-store" : "no-cache");
 }
 
 /* ---------- front page (/) ---------- */
@@ -302,7 +302,7 @@ ${SUB}
     { "@context": "https://schema.org", "@type": "Organization", name: "Wackometer", url: BASE + "/", logo: BASE + "/favicon.svg" }];
   // Old links to the tools (wackometer.com/#weigh etc.) go to their new home before anything renders.
   const head = `<script>if(/^#(${OLD_TOOL_HASH})$/.test(location.hash)||/[?&](paid|signin|unsubscribed|deleted)=/.test(location.search))location.replace("/write"+location.search+location.hash)</script>`;
-  return html(shell({ path: "/", title: "Wackometer · Lyric reviews of new music, from Wicked to Wack", desc: "Honest reviews of the songwriting on new songs, albums and music videos, scored from Wicked to Wack, with a crowd score you vote on. Plus free tools to weigh your own lyrics.", image: "", body, ld, head, data: JSON.stringify({ front: true }) }), 200, "public, max-age=120");
+  return html(shell({ path: "/", title: "Wackometer · Lyric reviews of new music, from Wicked to Wack", desc: "Honest reviews of the songwriting on new songs, albums and music videos, scored from Wicked to Wack, with a crowd score you vote on. Plus free tools to weigh your own lyrics.", image: "", body, ld, head, data: JSON.stringify({ front: true }) }), 200, "no-cache");
 }
 
 /* ---------- artists: leaderboard (/artists) and one page per artist (/artists/<slug>) ---------- */
