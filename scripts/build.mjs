@@ -3,6 +3,7 @@
 // (site.<hash>.css, app.<hash>.js) so browsers can cache them for a year and still pick up every new deploy.
 // Hashed names, not ?v= tags: while a deploy rolls out, an old server answers "not found" for a new name
 // instead of serving the old file under the new tag, which the CDN would then cache for a year.
+import { siteHeader } from "../src/site-header.js";
 import { build } from "esbuild";
 import { createHash } from "node:crypto";
 import { gzipSync } from "node:zlib";
@@ -17,23 +18,24 @@ cpSync(SRC, OUT, { recursive: true });
 // Code splitting: app.js holds Weigh + the shell; each other tool becomes its own hashed chunk
 // that loads the first time it's opened.
 rmSync(`${OUT}/js`, { recursive: true, force: true });
-await build({ entryPoints: [`${SRC}/js/app.js`, `${SRC}/js/review.js`, `${SRC}/js/ads.js`], bundle: true, splitting: true, minify: true, format: "esm", target: ["es2020", "safari15"],
+await build({ entryPoints: [`${SRC}/js/app.js`, `${SRC}/js/review.js`, `${SRC}/js/ads.js`, `${SRC}/js/critic.js`], bundle: true, splitting: true, minify: true, format: "esm", target: ["es2020", "safari15"],
   outdir: `${OUT}/js`, entryNames: "[name]", chunkNames: "[name]-[hash]", legalComments: "none" });
 await build({ entryPoints: [`${SRC}/css/site.css`], minify: true, outfile: `${OUT}/css/site.css`, target: ["safari15", "chrome100", "firefox100"] });
 
 const hash = (f) => createHash("sha256").update(readFileSync(f)).digest("hex").slice(0, 10);
-const v = { css: hash(`${OUT}/css/site.css`), js: hash(`${OUT}/js/app.js`), review: hash(`${OUT}/js/review.js`), ads: hash(`${OUT}/js/ads.js`) };
+const v = { css: hash(`${OUT}/css/site.css`), js: hash(`${OUT}/js/app.js`), review: hash(`${OUT}/js/review.js`), ads: hash(`${OUT}/js/ads.js`), critic: hash(`${OUT}/js/critic.js`) };
 renameSync(`${OUT}/css/site.css`, `${OUT}/css/site.${v.css}.css`);
 renameSync(`${OUT}/js/app.js`, `${OUT}/js/app.${v.js}.js`);
 renameSync(`${OUT}/js/review.js`, `${OUT}/js/review.${v.review}.js`);
 renameSync(`${OUT}/js/ads.js`, `${OUT}/js/ads.${v.ads}.js`);
+renameSync(`${OUT}/js/critic.js`, `${OUT}/js/critic.${v.critic}.js`);
 const CSS = `/css/site.${v.css}.css`, JS = `/js/app.${v.js}.js`;
 const staticChunks = [...readFileSync(`${OUT}${JS}`, "utf8").matchAll(/import\{[^}]*\}from"\.\/([\w-]+\.js)"/g)].map((m) => m[1]);
 const preload = staticChunks.map((c) => `<link rel="modulepreload" href="/js/${c}">`).join("");
 for (const f of readdirSync(OUT)) {
   if (!f.endsWith(".html")) continue;
   const p = join(OUT, f);
-  let h = readFileSync(p, "utf8").replaceAll('href="/css/site.css"', `href="${CSS}"`).replaceAll('src="/js/app.js"', `src="${JS}"`);
+  let h = readFileSync(p, "utf8").replaceAll('href="/css/site.css"', `href="${CSS}"`).replaceAll('src="/js/app.js"', `src="${JS}"`).replaceAll('src="/js/critic.js"', `src="/js/critic.${v.critic}.js"`).replace("<!--SITE_HEADER-->", siteHeader());
   h = h.replace(`<script type="module" src="${JS}"></script>`, (m) => preload + m);
   h = h.replace(/\n\s+/g, "\n"); // trim indentation
   writeFileSync(p, h);

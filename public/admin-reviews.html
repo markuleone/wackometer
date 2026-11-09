@@ -1,12 +1,22 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Review editor · Wackometer</title><meta name="robots" content="noindex,nofollow"><link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/css/site.906c4f6b36.css">
+<link rel="stylesheet" href="/css/site.7e7b719d38.css">
 <style>
 body{margin:0}[hidden]{display:none!important}
-.doc{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
-.doc h1{font-family:var(--display);font-size:38px;margin:0}.doc h2{font-family:var(--display);font-size:21px;margin:14px 0 0}
-.back{font-family:var(--display);font-weight:600;text-decoration:none;color:var(--ink)}
+.doc{display:flex;flex-direction:column;gap:16px;padding-top:clamp(10px,2vh,22px)}
+.doc h2{font-family:var(--display);font-size:24px;margin:18px 0 0;scroll-margin-top:16px}
+.ed-hero{display:flex;flex-direction:column;gap:10px;background:var(--bile-wash);border:2px solid var(--ink);box-shadow:0 6px 0 var(--ink);border-radius:28px;padding:clamp(18px,3vw,30px)}
+.ed-hero h1{margin:0;font-family:var(--display);font-size:clamp(32px,4.4vw,52px);line-height:1;letter-spacing:-.02em}.ed-hero h1 em{font-style:normal;color:var(--bile-ink)}
+.ed-hero p{margin:0}.ed-hero .rchips{display:flex;flex-wrap:wrap;gap:6px;background:none;border:0;box-shadow:none;padding:0}
+.lc{background:#1F2340;color:#F4F5FF;border:2px solid var(--ink);box-shadow:0 5px 0 var(--ink);border-radius:20px;padding:14px 16px}
+.lc summary{cursor:pointer;font-family:var(--display);font-weight:700;font-size:17px}.lc[open]{display:flex;flex-direction:column;gap:10px}
+.lc .hint{color:#C9CCEB}.lc textarea{background:#2A2F52!important;color:#F4F5FF;border-color:#3A4070!important;min-height:150px}
+.lc-score{display:flex;align-items:center;gap:12px}.lc-num{font-family:var(--display);font-weight:700;font-size:44px;color:#BCD83C;line-height:1}
+.lc-metrics{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}.lc-metrics li{display:grid;grid-template-columns:170px 1fr 1.4fr;gap:12px;align-items:center;font-size:14px}
+.lc-lines{margin:0;padding-left:20px;font-style:italic}.lc p{margin:0}
+.lc .bk-bar{background:#3A4070}.lc .btn:not(.bile){color:#1F2340;background:#F4F5FF}
+@media (max-width:760px){.lc-metrics li{grid-template-columns:1fr}}
 .ed{display:grid;grid-template-columns:1fr 1fr;gap:12px 18px;background:var(--surface);border:2px solid var(--ink);box-shadow:0 5px 0 var(--ink);border-radius:22px;padding:18px}
 .ed label{display:flex;flex-direction:column;gap:4px;font-weight:600;font-size:14px}
 .ed .full{grid-column:1/-1}
@@ -26,13 +36,21 @@ body{margin:0}[hidden]{display:none!important}
 .it b{font-family:var(--display)}.it .row{gap:6px}
 .tag2{font-size:12px;font-weight:700;border-radius:999px;padding:2px 8px;background:var(--line)}.tag2.live{background:var(--bile);color:#1D2013}
 .req{background:var(--surface);border:2px solid var(--line);border-radius:16px;padding:10px 14px;display:flex;flex-direction:column;gap:4px}
-.req.done{opacity:.55}.req.paid{border-color:var(--bile)}
+.req.done{background:var(--bg);border-style:dashed}.req.paid{border-color:var(--bile)}
 .crf{box-shadow:none;border:0;padding:8px 0 0}
 .qadd{background:var(--surface);border:2px solid var(--line);border-radius:16px;padding:10px 14px}.qadd summary{cursor:pointer;font-family:var(--display);font-weight:700}.qadd[open]{display:flex;flex-direction:column;gap:8px}.qadd textarea{width:100%;min-height:110px;border:2px solid var(--line);border-radius:12px;padding:8px 10px;background:var(--bg)}
 @media (max-width:760px){.ed{grid-template-columns:1fr}}
 </style>
-</head><body><div class="wrap"><a class="back" href="/reviews">← Lyric reviews</a><div class="doc">
-<h1>Review editor</h1>
+</head><body><div class="wrap seo">
+<header class="rtop">
+<a class="logo" href="/" aria-label="Wackometer home"><span class="w">W</span>ackometer</a>
+<nav class="rnav" aria-label="Reviews"><a href="/reviews">Reviews</a><a href="/artists">Top artists</a><a href="/reviews?f=videos">Music videos</a><a href="/reviews?f=wicked">Certified Wicked</a><a href="/get-reviewed">Get reviewed</a></nav>
+<form class="rsearch" action="/reviews" role="search"><input type="search" name="q" value="" placeholder="Search artists and songs" aria-label="Search reviews" maxlength="80"></form>
+<div class="rcta"><a class="rbtn rb-w" href="/write#weigh" data-hub="write">✍️ <span class="l">Weigh my lyrics</span><span class="s">Weigh</span></a></div>
+</header>
+<main id="main"><div class="doc">
+<div class="ed-hero"><p class="eyebrow">Admin</p><h1>Review <em>editor</em></h1><p class="lead">Write reviews, work the queue, and manage critics.</p>
+<nav class="rchips" aria-label="Jump to"><a class="rchip" href="#ed">✍️ Write a review</a><a class="rchip" href="#queueH">📥 To review</a><a class="rchip" href="#critH">🎧 Critics</a><a class="rchip" href="#appH">📝 Applications</a><a class="rchip" href="#allH">📚 All reviews</a></nav></div>
 <p class="hint" id="err"></p>
 <div id="app" hidden>
 <form class="ed" id="ed" autocomplete="off">
@@ -53,6 +71,12 @@ body{margin:0}[hidden]{display:none!important}
 <label>Production<input type="number" min="0" max="100" id="fS_production" placeholder="—"></label>
 <label>Replay value<input type="number" min="0" max="100" id="fS_replay" placeholder="—"></label>
 </fieldset>
+<details class="full lc" id="lcBox"><summary>🔍 Lyric check: run the Wackometer on the lyrics</summary>
+<label for="lcText" class="hint">Paste the lyrics. They stay in your browser and are never saved or published.</label>
+<textarea id="lcText" placeholder="Paste a verse, a hook, or the whole song…"></textarea>
+<div class="row"><button class="btn bile" type="button" id="lcRun">Weigh the lyrics</button></div>
+<div id="lcOut" aria-live="polite"></div>
+</details>
 <label class="full">One-line verdict <span class="hint">Shows on cards, link previews and the share card. One sentence.</span><input id="fVerdict" maxlength="220" required placeholder="Every verse is a photograph. The hook is the only thing you've heard before."></label>
 <label class="full">The review <span class="hint">Blank line = new paragraph. Start a line with “&gt; ” for a quote. **bold** works.</span><textarea id="fBody" maxlength="12000"></textarea></label>
 <label class="full">Best line <span class="hint">One short lyric quote, 25 words max. Never paste full lyrics (copyright).</span><input id="fBest" maxlength="160"></label>
@@ -69,13 +93,13 @@ body{margin:0}[hidden]{display:none!important}
 <label>Status<select id="fStatus"><option value="draft">Draft (only you can see it)</option><option value="live">Live (public, in the sitemap)</option></select></label>
 <div class="row full"><button class="btn bile" type="submit" id="saveBtn">Save</button><a class="btn" id="viewBtn" target="_blank" hidden>View page</a><button class="btn" type="button" id="newBtn">New review</button><button class="btn quiet" type="button" id="delBtn" hidden>Delete</button><span class="hint" id="note" role="status"></span></div>
 </form>
-<h2>To review <span class="hint" id="reqCount"></span></h2>
+<h2 id="queueH">To review <span class="hint" id="reqCount"></span></h2>
 <p class="hint">Songs you've queued plus artist submissions from the “Want your music weighed?” form. Tap Start a review, then Fill in to grab the cover.</p>
 <details class="qadd"><summary>Add songs to the list</summary>
 <textarea id="qLines" rows="5" placeholder="One per line: Title - Artist, or paste a link&#10;Lauren - Men I Trust&#10;https://open.spotify.com/track/..."></textarea>
 <div class="row"><button class="btn" type="button" id="qGo">Add to the list</button><span class="hint" id="qNote" role="status"></span></div></details>
 <div class="list" id="reqs"></div>
-<h2>Critics <span class="hint">(people artists can pick on the Get reviewed page)</span></h2>
+<h2 id="critH">Critics <span class="hint">(people artists can pick on the Get reviewed page)</span></h2>
 <details class="qadd" id="crBox"><summary id="crSum">Add a critic</summary>
 <form class="ed crf" id="crForm" autocomplete="off">
 <label>Name<input id="cName" required maxlength="80" placeholder="Their artist or writer name"></label>
@@ -90,16 +114,17 @@ body{margin:0}[hidden]{display:none!important}
 <div class="row full"><button class="btn bile" type="submit">Save critic</button><button class="btn" type="button" id="cNew">New critic</button><button class="btn quiet" type="button" id="cDel" hidden>Remove</button><span class="hint" id="cNote" role="status"></span></div>
 </form></details>
 <div class="list" id="crList"></div>
-<h2>Critic applications <span class="hint" id="appCount"></span></h2>
+<h2 id="appH">Critic applications <span class="hint" id="appCount"></span></h2>
 <div class="list" id="apps"></div>
-<h2>All reviews</h2>
+<h2 id="allH">All reviews</h2>
 <div class="list" id="list"></div>
 </div>
-</div></div>
+</div></main></div>
+<script type="module" src="/js/critic.e4a2a790c9.js"></script>
 <script type="module">
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const TIERS = ["Wicked", "Well put", "Whatever", "Weird", "Wack"], TC = ["#3D8BFF", "#22C29B", "#A9A2DA", "#FF8A3D", "#A8C42E"], TO = ["#fff", "#1F2340", "#1F2340", "#1F2340", "#1F2340"];
+const TIERS = ["Wicked", "Well put", "Whatever", "Weird", "Wack"], TC = ["#3D8BFF", "#22C29B", "#A9A2DA", "#FF8A3D", "#A8C42E"], TO = ["#1F2340", "#1F2340", "#1F2340", "#1F2340", "#1F2340"];
 const tierOf = (s) => (s >= 80 ? 4 : s >= 60 ? 3 : s >= 40 ? 2 : s >= 20 ? 1 : 0);
 async function api(path, body) {
 const r = await fetch(path, body ? { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : {});

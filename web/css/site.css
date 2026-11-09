@@ -1032,3 +1032,12 @@ a.rchip:hover{border-color:var(--ink)}
 .bk-bar{height:14px;border-radius:999px;background:var(--line);overflow:hidden}.bk-bar i{display:block;height:100%;width:var(--w);background:var(--tc);border-radius:999px}
 .bk-v{text-align:right}
 @media (max-width:760px){.rv-break li{grid-template-columns:1fr auto;gap:4px 10px}.bk-bar{grid-column:1/-1;grid-row:2}}
+.paycard .was{text-decoration:line-through;color:#8A8FB8;margin-right:8px}
+.pro-deal{align-self:center;font-family:var(--display);font-weight:600;font-size:13.5px;color:#BCD83C!important;text-decoration:none}.pro-deal:hover{text-decoration:underline}.pro-deal b{color:#fff}
+/* tools header (/write) matches the site header: plain links, not a pill */
+@media (min-width:821px){
+  #groupNav{background:none;border:0;box-shadow:none;padding:0}
+  #groupNav button,#groupNav a{font-family:var(--display);font-weight:600;font-size:15px;color:var(--muted);padding:7px 12px;border-radius:999px}
+  #groupNav button[aria-current],#groupNav a[aria-current]{background:var(--bile-wash);color:var(--ink)}
+  #groupNav button:hover,#groupNav a:hover{color:var(--ink);background:var(--surface)}
+}

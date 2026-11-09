@@ -147,6 +147,13 @@ if (form) {
   const loadStripe = () => new Promise((res, rej) => { if (window.Stripe) return res(); const s = document.createElement("script"); s.src = "https://js.stripe.com/v3/"; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
   const setup = () => loading || (loading = (async () => {
     const cfg = await api("/api/reviews/pay-config");
+    // Wingman Pro members pay less: show their price on the card and the button.
+    const dollars = (c) => "$" + (c % 100 ? (c / 100).toFixed(2) : c / 100);
+    if (cfg.pro && cfg.cents < cfg.full) {
+      $("priceNum").textContent = String(cfg.cents % 100 ? (cfg.cents / 100).toFixed(2) : cfg.cents / 100); $("payH").setAttribute("aria-label", `${dollars(cfg.cents)}, your Pro price`);
+      $("priceWas").hidden = false; $("priceWas").textContent = dollars(cfg.full); $("priceTag").textContent = "your Pro price · one song or album";
+      payBtn.innerHTML = `Pay ${dollars(cfg.cents)} &amp; send it`; if ($("proDeal")) $("proDeal").hidden = true;
+    }
     if (!cfg.pk) { $("payEl").innerHTML = '<span class="hint">Card payments switch on very soon.</span>'; payBtn.disabled = true; return; }
     await loadStripe();
     stripe = window.Stripe(cfg.pk);

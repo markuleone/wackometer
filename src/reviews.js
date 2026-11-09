@@ -139,12 +139,13 @@ ${critics.length ? `<label>Who should review it?<select name="critic" id="subCri
 ${more ? '<a class="sub-more" href="/get-reviewed">What you get and who reviews it →</a>' : ""}
 </div>
 <div class="paycard" role="group" aria-labelledby="payH">
-<div class="pay-top"><h3 id="payH" class="price" aria-label="10 dollars"><span class="cur" aria-hidden="true">$</span><span aria-hidden="true">10</span><span class="spark" aria-hidden="true">✦</span></h3>
-<div><p class="per">one song or album · one-time</p>
+<div class="pay-top"><h3 id="payH" class="price" aria-label="10 dollars"><span class="cur" aria-hidden="true">$</span><span aria-hidden="true" id="priceNum">10</span><span class="spark" aria-hidden="true">✦</span></h3>
+<div><p class="per"><span class="was" id="priceWas" hidden>$10</span><span id="priceTag">one song or album · one-time</span></p>
 <ul class="perks"><li>A guaranteed listen</li><li>Written feedback in 7 days</li><li>A shot at Certified Wicked</li></ul></div></div>
 <div id="payEl" class="payel"><span class="hint">Loading the card form…</span></div>
 <button class="btn bile paybtn" type="submit" id="payBtn">Pay $10 &amp; send it</button>
 <span class="hint paynote" id="subNote" role="status">🔒 Secure payment by Stripe. Paying gets you heard, not a better score.</span>
+<a class="pro-deal" id="proDeal" href="/write#pro">Wingman Pro members pay <b>$7</b> →</a>
 </div>
 </form>
 <div class="sub-done" id="subDone" hidden tabindex="-1"><b>You're in. 🎧</b><p>Payment received. Your feedback lands in your inbox within 7 days, and Stripe is emailing your receipt now.</p><button class="btn" type="button" id="subAgain">Send another song</button></div>
@@ -447,6 +448,7 @@ ${submitHTML([], "", false)}
 <section aria-labelledby="faqH" class="gr-faq"><h2 id="faqH">Questions</h2>
 <details><summary>Does paying get me a better score?</summary><p>No. Paying gets you a guaranteed listen and written feedback. Scores are the critic's honest take, and reviews that came in through paid submissions say so on the page.</p></details>
 <details><summary>What if my song doesn't get a review page?</summary><p>You still get written feedback on your song within 7 days. Public pages are for songs the critic loves, which is what makes the badge worth having.</p></details>
+<details><summary>Is there a discount?</summary><p>Yes: <a href="/write#pro">Wingman Pro</a> members pay $7 per song instead of $10, on top of everything else Pro includes.</p></details>
 <details><summary>Who are the critics?</summary><p>Songwriters, rappers and producers we trust to be honest and specific. Want in? <a href="#apply">Apply below</a>.</p></details>
 <details><summary>What kind of music?</summary><p>Any genre. Songs, EPs and albums are all welcome, and instrumentals too (they just skip the lyrics score). For an album, tell us your favorite tracks in the notes.</p></details>
 <details><summary>Something else?</summary><p>Email <a href="mailto:hello@wackometer.com">hello@wackometer.com</a>.</p></details>
@@ -559,19 +561,21 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
     if (recent.c >= 10) return bad("That's plenty for today. Try again tomorrow.", 429);
     // Saved as "pending" until Stripe confirms the payment, so unpaid ones never reach the queue.
     // The page's card form then confirms this PaymentIntent in place (no redirect to a checkout page).
-    const id = newId(), cents = Number(env.SUBMIT_PRICE_CENTS) || 1000;
+    const pro = !!(u && u.pro_until && u.pro_until > Date.now());
+    const id = newId(), cents = pro ? Number(env.SUBMIT_PRICE_PRO_CENTS) || 700 : Number(env.SUBMIT_PRICE_CENTS) || 1000;
     await DB.prepare("INSERT INTO review_requests (id,artist,link,email,note,user_id,critic,status,created_at) VALUES (?,?,?,?,?,?,?,'pending',?)").bind(id, artist, link, email, note || null, u.id, critic ? critic.slug : null, Date.now()).run();
     const pi = await stripe(env, "payment_intents", {
       amount: cents, currency: "usd", payment_method_types: ["card", "link", "cashapp"], receipt_email: email,
       description: `Wackometer: get your music weighed (${artist})${critic ? `, reviewed by ${critic.name}` : ""}`, statement_descriptor_suffix: "WACKOMETER",
-      metadata: { kind: "review_submission", request: id, user: u.id },
+      metadata: { kind: "review_submission", request: id, user: u.id, pro: pro ? "1" : "0" },
     });
     await DB.prepare("UPDATE review_requests SET stripe_session=? WHERE id=?").bind(pi.id, id).run();
     return json({ id, clientSecret: pi.client_secret });
   }
   // What the card form needs to load. The publishable key is public by design.
   if (path === "/api/reviews/pay-config" && method === "GET") {
-    return json({ pk: env.STRIPE_SECRET_KEY && env.STRIPE_PUBLISHABLE_KEY ? env.STRIPE_PUBLISHABLE_KEY : "", cents: Number(env.SUBMIT_PRICE_CENTS) || 1000 });
+    const pro = !!(u && u.pro_until && u.pro_until > Date.now()), full = Number(env.SUBMIT_PRICE_CENTS) || 1000;
+    return json({ pk: env.STRIPE_SECRET_KEY && env.STRIPE_PUBLISHABLE_KEY ? env.STRIPE_PUBLISHABLE_KEY : "", cents: pro ? Number(env.SUBMIT_PRICE_PRO_CENTS) || 700 : full, full, pro });
   }
   // Right after paying, the page asks us to check with Stripe so the song joins the queue immediately (the webhook does the same).
   if (path === "/api/reviews/submit/confirm" && method === "POST") {
