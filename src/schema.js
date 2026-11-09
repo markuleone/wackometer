@@ -51,6 +51,15 @@ export const MIGRATIONS = [
   "ALTER TABLE reviews ADD COLUMN tidal_url TEXT",
   "ALTER TABLE reviews ADD COLUMN amazon_url TEXT",
   "ALTER TABLE reviews ADD COLUMN deezer_url TEXT",
+  // Lyrics, shown only with the rights holder's permission (lyrics_ok=1). lyrics_src says who gave it.
+  "ALTER TABLE reviews ADD COLUMN lyrics TEXT",
+  "ALTER TABLE reviews ADD COLUMN lyrics_ok INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE reviews ADD COLUMN lyrics_src TEXT",
+  "ALTER TABLE review_requests ADD COLUMN lyrics TEXT",
+  "ALTER TABLE review_requests ADD COLUMN lyrics_ok INTEGER NOT NULL DEFAULT 0",
+  // "Is this your song?" lyric claims from artists, approved on the review desk before anything goes up
+  "CREATE TABLE IF NOT EXISTS lyric_claims ( id TEXT PRIMARY KEY, slug TEXT NOT NULL, name TEXT NOT NULL, role TEXT, email TEXT NOT NULL, lyrics TEXT NOT NULL, user_id TEXT, status TEXT NOT NULL DEFAULT 'new', created_at INTEGER NOT NULL, decided_at INTEGER )",
+  "CREATE INDEX IF NOT EXISTS lyric_claims_status ON lyric_claims(status, created_at)",
   // Daily scout drafts: why the song was picked (desk only, never public) and which batch it came in
   "ALTER TABLE reviews ADD COLUMN scout_note TEXT",
   "ALTER TABLE reviews ADD COLUMN scout_batch TEXT",

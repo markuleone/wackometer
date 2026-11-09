@@ -1359,3 +1359,37 @@ header .util .albl{display:inline-block;max-width:14ch;min-width:5.2ch;overflow:
 .logo .w{animation:none}
 .logo .w img,.logo .w .wsvg{display:block;height:1.12em;width:auto;aspect-ratio:194/214}
 @media (hover:hover) and (prefers-reduced-motion:no-preference){.logo:hover .w{animation:wob .9s ease-in-out}}
+
+/* ===== lyrics on review pages ===== */
+.rv-lyrics{display:flex;flex-direction:column;gap:10px;border:2px solid var(--line);border-radius:24px;padding:clamp(16px,2.5vw,24px);background:#fff}
+.rv-lyrics.none{background:var(--surface)}
+.rv-lyrics h2{margin:0}.rv-lyrics .hint{margin:0}
+.lyr-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.lyr-score{font-family:var(--display);font-weight:700;font-size:14px;border:2px solid var(--ink);border-radius:999px;padding:4px 12px}
+.lyr-key{display:inline-flex;gap:6px;flex-wrap:wrap;margin-left:6px;vertical-align:middle}.lyr-key .ln{font-size:12px;padding:1px 8px}
+.lyr-notes{margin:0;padding-left:18px;font-size:15px;color:var(--muted)}.lyr-notes b{color:var(--ink)}
+.lyr-body{display:flex;flex-direction:column;gap:2px;font-size:17px;line-height:1.55}
+.lyr-body.clip{max-height:560px;overflow:hidden;-webkit-mask-image:linear-gradient(#000 85%,transparent);mask-image:linear-gradient(#000 85%,transparent)}
+.ln{display:block;border-radius:8px;padding:0 6px;margin:0 -6px}.ln.gap{height:12px}
+.ln.best{background:#DDEBFF;box-shadow:inset 3px 0 0 #3D8BFF}
+.ln.worn{background:#FFE7D6;box-shadow:inset 3px 0 0 #FF8A3D}
+.ln.lazy{background:#EEEBFA;box-shadow:inset 3px 0 0 #A9A2DA}
+.lyr-key .ln{display:inline-block;margin:0}
+.ln .lt{font-family:var(--display);font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-left:8px;white-space:nowrap}
+.lyr-more{align-self:flex-start}
+.lyr-foot{margin:4px 0 0}.lyr-foot .btn{text-decoration:none}
+.rv-claim{border-top:2px dashed var(--line);padding-top:10px}
+.rv-claim summary{cursor:pointer;font-family:var(--display);font-weight:700}
+.claim-f{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.claim-f label{display:flex;flex-direction:column;gap:4px;font-weight:600;font-size:14px}
+.claim-f input,.claim-f select,.claim-f textarea{font:inherit;border:2px solid var(--line);border-radius:12px;padding:9px 11px;background:var(--bg)}
+.claim-f .chk{flex-direction:row;align-items:flex-start;gap:8px;font-weight:500}.claim-f .chk input{width:18px;height:18px;margin-top:2px}
+.claim-f .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.claim-f .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+@media (max-width:600px){.claim-f .two{grid-template-columns:1fr}}
+.claim-done{margin:0}
+.sub-lyr{border:2px dashed var(--line);border-radius:14px;padding:10px 12px}
+.sub-lyr summary{cursor:pointer;font-weight:700}
+.sub-lyr textarea{width:100%;margin-top:8px}
+#subForm .sub-lyr label.chk{display:flex;flex-direction:row;gap:8px;align-items:flex-start;font-weight:500;font-size:14px;margin-top:8px}
+#subForm .sub-lyr label.chk input{width:18px;height:18px;min-height:0;flex:none;margin:2px 0 0;padding:0}

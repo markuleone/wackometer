@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Quick Weigh queue · Wackometer</title><meta name="robots" content="noindex,nofollow"><link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/css/site.62c4bcb37d.css">
+<link rel="stylesheet" href="/css/site.218e642c3c.css">
 <style>
 body{margin:0}[hidden]{display:none!important}
 .qw{display:flex;flex-direction:column;gap:18px;padding-top:clamp(10px,2vh,22px)}
@@ -38,6 +38,10 @@ kbd{font-family:var(--body);font-size:11px;border:1px solid var(--line);border-b
 .ni{display:grid;grid-template-columns:44px minmax(0,1fr);gap:10px;align-items:center;border:2px solid var(--line);border-radius:14px;padding:6px;background:#fff;cursor:pointer;text-align:left;font:inherit}
 .ni:hover{border-color:var(--ink)}.ni img,.ni .ph{width:44px;height:44px;border-radius:8px;object-fit:cover;background:var(--bile-wash)}
 .ni b{font-family:var(--display);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}.ni small{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.claims{background:#fff;border:2px solid var(--ink);box-shadow:0 6px 0 var(--ink);border-radius:28px;padding:clamp(16px,2.5vw,26px);display:flex;flex-direction:column;gap:12px}
+.claims h2{margin:0;font-family:var(--display)}.cl{border-top:2px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:8px}
+.cl textarea{width:100%;min-height:140px;border:2px solid var(--line);border-radius:12px;padding:9px 11px;font:inherit;line-height:1.5}
+.cl .who{font-size:14px;color:var(--muted)}.cl .who b{color:var(--ink)}
 .empty{background:#fff;border:2px solid var(--ink);box-shadow:0 6px 0 var(--ink);border-radius:28px;padding:28px;text-align:center}
 .empty h2{font-family:var(--display);margin:0 0 6px}
 @media (max-width:860px){.card{grid-template-columns:1fr}.qw-hero{grid-template-columns:1fr}.two{grid-template-columns:1fr}}
@@ -57,6 +61,8 @@ kbd{font-family:var(--body);font-size:11px;border:1px solid var(--line);border-b
 <div class="goal" id="goal"></div>
 </div>
 <p class="hint" id="err"></p>
+<section class="claims" id="claims" hidden aria-labelledby="clH"><h2 id="clH">✍️ Lyrics to approve</h2>
+<p class="hint">Artists sent these from their review pages. Check it's really them (the email and name should match the artist), fix any typos, then approve.</p><div id="claimList"></div></section>
 <div id="app" hidden>
 <div class="card" id="card" hidden>
 <div class="left">
@@ -188,7 +194,22 @@ if (e.key === "l" || e.key === "L") $("later").click();
 else if (e.key === "s" || e.key === "S") $("skip").click();
 else if (e.key === "Enter") $("form").requestSubmit();
 });
+async function loadClaims() {
+try {
+const { claims } = await api("/api/reviews-admin/claims");
+$("claims").hidden = !claims.length;
+$("claimList").innerHTML = claims.map((c) => `<div class="cl" data-id="${esc(c.id)}"><div><b>${esc(c.title || c.slug)}</b> by ${esc(c.artist || "")} · <a href="/reviews/${esc(c.slug)}" target="_blank">review ↗</a></div>
+<div class="who">From <b>${esc(c.name)}</b>${c.role ? ` (${esc(c.role)})` : ""} · ${esc(c.email)} · ${new Date(c.created_at).toLocaleString()}${c.current ? " · <b>replaces the lyrics already on the page</b>" : ""}</div>
+<textarea>${esc(c.lyrics)}</textarea><div class="acts"><button class="btn bile" data-a="approve">Approve and post</button><button class="btn quiet" data-a="reject">Reject</button><span class="hint" role="status"></span></div></div>`).join("");
+$("claimList").querySelectorAll(".cl").forEach((el) => el.querySelectorAll("button").forEach((b) => (b.onclick = async () => {
+const st = el.querySelector("[role=status]"); b.disabled = true; st.textContent = "Saving…";
+try { await api("/api/reviews-admin/claim", { id: el.dataset.id, action: b.dataset.a, lyrics: el.querySelector("textarea").value }); el.remove(); if (!$("claimList").children.length) $("claims").hidden = true; }
+catch (e) { st.textContent = e.message; b.disabled = false; }
+})));
+} catch (e) { $("claims").hidden = true; } // critics don't see claims
+}
 (async () => {
+loadClaims();
 try {
 D = await api("/api/reviews-admin/quick"); Q = D.queue; $("app").hidden = false;
 if (D.role === "critic") $("byRow").hidden = true;

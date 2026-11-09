@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Review editor · Wackometer</title><meta name="robots" content="noindex,nofollow"><link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/css/site.62c4bcb37d.css">
+<link rel="stylesheet" href="/css/site.218e642c3c.css">
 <style>
 body{margin:0}[hidden]{display:none!important}
 .doc{display:flex;flex-direction:column;gap:16px;padding-top:clamp(10px,2vh,22px)}
@@ -139,6 +139,9 @@ body{margin:0}[hidden]{display:none!important}
 <div id="lcOut" aria-live="polite"></div>
 </details>
 <label class="full">One-line verdict <span class="hint">Shows on cards, link previews and the share card. One sentence.</span><input id="fVerdict" maxlength="220" required placeholder="Every verse is a photograph. The hook is the only thing you've heard before."></label>
+<label class="full">Lyrics <span class="hint">(only shown with the artist's permission; the meter marks the best line and worn-out phrases on the page)</span><textarea id="fLyrics" maxlength="8000" rows="6"></textarea></label>
+<label class="chk full"><input type="checkbox" id="fLyricsOk"> The artist (or their team) gave permission to show these lyrics</label>
+<label class="full">Lyrics shared by <span class="hint">(e.g. “the artist”, “Jane Doe (manager)”)</span><input id="fLyricsSrc" maxlength="120"></label>
 <label class="full">The review <span class="hint">Blank line = new paragraph. Start a line with “&gt; ” for a quote. **bold** works.</span><textarea id="fBody" maxlength="12000"></textarea></label>
 <label class="full">Best line <span class="hint">One short lyric quote, 25 words max. Never paste full lyrics (copyright).</span><input id="fBest" maxlength="160"></label>
 <label class="full" id="standRow">Standout tracks <span class="hint">(albums, comma separated)</span><input id="fStand" maxlength="600"></label>
@@ -236,7 +239,7 @@ async function api(path, body) {
 const r = await fetch(path, body ? { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : {});
 const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || "Something went wrong."); return d;
 }
-const F = { soundcloud_url: "fSoundcloud", bandcamp_url: "fBandcamp", tidal_url: "fTidal", amazon_url: "fAmazon", deezer_url: "fDeezer", spotify_url: "fSpotify", artist: "fArtist", title: "fTitle", kind: "fKind", genre: "fGenre", released: "fReleased", reviewer: "fReviewer", s_lyrics: "fS_lyrics", s_melody: "fS_melody", s_vocals: "fS_vocals", s_production: "fS_production", s_replay: "fS_replay", score: "fScore", verdict: "fVerdict", body: "fBody", best_line: "fBest", standouts: "fStand", artist_ig: "fIg", artist_url: "fArtistUrl", apple_url: "fApple", youtube_url: "fYoutube", cover_url: "fCover", slug: "fSlug", status: "fStatus" };
+const F = { lyrics: "fLyrics", lyrics_src: "fLyricsSrc", soundcloud_url: "fSoundcloud", bandcamp_url: "fBandcamp", tidal_url: "fTidal", amazon_url: "fAmazon", deezer_url: "fDeezer", spotify_url: "fSpotify", artist: "fArtist", title: "fTitle", kind: "fKind", genre: "fGenre", released: "fReleased", reviewer: "fReviewer", s_lyrics: "fS_lyrics", s_melody: "fS_melody", s_vocals: "fS_vocals", s_production: "fS_production", s_replay: "fS_replay", score: "fScore", verdict: "fVerdict", body: "fBody", best_line: "fBest", standouts: "fStand", artist_ig: "fIg", artist_url: "fArtistUrl", apple_url: "fApple", youtube_url: "fYoutube", cover_url: "fCover", slug: "fSlug", status: "fStatus" };
 let DATA = { reviews: [], requests: [] }, original = null, startedFrom = null, ROLE = "admin";
 // Shrink a picture in the browser (longest side 800px, JPEG) and upload it. Returns its new URL.
 async function upload(file) {
@@ -264,7 +267,7 @@ function showCover() { const u = $("fCover").value.trim(); $("coverPrev").hidden
 function fill(r) {
 original = r ? r.slug : null;
 for (const [k, id] of Object.entries(F)) $(id).value = r ? (r[k] ?? "") : k === "score" ? 15 : k === "kind" ? "song" : k === "status" ? "draft" : "";
-$("fFeatured").checked = !!(r && r.featured); $("fSubmitted").checked = !!(r && r.submitted); $("fInst").checked = !!(r && r.instrumental); $("fAi").checked = !!(r && r.ai_made); $("fBig").checked = !!(r && r.big); $("fQuick").checked = !!(r && r.quick); relabel();
+$("fFeatured").checked = !!(r && r.featured); $("fSubmitted").checked = !!(r && r.submitted); $("fInst").checked = !!(r && r.instrumental); $("fAi").checked = !!(r && r.ai_made); $("fBig").checked = !!(r && r.big); $("fLyricsOk").checked = !!(r && r.lyrics_ok); $("fQuick").checked = !!(r && r.quick); relabel();
 $("ogBox").hidden = !(r && r.og_url); if (r && r.og_url) $("ogPrev").src = r.og_url.replace(/^https:\/\/wackometer\.com/, "");
 $("assistBox").hidden = !(r && r.assist); $("fListened").checked = false;
 $("delBtn").hidden = !r || ROLE !== "admin"; $("viewBtn").hidden = !r; $("tell").hidden = true;
@@ -478,7 +481,7 @@ showCover(); $("note").textContent = d.spotify ? "Filled in. Spotify doesn't sha
 $("ed").onsubmit = async (e) => {
 e.preventDefault();
 if (!$("fCover").value.trim() && $("fArtist").value.trim() && $("fTitle").value.trim()) { const f = await findCover($("fArtist").value, $("fTitle").value, $("fKind").value); if (f) { $("fCover").value = f.cover; if (!$("fApple").value) $("fApple").value = f.apple_url; showCover(); } }
-const body = { original, instrumental: $("fInst").checked, ai_made: $("fAi").checked, big: $("fBig").checked, quick: $("fQuick").checked, featured: $("fFeatured").checked, submitted: $("fSubmitted").checked, request_id: startedFrom, listened: $("fListened").checked }; for (const [k, id] of Object.entries(F)) body[k] = $(id).value;
+const body = { original, instrumental: $("fInst").checked, ai_made: $("fAi").checked, big: $("fBig").checked, lyrics_ok: $("fLyricsOk").checked, quick: $("fQuick").checked, featured: $("fFeatured").checked, submitted: $("fSubmitted").checked, request_id: startedFrom, listened: $("fListened").checked }; for (const [k, id] of Object.entries(F)) body[k] = $(id).value;
 $("saveBtn").disabled = true; $("note").textContent = "Saving…";
 try {
 const r = await api("/api/reviews-admin/save", body);

@@ -39,6 +39,19 @@ if (acct && !IS_BOT) api("/api/me").then((me) => {
 // Header buttons and front-page cards that lead to the writing tools or the plugin.
 document.querySelectorAll("[data-hub]").forEach((el) => el.addEventListener("click", () => track("hub_" + el.dataset.hub)));
 
+/* ---------- lyrics: show-all toggle and the "Is this your song?" claim form ---------- */
+{
+  const lb = $("lyrBody"), more = $("lyrMore");
+  if (lb && more && lb.scrollHeight > 640) { lb.classList.add("clip"); more.hidden = false; more.onclick = () => { lb.classList.remove("clip"); more.hidden = true; }; }
+  document.querySelectorAll(".claim-f").forEach((f) => (f.onsubmit = async (e) => {
+    e.preventDefault();
+    const d = Object.fromEntries(new FormData(f)), note = f.querySelector("[role=status]"), btn = f.querySelector("button");
+    btn.disabled = true; note.textContent = "Sending…";
+    try { await api("/api/reviews/lyrics-claim", { body: { ...d, slug: f.dataset.slug } }); f.innerHTML = '<p class="claim-done"><b>Got it, thank you. 🎧</b> We check every request, then the lyrics go up on this page with the meter\'s take.</p>'; track("lyrics_claim"); }
+    catch (err) { note.textContent = err.message; btn.disabled = false; }
+  }));
+}
+
 /* ---------- play buttons on cards: a mini player that opens right on the page ---------- */
 const PH = { yt: 0, sp: 152, sc: 166, am: 175 };
 function openPlayer(p) {

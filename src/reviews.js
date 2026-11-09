@@ -6,7 +6,7 @@
 //   /api/reviews-admin/...  the editor at /admin-reviews (admins only)
 import QUEUE from "./queue-data.js";
 import { adsenseTag } from "./ads-tag.js";
-import { TIERS, tierOf, MID } from "../web/js/score.js";
+import { TIERS, tierOf, MID, analyze, bestLine, words as lyricWords, METRICS } from "../web/js/score.js";
 import META from "./build-meta.js";
 import { siteHeader, siteFooterLinks } from "./site-header.js";
 import { CFG, money } from "./settings.js";
@@ -238,6 +238,48 @@ export function ctaHTML(heading = "") {
 <a class="fp fp-work" href="/write#workout" data-hub="workout"><span class="fp-char" data-tier="2" aria-hidden="true"></span><span class="hey">🏋️ Practice · Free</span><b>Write sharper.</b><span>Quick lessons on rhyme, imagery and flow, plus freestyle drills on a beat.</span><span class="fpgo">Start a Workout <span aria-hidden="true">→</span></span></a>
 </section>`;
 }
+// Lyrics: only when the rights holder said yes. The meter reads the words on the server, so the page
+// (and Google) gets the lyric score and the marked lines without any script.
+function lyricsHTML(r, draft) {
+  const genius = `https://genius.com/search?q=${encodeURIComponent(`${String(r.artist || "").split(/,| x | feat/i)[0]} ${r.title}`)}`;
+  if (!(r.lyrics && r.lyrics_ok)) {
+    if (draft || r.big || r.instrumental) return "";
+    return `<section class="rv-lyrics none" aria-labelledby="lyrH"><h2 id="lyrH">Lyrics</h2>
+<p class="hint">We only post lyrics the artist shares with us. <a href="${esc(genius)}" target="_blank" rel="noopener nofollow">Look for them on Genius ↗</a></p>
+${claimFormHTML(r, false)}</section>`;
+  }
+  const text = String(r.lyrics).replace(/\r/g, "").trim(), a = analyze(text), best = bestLine(text), sc = Math.round(a.raw), lt = tierOf(sc);
+  const worn = a.found.map((f) => f[0]); let ri = -1;
+  const body = text.split("\n").map((l) => {
+    const s = l.trim(); if (!s) return '<span class="ln gap" aria-hidden="true"></span>';
+    ri++; const low = " " + lyricWords(s).join(" ") + " ";
+    const kind = best && ri === best.i ? "best" : worn.some((c) => low.includes(" " + c + " ")) ? "worn" : a.lazyLines.has(ri) ? "lazy" : "";
+    const tag = { best: "✨ best line", worn: "worn-out phrase", lazy: "easy rhyme" }[kind];
+    return `<span class="ln${kind ? " " + kind : ""}">${esc(s)}${tag ? `<span class="lt">${tag}</span>` : ""}</span>`;
+  }).join("");
+  const top = METRICS.map((m) => [m, a.vals[m.k]]).sort((x, y) => y[1] - x[1]).slice(0, 2).filter(([, v]) => v >= 25);
+  return `<section class="rv-lyrics" aria-labelledby="lyrH"><div class="lyr-head"><h2 id="lyrH">Lyrics</h2>
+<span class="lyr-score bg-t${lt}" title="The meter's read on the words alone">Words alone: ${TIERS[lt].n} ${sc}</span></div>
+<p class="hint">Shared by ${esc(r.lyrics_src || "the artist")} with permission. The meter reads the words only; the score up top weighs the whole song.
+<span class="lyr-key"><span class="ln best">best line</span> <span class="ln worn">worn-out phrase</span> <span class="ln lazy">easy rhyme</span></span></p>
+${top.length ? `<ul class="lyr-notes">${top.map(([m]) => `<li><b>${esc(m.n)}:</b> ${esc(a.notes[m.k])}</li>`).join("")}</ul>` : ""}
+<div class="lyr-body" id="lyrBody">${body}</div>
+<button type="button" class="btn lyr-more" id="lyrMore" hidden>Show all lyrics</button>
+<p class="lyr-foot"><a class="btn" href="/write#weigh">⚖️ Weigh your own lyrics</a></p>
+${claimFormHTML(r, true)}</section>`;
+}
+function claimFormHTML(r, has) {
+  return `<details class="rv-claim"><summary>${has ? "Spot a mistake? Send the corrected lyrics" : "✍️ Is this your song? Add the lyrics"}</summary>
+<form class="claim-f" data-slug="${esc(r.slug)}">
+<p class="hint">For the artist or their team. We check every request before anything goes up${has ? "" : ", then the meter marks your best line on the page"}.</p>
+<div class="two"><label>Your name<input name="name" required maxlength="80" autocomplete="name"></label>
+<label>You are<select name="role"><option>the artist</option><option>in the band</option><option>a songwriter on it</option><option>their manager or label</option></select></label></div>
+<label>Email <span class="hint">(so we can confirm it's you; never shown)</span><input name="email" type="email" required maxlength="120" autocomplete="email"></label>
+<label>Lyrics<textarea name="lyrics" rows="8" required maxlength="8000"></textarea></label>
+<label class="chk"><input type="checkbox" name="ok" value="1" required> I wrote this song or have the right to share its lyrics, and Wackometer can show them on this page.</label>
+<div class="row"><button class="btn bile" type="submit">Send the lyrics</button><span class="hint" role="status"></span></div>
+</form></details>`;
+}
 // On every review: weigh your own verse against this song, or go train.
 function yourTurnHTML(r, t) {
   return `<section class="rv-turn" aria-labelledby="turnH"><span class="rv-char" data-tier="${t === 0 ? 1 : 0}" aria-hidden="true"></span><div><h2 id="turnH">Your turn</h2>
@@ -257,6 +299,11 @@ function submitHTML(critics = [], picked = "", more = true) {
 <label>Your email <span class="hint">(your feedback goes here)</span><input name="email" type="email" required maxlength="120" autocomplete="email"></label>
 ${critics.length ? `<label>Who should review it?<select name="critic" id="subCritic"><option value="">Any critic (fastest)</option>${opts}</select></label>` : ""}
 <label>Anything we should know? <span class="hint">(optional)</span><textarea name="note" rows="3" maxlength="600"></textarea></label>
+<details class="sub-lyr"><summary>✍️ Add your lyrics <span class="hint">(optional, recommended)</span></summary>
+<p class="hint">They go on your review page with the meter's take: your best line and any worn-out phrases, marked. Most underground songs have no lyrics anywhere online, so yours can show up in searches.</p>
+<label class="sr" for="subLyrics">Lyrics</label><textarea id="subLyrics" name="lyrics" rows="6" maxlength="8000" placeholder="Paste the lyrics"></textarea>
+<label class="chk"><input type="checkbox" name="lyrics_ok" value="1"> I wrote these lyrics or have the right to share them, and Wackometer can show them on my review.</label>
+</details>
 ${more ? '<a class="sub-more" href="/get-reviewed">What you get and who reviews it →</a>' : ""}
 </div>
 <div class="paycard" role="group" aria-labelledby="payH">
@@ -348,6 +395,7 @@ ${r.submitted ? '<p class="hint rv-paid">💵 The artist sent this in through pa
 <p class="hint rv-sig">Reviewed by ${(() => { const c = critics.find((x) => x.name.toLowerCase() === String(r.reviewer || "").trim().toLowerCase()); return c ? `<a href="/critics/${esc(c.slug)}">${esc(c.name)}</a>` : esc(r.reviewer || "Wackometer"); })()} · <time datetime="${date.toISOString().slice(0, 10)}">${date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" })}</time></p>
 </div>
 ${breakdownHTML(r)}
+${lyricsHTML(r, draft)}
 ${draft ? "" : yourTurnHTML(r, t)}
 <section class="rv-vote" aria-labelledby="voteH"><h2 id="voteH">Your call: how's the song?</h2>
 <div class="rv-tiers" role="group" aria-label="Vote on the song">${TIERS.map((T, i) => `<button type="button" class="rv-t" data-t="${i}" style="--tc:${TC[i]};--to:${TEXT_ON[i]}" aria-pressed="false">${esc(T.n)}</button>`).join("")}</div>
@@ -702,6 +750,8 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
     if (!artist) return bad("Add the artist name.");
     if (!link) return bad("Add a link that starts with https://");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return bad("Add your email so we can send your feedback.");
+    const lyrics = String(body.lyrics || "").replace(/\r/g, "").trim().slice(0, 8000), lyricsOk = lyrics && (body.lyrics_ok === true || body.lyrics_ok === "1" || body.lyrics_ok === "on");
+    if (lyrics && !lyricsOk) return bad("Tick the box that lets us show your lyrics, or leave the lyrics empty.");
     const criticSlug = String(body.critic || "").slice(0, 80);
     const critic = criticSlug ? await DB.prepare("SELECT slug,name FROM critics WHERE slug=? AND active=1").bind(criticSlug).first() : null;
     if (!env.STRIPE_SECRET_KEY) return bad("Paid submissions open very soon. Check back in a day or two.", 503);
@@ -718,6 +768,7 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
       metadata: { kind: "review_submission", request: id, user: u.id, pro: pro ? "1" : "0" },
     });
     await DB.prepare("UPDATE review_requests SET stripe_session=? WHERE id=?").bind(pi.id, id).run();
+    if (lyrics) await DB.prepare("UPDATE review_requests SET lyrics=?, lyrics_ok=1 WHERE id=?").bind(lyrics, id).run();
     return json({ id, clientSecret: pi.client_secret });
   }
   // What the card form needs to load. The publishable key is public by design.
@@ -738,6 +789,22 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
     return json({ ok: true });
   }
 
+  // "Is this your song?": an artist (or their team) sends lyrics for a review. Held for approval on the desk.
+  if (path === "/api/reviews/lyrics-claim" && method === "POST") {
+    const slug = String(body.slug || "").slice(0, 160), name = String(body.name || "").trim().slice(0, 80), role = String(body.role || "").slice(0, 40);
+    const email = String(body.email || "").trim().toLowerCase().slice(0, 120), lyrics = String(body.lyrics || "").replace(/\r/g, "").trim().slice(0, 8000);
+    const r = await DB.prepare("SELECT slug,big FROM reviews WHERE slug=? AND status='live'").bind(slug).first();
+    if (!r) return bad("That review isn't live.", 404);
+    if (!name) return bad("Add your name.");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return bad("Add your email so we can confirm it's you.");
+    if (lyrics.length < 20) return bad("Paste the lyrics.");
+    if (!(body.ok === true || body.ok === "1" || body.ok === "on")) return bad("Tick the permission box so we can show them.");
+    const recent = await DB.prepare("SELECT COUNT(*) c FROM lyric_claims WHERE user_id=? AND created_at>?").bind(u.id, Date.now() - 86400000).first();
+    if (recent.c >= 5) return bad("That's plenty for today. Try again tomorrow.", 429);
+    await DB.prepare("INSERT INTO lyric_claims (id,slug,name,role,email,lyrics,user_id,created_at) VALUES (?,?,?,?,?,?,?,?)").bind(newId(), slug, name, role || null, email, lyrics, u.id, Date.now()).run();
+    return json({ ok: true });
+  }
+
   if (!path.startsWith("/api/reviews-admin/")) return null;
   // Admins can do everything. A critic (signed in with the email on their critic profile) can write and edit
   // their own reviews, pick up unclaimed drafts, upload pictures and edit their own profile. Nothing else.
@@ -746,6 +813,23 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
     critic = u && u.email ? await DB.prepare("SELECT * FROM critics WHERE lower(email)=? AND active=1").bind(u.email.toLowerCase()).first() : null;
     if (!critic) return bad(u && u.email ? `You're signed in as ${u.email}, which isn't an admin or critic email. Ask Wackometer to add it to your critic profile.` : "Sign in first: admins and critics only.", 403);
     if (!["list", "lookup", "save", "upload", "me-save", "request", "og"].includes(path.slice(19))) return bad("Only admins can do that.", 403);
+  }
+  if (path === "/api/reviews-admin/claims" && method === "GET") {
+    const claims = (await DB.prepare("SELECT c.*, r.title, r.artist, r.lyrics AS current FROM lyric_claims c LEFT JOIN reviews r ON r.slug=c.slug WHERE c.status='new' ORDER BY c.created_at ASC LIMIT 50").all()).results;
+    return json({ claims });
+  }
+  if (path === "/api/reviews-admin/claim" && method === "POST") {
+    const c = await DB.prepare("SELECT * FROM lyric_claims WHERE id=?").bind(String(body.id || "")).first();
+    if (!c || c.status !== "new") return bad("That claim was already handled.", 404);
+    if (body.action === "approve") {
+      const lyrics = String(body.lyrics || c.lyrics).replace(/\r/g, "").trim().slice(0, 8000);
+      const src = `${c.name}${c.role ? ` (${c.role})` : ""}`.slice(0, 120);
+      await DB.batch([DB.prepare("UPDATE reviews SET lyrics=?, lyrics_ok=1, lyrics_src=?, updated_at=? WHERE slug=?").bind(lyrics, src, Date.now(), c.slug),
+        DB.prepare("UPDATE lyric_claims SET status='approved', decided_at=? WHERE id=?").bind(Date.now(), c.id)]);
+      return json({ ok: true });
+    }
+    await DB.prepare("UPDATE lyric_claims SET status='rejected', decided_at=? WHERE id=?").bind(Date.now(), c.id).run();
+    return json({ ok: true });
   }
   if (path === "/api/reviews-admin/newsletter" && method === "GET") return json(await weekly(env, url, u));
   if (path === "/api/reviews-admin/newsletter" && method === "POST") {
@@ -880,6 +964,11 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
       if (r && !r.notified_at) notified = await tellArtist(env, DB, r, requestId, url);
     }
     if (body.listened) await DB.prepare("UPDATE reviews SET assist=0 WHERE slug=?").bind(slug).run();
+    if (body.lyrics !== undefined) {
+      const ly = String(body.lyrics || "").replace(/\r/g, "").trim().slice(0, 8000);
+      await DB.prepare("UPDATE reviews SET lyrics=?, lyrics_ok=?, lyrics_src=? WHERE slug=?").bind(ly || null, ly && body.lyrics_ok ? 1 : 0, String(body.lyrics_src || "").trim().slice(0, 120) || null, slug).run();
+    }
+    if (requestId) await DB.prepare("UPDATE reviews SET lyrics=(SELECT lyrics FROM review_requests WHERE id=?), lyrics_ok=1, lyrics_src='the artist (with their submission)' WHERE slug=? AND (lyrics IS NULL OR lyrics='') AND EXISTS (SELECT 1 FROM review_requests WHERE id=? AND lyrics_ok=1 AND lyrics IS NOT NULL)").bind(requestId, slug, requestId).run();
     await DB.prepare("UPDATE reviews SET ai_made=?, big=?, quick=?, soundcloud_url=?, bandcamp_url=?, tidal_url=?, amazon_url=?, deezer_url=? WHERE slug=?").bind(body.ai_made ? 1 : 0, body.big ? 1 : 0, body.quick ? 1 : 0,
       ...["soundcloud_url", "bandcamp_url", "tidal_url", "amazon_url", "deezer_url"].map((k) => safeUrl(f(k, 300)) || null), slug).run();
     { const fresh = await DB.prepare("SELECT * FROM reviews WHERE slug=?").bind(slug).first(); if (fresh && !fresh.cover_url) await ensureCover(DB, { ...fresh, cover_checked: null }); }
