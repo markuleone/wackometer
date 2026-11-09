@@ -4,7 +4,7 @@
 
 <link rel="stylesheet" href="/css/site.css">
 <style>.tgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px}.tgrid h3{margin:4px 0 8px;font-size:16px}.bar{display:grid;grid-template-columns:110px 1fr 46px;gap:8px;align-items:center;font-size:14px;margin:4px 0}.bar i{display:block;height:10px;border-radius:6px;background:var(--bile)}.bar b{text-align:right;font-variant-numeric:tabular-nums}body{margin:0}[hidden]{display:none!important}.doc{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:14px}.doc h1{font-family:var(--display);font-size:40px;margin:0}.doc h2{font-family:var(--display);font-size:20px;margin:12px 0 0}.doc p,.doc li{max-width:65ch;line-height:1.65}.doc a{color:var(--bile-ink)}.back{font-family:var(--display);font-weight:600;text-decoration:none;color:var(--ink)}</style>
-</head><body><div class="wrap"><a class="back" href="/">← Wackometer</a><div class="doc" style="max-width:1000px">
+</head><body><!--SITE_HEADER--><div class="wrap"><div class="doc" style="max-width:1000px">
 <h1>Admin</h1>
 <p><a class="btn bile" href="/admin-reviews">Write or edit lyric reviews →</a></p>
 <div id="err" class="hint"></div>
@@ -56,4 +56,4 @@ async function load(){
 load();
 $("cleanBtn").onclick=async()=>{const b=$("cleanBtn");if(!b.dataset.sure){b.dataset.sure=1;b.textContent="Tap again to remove them";return}b.disabled=true;const r=await fetch("/api/admin/cleanup",{method:"POST",headers:{"content-type":"application/json"},body:"{}"});const d=await r.json();$("cleanNote").textContent=r.ok?`Removed ${d.removed} empty records.`:d.error;b.textContent="Remove empty visitor records";delete b.dataset.sure;b.disabled=false;load()};
 $("resetBtn").onclick=async()=>{const r=await fetch("/api/admin/user",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({username:$("resetUser").value,action:"reset"})});const d=await r.json();$("resetNote").textContent=r.ok?"Profile cleared.":d.error};
-</script><footer><a class="dbv" href="https://donebyverde.com" target="_blank" rel="noopener noreferrer" aria-label="Website by donebyverde (opens in a new tab)" title="Website by donebyverde"><svg viewBox="0 0 200 200" aria-hidden="true"><path d="M75 0H125L123 61L174 28L200 72L146 100L200 128L174 172L123 139L125 200H75L77 139L26 172L0 128L54 100L0 72L26 28L77 61Z"/></svg></a></footer></div></body></html>
+</script><footer><!--SITE_FOOTER--><a class="dbv" href="https://donebyverde.com" target="_blank" rel="noopener noreferrer" aria-label="Website by donebyverde (opens in a new tab)" title="Website by donebyverde"><svg viewBox="0 0 200 200" aria-hidden="true"><path d="M75 0H125L123 61L174 28L200 72L146 100L200 128L174 172L123 139L125 200H75L77 139L26 172L0 128L54 100L0 72L26 28L77 61Z"/></svg></a></footer></div></body></html>

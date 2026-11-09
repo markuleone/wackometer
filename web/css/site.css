@@ -1189,3 +1189,64 @@ footer{flex-direction:column;align-items:stretch}
 .wo-h1{margin:0 0 12px;font-family:var(--display);font-size:clamp(30px,4vw,44px);line-height:1.05;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px}.wo-h1 .tag{font-family:var(--body);font-weight:400;font-size:16px;color:var(--muted)}
 .fcols{background:none;border:0;border-top:2px solid var(--line);border-radius:0;box-shadow:none;padding:22px 0 6px;margin-top:10px;flex-wrap:nowrap}
 footer .dbv{align-self:center}
+
+/* ===== One frame for every page (Nov 2026): same margins, same header, same menu position everywhere.
+   Before this, review pages kept the browser's default 8px body margin and the writing app had its own
+   sticky header and a bottom tab bar on phones, so the page jumped when you moved between them. ===== */
+html body{margin:0;padding:16px max(20px,env(safe-area-inset-right,0px)) 48px max(20px,env(safe-area-inset-left,0px))}
+.wrap{max-width:1240px;margin:0 auto}
+header.top,header.rtop{position:static;margin:0;display:flex;flex-wrap:nowrap;align-items:center;gap:14px 18px;min-height:64px;padding:8px 0 10px;border-bottom:2px solid var(--line);background:var(--bg)}
+header.top .logo,header.rtop .logo{font-size:26px;flex:none}
+header .wnav,header #groupNav{display:flex;flex:1;align-items:center;justify-content:flex-start;gap:4px;min-width:0;background:none;border:0;box-shadow:none;padding:0;position:static;order:0;flex-basis:auto}
+header .wnav a,header #groupNav a,header #groupNav button{display:inline-flex;flex-direction:row;align-items:center;gap:6px;flex:none;min-height:0;padding:7px 12px;border:0;border-radius:999px;background:none;font-family:var(--display);font-weight:600;font-size:15.5px;line-height:1.3;color:var(--muted);text-decoration:none;cursor:pointer}
+header .wnav a:hover,header #groupNav a:hover,header #groupNav button:hover{color:var(--ink);background:var(--bile-wash)}
+header .wnav a[aria-current],header #groupNav button[aria-current="true"]{color:var(--ink);background:var(--bile-wash)}
+header .wnav .ni,header #groupNav .ni{display:inline;font-size:16px;line-height:1}
+header .rsearch,header .util{margin-left:auto;flex:none}
+@media (max-width:760px){
+  html body{padding:12px 16px 32px}
+  header.top,header.rtop{flex-wrap:wrap;row-gap:8px;min-height:0;padding:4px 0 8px}
+  header.top .logo,header.rtop .logo{font-size:22px}
+  header .wnav,header #groupNav{order:4;flex-basis:100%;justify-content:space-between;gap:4px}
+  header .wnav a,header #groupNav a,header #groupNav button{flex:1;flex-direction:column;gap:2px;padding:6px 2px;font-size:13px;border-radius:14px;justify-content:center}
+  header .wnav .ni,header #groupNav .ni{font-size:20px}
+  header .rsearch{display:none}
+}
+header .wnav{margin:0}
+header.top .logo,header.rtop .logo{min-height:40px;display:flex;align-items:center}
+@media (max-width:760px){header.top .logo,header.rtop .logo{min-height:38px}header .util .ubtn{min-height:38px}}
+
+/* Same nav box on every page (phone) */
+@media (max-width:760px){html body header.rtop .rnav{margin:0}}
+
+/* The Book of Clichés: vintage reference-book look */
+.cbook{--paper:#fbf6ea;--paper-line:#e6dcc4;--ink-old:#2b2418;--rust:#9a3b1e;background:var(--paper);color:var(--ink-old);border:1px solid var(--paper-line);border-radius:6px;padding:clamp(18px,4vw,40px);box-shadow:0 1px 0 #fff inset,0 8px 24px -18px rgba(60,40,10,.45);font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif}
+.cbook .eyebrow{font-family:inherit;font-variant:small-caps;letter-spacing:.12em;text-transform:lowercase;color:var(--rust);font-size:15px;margin:0}
+.cbook .eyebrow a{color:inherit;text-decoration:none}
+.cbook h1,.cbook h2,.cbook .chw{font-family:inherit;letter-spacing:0}
+.cbook .ctitle{font-size:clamp(30px,5vw,48px);font-weight:700;margin:4px 0 0;text-align:center;border-top:3px double var(--ink-old);border-bottom:3px double var(--ink-old);padding:10px 0}
+.cbook .lead{color:#5b4d36;font-style:italic;text-align:center;max-width:56ch;margin:8px auto 4px}
+.cbook a{color:var(--ink-old)}
+.cletters{display:flex;flex-wrap:wrap;justify-content:center;gap:2px 10px;margin:6px 0 4px;font-variant:small-caps}
+.cletters a{text-decoration:none;font-size:18px;font-weight:700;color:var(--rust)}
+.cletter{columns:2 300px;column-gap:36px;column-rule:1px solid var(--paper-line);margin-top:10px}
+.cletter .cl{column-span:all;font-size:34px;font-weight:700;color:var(--rust);margin:8px 0 4px;border-bottom:1px solid var(--paper-line);padding-bottom:2px}
+.centry{display:block;break-inside:avoid;padding:7px 0;text-decoration:none;color:var(--ink-old);line-height:1.45;border-bottom:1px dotted var(--paper-line)}
+a.centry:hover .chw{color:var(--rust);text-decoration:underline}
+.centry .chw{font-weight:700;font-size:17px}
+.cpos{font-style:italic;color:#7a6a4e;font-size:14px}
+.ctry{display:block;font-size:15px;color:#5b4d36}
+.centry.big{border:0;text-align:left;padding:4px 0 0}
+.centry.big .chw{font-size:clamp(32px,5.5vw,52px);line-height:1.05;margin:4px 0}
+.cdef{font-size:18px;margin:6px 0 0;max-width:60ch}
+.cbook .csub{font-variant:small-caps;letter-spacing:.06em;font-size:20px;color:var(--rust);margin:16px 0 0;border-bottom:1px solid var(--paper-line)}
+.cswaps{font-size:19px;line-height:1.6;margin:4px 0;padding-left:1.4em}
+.cswaps li::marker{color:var(--rust);font-weight:700}
+.cfix{line-height:1.6}
+.csee{font-size:15px;border-top:3px double var(--paper-line);padding-top:10px}
+.cbook .hint{color:#7a6a4e}
+.clist.cbook{padding:16px 18px;gap:0}
+.clist.cbook .centry .chw{font-size:16px}
+.cmore{display:inline-block;margin-top:10px;font-weight:700;color:var(--rust)!important}
+nav.cletters{background:none;border:0;box-shadow:none;border-radius:0;padding:6px 0;border-top:1px solid var(--paper-line);border-bottom:1px solid var(--paper-line)}
+header.rtop + .wrap{padding-top:28px}

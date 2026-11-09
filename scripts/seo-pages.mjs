@@ -44,7 +44,7 @@ ${ld ? `<script type="application/ld+json">${JSON.stringify(ld)}</script>` : ""}
 </head>
 <body>
 <div class="wrap seo">
-${siteHeader()}
+${siteHeader("none")}
 <main id="main">
 ${body}
 <div class="ad-slot" hidden></div>
@@ -89,23 +89,32 @@ ${p.near.length ? `<h2>Slant rhymes (fresher)</h2><p class="hint">Same vowel sou
     body: `<article class="seoart"><h1>Rhymes for songwriters</h1><p class="lead">Perfect rhymes, slant rhymes, and a warning when you're about to rhyme fire with desire. Pick a word.</p>${Object.keys(letters).sort().map((l) => `<h2>${l.toUpperCase()}</h2><div class="rchips">${letters[l].map((w) => `<a class="rchip" href="/rhymes/${w}">${esc(w)}</a>`).join("")}</div>`).join("")}</article>` }));
 
   // ----- clichés -----
+  const SORTED = [...CLICHES].sort((x, y) => x.localeCompare(y));
+  const cap = (c) => c[0].toUpperCase() + c.slice(1);
   for (const c of CLICHES) {
     const sw = SWAPS[c] || []; const s = slug(c);
-    const body = `<article class="seoart">
-<p class="eyebrow"><a href="/cliches/">Cliché fixer</a></p>
-<h1>“${esc(c)}”: the cliché, and what to write instead</h1>
-<p class="lead">“${esc(c[0].toUpperCase() + c.slice(1))}” is on the Wackometer's list of worn-out phrases. Your listener has heard it so many times they finish it before you do, and that's the moment they stop listening.</p>
-<h2>Fresh swaps for “${esc(c)}”</h2>
-<ul class="swaps">${sw.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
-<p class="hint">These are starting points. The best swap is the one only you could write: a real place, a real object, a real moment.</p>
-<h2>How to fix any cliché</h2>
-<ol><li>Ask what the phrase is trying to say (heartbreak, freedom, devotion).</li><li>Find one object or moment from your own life that shows it.</li><li>Describe that thing plainly. Specific beats poetic.</li></ol>
-<p>Paste your lyrics into the <a href="/write#weigh">Wackometer</a> and it highlights every cliché it knows. Tap one to swap it in place.</p>
+    const i = SORTED.indexOf(c);
+    const near = [-2, -1, 1, 2, 3].map((d) => SORTED[(i + d + SORTED.length) % SORTED.length]).filter((x) => x !== c);
+    const body = `<article class="seoart cbook">
+<p class="eyebrow"><a href="/cliches/">The Wackometer Book of Clichés</a></p>
+<div class="centry big"><h1 class="chw">${esc(cap(c))}</h1><span class="cpos">phrase · worn smooth from overuse</span>
+<p class="cdef">Heard so often your listener finishes it before you do, and that's the moment they stop listening.</p></div>
+<h2 class="csub">Instead, try</h2>
+<ol class="cswaps">${sw.map((x) => `<li>“${esc(x)}”</li>`).join("")}</ol>
+<p class="hint">Starting points, not answers. The best swap is the one only you could write: a real place, a real object, a real moment.</p>
+<h2 class="csub">How to fix any cliché</h2>
+<ol class="cfix"><li>Ask what the phrase is trying to say (heartbreak, freedom, devotion).</li><li>Find one object or moment from your own life that shows it.</li><li>Describe that thing plainly. Specific beats poetic.</li></ol>
+<p class="csee"><i>See also:</i> ${near.map((n) => `<a href="/cliches/${slug(n)}">${esc(n)}</a>`).join(" · ")}</p>
+<p>Paste your lyrics into the <a href="/write#weigh">Wackometer</a> and it highlights every cliché in this book. Tap one to swap it in place.</p>
 </article>`;
-    write(`/cliches/${s}`, page({ path: `/cliches/${s}`, title: `“${c}” cliché: fresh alternatives for songwriters · Wackometer`, desc: `Stop writing “${c}”. Fresh, specific lyric alternatives${sw[0] ? ` like “${sw[0]}”` : ""}, and how to fix any cliché in your songs.`, body, ld: crumbs([["Cliché fixer", "/cliches/"], [c, `/cliches/${s}`]]) }));
+    write(`/cliches/${s}`, page({ path: `/cliches/${s}`, title: `“${c}” cliché: fresh alternatives for songwriters · Wackometer`, desc: `Stop writing “${c}”. Fresh, specific lyric alternatives${sw[0] ? ` like “${sw[0]}”` : ""}, and how to fix any cliché in your songs.`, body, ld: crumbs([["Book of Clichés", "/cliches/"], [c, `/cliches/${s}`]]) }));
   }
-  write("/cliches/", page({ path: "/cliches/", title: `The ${CLICHES.length} most overused lyric clichés (and what to write instead) · Wackometer`, desc: "Every cliché the Wackometer flags in song lyrics, with fresh, specific alternatives for each one.",
-    body: `<article class="seoart"><h1>Lyric clichés and how to fix them</h1><p class="lead">These ${CLICHES.length} phrases make the Wackometer gag. Each one links to fresh swaps you can steal and twist.</p><div class="rchips">${CLICHES.map((c) => `<a class="rchip" href="/cliches/${slug(c)}">${esc(c)}</a>`).join("")}</div></article>` }));
+  const byL = {}; for (const c of SORTED) (byL[c[0].toUpperCase()] ||= []).push(c);
+  write("/cliches/", page({ path: "/cliches/", title: `The Book of Clichés: ${CLICHES.length} phrases songwriters overuse (and what to write instead) · Wackometer`, desc: "A dictionary of the clichés people actually say and sing, from “at the end of the day” to “head over heels”, each with fresh lyric alternatives.",
+    body: `<article class="seoart cbook"><p class="eyebrow">Revised edition · ${CLICHES.length} entries</p><h1 class="ctitle">The Wackometer Book of Clichés</h1><p class="lead">The phrases everybody says, everybody sings, and nobody hears anymore. Look one up, then write something only you could have written.</p>
+<nav class="cletters" aria-label="Jump to letter">${Object.keys(byL).map((l) => `<a href="#l-${l}">${l}</a>`).join("")}</nav>
+${Object.entries(byL).map(([l, cs]) => `<section class="cletter" id="l-${l}"><h2 class="cl">${l}</h2>${cs.map((c) => `<a class="centry" href="/cliches/${slug(c)}"><b class="chw">${esc(cap(c))}</b> <span class="cpos">phr.</span> <span class="ctry">Try: “${esc((SWAPS[c] || [""])[0])}”</span></a>`).join("")}</section>`).join("")}
+</article>` }));
 
   // ----- syllable counter -----
   write("/syllable-counter", page({ path: "/syllable-counter", title: "Syllable counter for lyrics and poems, line by line · Wackometer", desc: "Free syllable counter for songwriters. Paste lyrics and see syllables per line, so your verses fit the beat.",

@@ -6,7 +6,7 @@ export function siteHeader(active = "reviews", q = "") {
   const qv = String(q).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   return `<header class="rtop">
 <a class="logo" href="/" aria-label="Wackometer home"><span class="w"><img src="/brand/wacky-w.svg" alt="" width="40" height="44"></span>ackometer</a>
-<nav class="rnav wnav" aria-label="Main">${NAV.map(([href, key, icon, label]) => `<a href="${href}"${active === key || (key === "reviews" && !["write", "wingman", "workout"].includes(active)) ? ' aria-current="page"' : ""}><span class="ni" aria-hidden="true">${icon}</span> ${label}</a>`).join("")}</nav>
+<nav class="rnav wnav" aria-label="Main">${NAV.map(([href, key, icon, label]) => `<a href="${href}"${active === key || (key === "reviews" && !["write", "wingman", "workout", "none"].includes(active)) ? ' aria-current="page"' : ""}><span class="ni" aria-hidden="true">${icon}</span> ${label}</a>`).join("")}</nav>
 <form class="rsearch" action="/reviews" role="search"><input type="search" name="q" value="${qv}" placeholder="Search artists and songs" aria-label="Search reviews" maxlength="80"></form>
 </header>`;
 }

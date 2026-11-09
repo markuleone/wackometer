@@ -1,5 +1,6 @@
 // Workshop UI. Lessons live in workshop.js.
 import { METRICS, tierOf, CLICHES } from "./score.js";
+import { SWAPS } from "./swaps.js";
 import { $, esc, ls, A, confetti, track, getHist, canAI } from "./core.js";
 import { LESSONS, rankOf } from "./workshop.js";
 
@@ -16,7 +17,7 @@ export function renderWorkshop() {
   const l = LESSONS.find((x) => x.id === wsCur);
   $("wsLesson").innerHTML = `<h3>${esc(l.title)}</h3><p>${esc(l.why)}</p>
     <div class="ba"><div class="bef"><small>🤢 Wack</small>${esc(l.before)}</div><div class="aft"><small>✨ Better</small>${esc(l.after)}</div></div>
-    ${l.showCliches ? `<div class="clist"><b>The usual suspects</b><span class="hint">The meter knows ${CLICHES.length} of these. Tap one for fresh swaps.</span><div class="rchips">${CLICHES.slice(0, 30).map((c) => `<a class="rchip" href="/cliches/${c.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}">${esc(c)}</a>`).join("")}<a class="rchip on" href="/cliches/">See all ${CLICHES.length} →</a></div></div>` : ""}
+    ${l.showCliches ? `<div class="clist cbook"><p class="eyebrow">From the Book of Clichés</p><span class="hint">The meter knows ${CLICHES.length} of these. Tap one for fresh swaps.</span>${["at the end of the day","it is what it is","head over heels","love at first sight","break my heart","time heals all wounds","heart of gold","now or never","calm before the storm","written in the stars","when it rains it pours","only time will tell"].filter((c) => CLICHES.includes(c)).map((c) => `<a class="centry" href="/cliches/${c.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}"><b class="chw">${esc(c[0].toUpperCase() + c.slice(1))}</b> <span class="cpos">phr.</span> <span class="ctry">Try: “${esc((SWAPS[c] || [""])[0])}”</span></a>`).join("")}<a class="cmore" href="/cliches/">Open the whole book (${CLICHES.length} entries) →</a></div>` : ""}
     <div class="drill"><b>🏋️ Drill${done[l.id] ? " (passed, practice anytime)" : ` · +${l.xp} XP`}</b><span>${esc(l.drill)}</span>
     <label class="hint" for="wsIn">Your drill</label><textarea id="wsIn" spellcheck="false" placeholder="Write it here…"></textarea>
     <div class="row"><button class="btn bile" id="wsCheck">Check my drill</button><button class="btn${canAI() ? "" : " locked"}" id="wsAsk" data-ai>Ask Wingman for an example</button></div>
