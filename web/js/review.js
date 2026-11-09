@@ -16,7 +16,7 @@ if (!IS_BOT && !sessionStorage.getItem("wk-v")) {
 }
 
 // The crew member for this tier, next to the score.
-document.querySelectorAll(".rv-char,.fp-char").forEach((el) => (el.innerHTML = charSVG(Number(el.dataset.tier) || 0)));
+document.querySelectorAll(".rv-char,.fp-char,.cm").forEach((el) => (el.innerHTML = charSVG(Number(el.dataset.tier) || 0)));
 // Header buttons and front-page cards that lead to the writing tools or the plugin.
 document.querySelectorAll("[data-hub]").forEach((el) => el.addEventListener("click", () => track("hub_" + el.dataset.hub)));
 
@@ -205,7 +205,7 @@ if (form) {
     await loadStripe();
     stripe = window.Stripe(cfg.pk);
     elements = stripe.elements({ mode: "payment", amount: cfg.cents, currency: "usd", paymentMethodTypes: ["card", "link", "cashapp"],
-      appearance: { theme: "night", variables: { colorPrimary: "#BCD83C", colorBackground: "#2A2F52", colorText: "#F4F5FF", colorTextSecondary: "#C9CCEB", colorDanger: "#FF8A80", borderRadius: "12px", fontFamily: 'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif', spacingUnit: "4px" },
+      appearance: { theme: "stripe", variables: { colorPrimary: "#1F2340", colorBackground: "#FFFFFF", colorText: "#1F2340", colorTextSecondary: "#646A8C", colorDanger: "#C0392B", borderRadius: "12px", fontFamily: 'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif', spacingUnit: "4px" },
         rules: { ".Input": { border: "2px solid #3A4070", boxShadow: "none" }, ".Input:focus": { border: "2px solid #BCD83C", boxShadow: "none" }, ".Tab": { border: "2px solid #3A4070" }, ".Tab--selected": { border: "2px solid #BCD83C" } } } });
     const pe = elements.create("payment", { layout: { type: "tabs" }, wallets: { applePay: "auto", googlePay: "auto" } });
     $("payEl").innerHTML = ""; pe.mount("#payEl");

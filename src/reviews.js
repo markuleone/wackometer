@@ -80,7 +80,7 @@ ${siteHeader(active, q)}
 <main id="main">
 ${body}
 </main>
-<section class="wotw" aria-labelledby="wotwH"><div><h2 id="wotwH">Wicked of the week</h2><p>One email on Fridays: the best song we weighed that week, plus the one that got wrecked. No spam, leave anytime.</p></div>
+<section class="wotw" aria-labelledby="wotwH"><span class="cm cm-side" data-tier="0" aria-hidden="true"></span><div><h2 id="wotwH">Wicked of the week</h2><p>One email on Fridays: the best song we weighed that week, plus the one that got wrecked. No spam, leave anytime.</p></div>
 <form id="wotwForm" class="wotw-f"><label class="sr" for="wotwEmail">Your email</label><input id="wotwEmail" name="email" type="email" required maxlength="200" placeholder="you@email.com" autocomplete="email"><input type="hidden" name="source" value="${esc(String(path || "").split("/")[1] || "home")}"><button class="btn bile" type="submit">Get it</button><span class="hint" id="wotwNote" role="status"></span></form></section>
 <footer><p class="flinks">Wackometer · <a href="/reviews">Song reviews</a> · <a href="/get-reviewed">Get reviewed</a> · <a href="/critics">Become a critic</a> · <a href="/rhymes/">Fresh rhymes</a> · <a href="/cliches/">Cliché fixer</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="https://instagram.com/wackometer" rel="me noopener" target="_blank">Instagram @wackometer</a></p>${DBV}</footer>
 </div>
@@ -149,7 +149,7 @@ ${more ? '<a class="sub-more" href="/get-reviewed">What you get and who reviews 
 <div id="payEl" class="payel"><span class="hint">Loading the card form…</span></div>
 <button class="btn bile paybtn" type="submit" id="payBtn">Pay $10 &amp; send it</button>
 <span class="hint paynote" id="subNote" role="status">🔒 Secure payment by Stripe. Paying gets you heard, not a better score.</span>
-<a class="pro-deal" id="proDeal" href="/write#pro">Wingman Pro members pay <b>$7</b> →</a>
+<a class="pro-deal" id="proDeal" href="/write#pro"><span class="cm cm-xs" data-tier="5" aria-hidden="true"></span>Wingman Pro members pay <b>$7</b> →</a>
 </div>
 </form>
 <div class="sub-done" id="subDone" hidden tabindex="-1"><b>You're in. 🎧</b><p>Payment received. Your feedback lands in your inbox within 7 days, and Stripe is emailing your receipt now.</p><button class="btn" type="button" id="subAgain">Send another song</button></div>
@@ -304,7 +304,7 @@ ${all.length ? row("rNew", "Latest reviews", "/reviews", all.slice(0, 12).map((r
 <div class="ad-slot" hidden></div>
 <section class="fpromo" aria-label="More from Wackometer">
 <a class="fp fp-weigh" href="/write#weigh" data-hub="write"><span class="fp-char" data-tier="4" aria-hidden="true"></span><span class="hey">✍️ For writers · Free</span><b>How wack are <em>your</em> lyrics?</b><span>Paste a verse and the Wackometer scores it in a second, circles the clichés, then helps you fix them with Wingman, the Workshop and Wordstorm.</span><span class="fpgo">Weigh my lyrics <span aria-hidden="true">→</span></span></a>
-<a class="fp fp-plug" href="/write#plugin" data-hub="plugin"><span class="fp-char" data-tier="3" aria-hidden="true"></span><span class="hey">🎛️ In the studio <span class="hsoon">Coming soon</span></span><b>Wingman plugin</b><span>The Wackometer inside FL Studio, Ableton and Logic. Weigh lines and get rewrites without leaving your session.</span><span class="fpgo">Get early access <span aria-hidden="true">→</span></span></a>
+<a class="fp fp-plug" href="/write#plugin" data-hub="plugin"><span class="fp-char" data-tier="5" aria-hidden="true"></span><span class="hey">🎛️ In the studio <span class="hsoon">Coming soon</span></span><b>Wingman plugin</b><span>The Wackometer inside FL Studio, Ableton and Logic. Weigh lines and get rewrites without leaving your session.</span><span class="fpgo">Get early access <span aria-hidden="true">→</span></span></a>
 </section>
 ${wicked.length ? row("rWicked", "✨ Certified Wicked", "/reviews?f=wicked", wicked.map((r) => rowCard(r, crowd)).join("")) : ""}
 ${artists.length ? `<section class="flb" aria-labelledby="rLb"><div class="frh"><h2 id="rLb">🏆 Top artists</h2><a href="/artists">Full leaderboard <span aria-hidden="true">→</span></a></div><p class="hint">Each artist's score is the average of every song we've weighed. Lower is better.</p><ol class="lb-list">${leaderRows(artists.slice(0, 5))}</ol></section>` : ""}
@@ -356,7 +356,7 @@ export async function artistsPage(req, env, path, ensureSchema) {
   if (path === "/artists") {
     const body = `<article class="seoart lb">
 <p class="eyebrow">Artist leaderboard</p>
-<h1>Who makes the best songs?</h1>
+<h1><span class="cm cm-h1" data-tier="0" aria-hidden="true"></span>Who makes the best songs?</h1>
 <p class="lead">Every song we weigh counts toward its artist. Their score is the average of all their songs, so <b>lower is better</b>: 0 is as Wicked as it gets, 100 is all-out Wack.</p>
 ${list.length ? `<ol class="lb-list">${leaderRows(list)}</ol>` : `<div class="warn"><b>The leaderboard fills up as reviews go live.</b><p><a href="/reviews">Read the reviews</a> so far.</p></div>`}
 <div class="ad-slot" hidden></div>
@@ -409,7 +409,7 @@ ${pick ? `<a class="btn bile cr-pick" href="/get-reviewed?critic=${esc(c.slug)}#
 const APPLY = `<section class="rv-submit apply" id="apply" aria-labelledby="applyH">
 <form id="applyForm" class="sub-grid">
 <div class="sub-left">
-<h2 id="applyH">Review for Wackometer</h2>
+<h2 id="applyH"><span class="cm cm-h" data-tier="3" aria-hidden="true"></span>Review for Wackometer</h2>
 <p>Write songs, rap, produce, or just have ears people trust? Apply to be a Wackometer critic. Critics review songs that come in, write honest feedback, and get credit on every review they write.</p>
 <label>Your name<input name="name" required maxlength="80" autocomplete="name"></label>
 <label>Your email<input name="email" type="email" required maxlength="120" autocomplete="email"></label>
@@ -435,7 +435,7 @@ export async function getReviewedPage(req, env, ensureSchema) {
     ["👥", "A crowd score", "Listeners vote on your song too, so you see how the critic and the crowd compare."],
   ];
   const body = `<article class="seoart gr">
-<div class="gr-hero">
+<div class="gr-hero"><span class="cm cm-hero" data-tier="1" aria-hidden="true"></span>
 <p class="eyebrow">Get reviewed</p>
 <h1>Get your song weighed by people who <em>make</em> music.</h1>
 <p class="lead">Every song is reviewed by a Wackometer critic: songwriters, rappers and producers who hear everything. <b>$10</b> gets you a guaranteed listen and real feedback on your song.</p>
@@ -467,7 +467,7 @@ export async function criticsPage(req, env, path, ensureSchema) {
   await ensureSchema(env);
   const DB = env.DB, critics = await activeCritics(DB), counts = await criticCounts(DB);
   if (path === "/critics") {
-    const body = `<article class="seoart gr"><div class="gr-hero"><p class="eyebrow">Critics</p><h1>Become a Wackometer <em>critic</em>.</h1>
+    const body = `<article class="seoart gr"><div class="gr-hero"><span class="cm cm-hero" data-tier="2" aria-hidden="true"></span><p class="eyebrow">Critics</p><h1>Become a Wackometer <em>critic</em>.</h1>
 <p class="lead">Every review on Wackometer is written by a real person who makes or lives for music. If that's you, review songs from new artists, write honest feedback, and get your name on every review you publish.</p></div>
 ${APPLY}</article>`;
     return html(shell({ active: "submit", path: "/critics", title: "Become a Wackometer critic: review new songs", desc: "Songwriter, rapper or producer with ears people trust? Apply to review songs from new artists on Wackometer and get credit on every review.", body, data: JSON.stringify({ apply: true }) }));

@@ -674,7 +674,7 @@ a.rchip:hover{border-color:var(--ink)}
   .hero h1{font-size:32px}
   .hero-copy{gap:8px;padding-bottom:10px}
   .hero-copy p,#heroGo{display:none}
-  .hero .crew{max-height:128px;overflow:hidden}
+  .hero .crew{overflow:visible;padding-top:58px}
   .hero .member .ch{width:56px;height:56px;margin:0 auto}
   .hero .member .step{height:auto!important;min-height:0;padding:6px 2px 8px}
   .hero .say{display:none}
@@ -1034,58 +1034,73 @@ a.rchip:hover{border-color:var(--ink)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 @media (max-width:760px){.wotw{grid-template-columns:1fr}}
 
-/* ===== Crew colors (Nov 2026): white pages, no dark mode. Cards cycle through the five crew colors
-   (Wiz blue, Wendy mint, Wally lilac, Wade orange, Wack lime) plus sun and pink; navy is saved for a few hero panels. ===== */
+/* ===== Crew colors, calm version (Nov 2026): white pages, navy ink, one accent at a time.
+   The crew characters do the decorating; color shows up in small doses (featured slides, icon tiles, step numbers). ===== */
 :root{--c-blue:#3D8BFF;--c-mint:#22C29B;--c-lilac:#A9A2DA;--c-orange:#FF8A3D;--c-lime:#A8C42E;
-  --w-blue:#E7F0FF;--w-mint:#E2F7F0;--w-lilac:#EFEDFA;--w-orange:#FFF0E5;--w-lime:#F1F7D6;--w-sun:#FFF6D1;--w-pink:#FFEAF3;--navy:#1F2340}
-/* featured carousel: each slide its own crew color */
-.fslide{--fw:var(--w-orange);--fc:var(--c-orange);background:var(--fw);color:var(--ink)}
-.fslide:nth-child(5n+2){--fw:var(--w-mint);--fc:var(--c-mint)}.fslide:nth-child(5n+3){--fw:var(--w-lilac);--fc:var(--c-lilac)}
-.fslide:nth-child(5n+4){--fw:var(--w-blue);--fc:var(--c-blue)}.fslide:nth-child(5n+5){--fw:var(--w-sun);--fc:var(--sun)}
-.fslide::before{opacity:.28}
-.fslide::after{background:radial-gradient(420px 300px at 92% 8%,color-mix(in srgb,var(--fc) 38%,transparent),transparent 70%),linear-gradient(90deg,color-mix(in srgb,var(--fw) 20%,transparent),var(--fw) 55%)}
-.fslide .eyebrow{color:var(--ink);background:#fff;border:2px solid var(--ink);border-radius:999px;padding:3px 10px;align-self:flex-start}
+  --w-blue:#EEF4FF;--w-mint:#EAF8F3;--w-lilac:#F4F2FB;--w-orange:#FFF4EC;--w-lime:#F4F8E3;--navy:#1F2340}
+/* featured carousel: a soft wash per slide */
+.fslide{--fw:var(--w-lime);background:var(--fw);color:var(--ink)}
+.fslide:nth-child(4n+2){--fw:var(--w-orange)}.fslide:nth-child(4n+3){--fw:var(--w-mint)}.fslide:nth-child(4n+4){--fw:var(--w-lilac)}
+.fslide::before{opacity:.22}
+.fslide::after{background:linear-gradient(90deg,color-mix(in srgb,var(--fw) 20%,transparent),var(--fw) 55%)}
+.fslide .eyebrow{color:var(--bile-ink)}
 .fby,.fsc .rv-sl,.fsc .hint{color:var(--muted)}
 .ftext h2 a{color:var(--ink)}
-.fcover{box-shadow:6px 6px 0 var(--ink);border:2px solid var(--ink)}
-.fdots button[aria-current]{background:var(--c-orange)}
-/* review cards: covers without art get a crew color, and the shadow picks up a color too */
-.rcard:nth-child(5n+1) .rv-cover{--cc:var(--c-orange)}.rcard:nth-child(5n+2) .rv-cover{--cc:var(--c-mint)}.rcard:nth-child(5n+3) .rv-cover{--cc:var(--c-lilac)}
-.rcard:nth-child(5n+4) .rv-cover{--cc:var(--c-blue)}.rcard:nth-child(5n+5) .rv-cover{--cc:var(--c-lime)}
-.rcard .rv-cover{box-shadow:5px 5px 0 var(--cc,var(--ink))}
-.rcard .rv-cover:not(:has(img)){background:color-mix(in srgb,var(--cc,var(--c-lime)) 22%,#fff)}
-/* front page promo cards */
-.fp-weigh{background:var(--w-lime)}
-.fp-plug{background:var(--navy);color:#F4F5FF!important}.fp.fp-plug .hey{color:#C9CCEB}.fp-plug .fpgo{background:var(--c-orange);color:var(--navy);border:2px solid #F4F5FF}
-.fp-plug b em{color:var(--c-orange)}
-/* $10 card: navy with a lime price, like a sticker */
-.paycard{background:var(--navy);color:#F4F5FF}
-.paycard::before{background:radial-gradient(circle,rgba(255,138,61,.35),transparent 70%)}
-.paycard::after{content:"";position:absolute;left:-50px;bottom:-70px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(34,194,155,.28),transparent 70%);pointer-events:none}
-.paycard .price,.seoart .paycard .price{color:#BCD83C;text-shadow:5px 5px 0 var(--c-orange)}
-.per,.payel .hint,.paycard .paynote{color:#C9CCEB}
-.perks li::before{color:#BCD83C}
-.paycard .was{color:#8A8FB8}
-.pro-deal{color:#FFB27F!important}.pro-deal b{color:#fff}
-/* get reviewed: perks and steps in crew colors */
-.gr-hero{background:linear-gradient(120deg,var(--w-lime),var(--w-mint) 55%,var(--w-blue))}
-.gr-perk{--pc:var(--c-orange);background:color-mix(in srgb,var(--pc) 12%,#fff);box-shadow:0 5px 0 var(--ink)}
-.gr-perk:nth-child(6n+2){--pc:var(--c-mint)}.gr-perk:nth-child(6n+3){--pc:var(--c-lilac)}.gr-perk:nth-child(6n+4){--pc:var(--c-blue)}.gr-perk:nth-child(6n+5){--pc:var(--sun)}.gr-perk:nth-child(6n+6){--pc:var(--pink)}
-.gr-perk .gr-i{display:grid;place-items:center;width:46px;height:46px;border-radius:14px;background:var(--pc);border:2px solid var(--ink);font-size:24px}
+.fcover{box-shadow:0 6px 0 var(--ink);border:2px solid var(--ink)}
+/* front page promo cards: lime for writers, navy for the Wingman plugin */
+.fp-weigh{background:var(--bile-wash)}
+.fp-plug{background:var(--navy);color:#F4F5FF!important}.fp.fp-plug .hey{color:#C9CCEB}.fp-plug .fpgo{background:#BCD83C;color:#1D2013}
+/* $10 card: white, one bold lime price */
+.paycard{background:var(--surface);color:var(--ink)}
+.paycard::before{display:none}
+.paycard .price,.seoart .paycard .price{color:var(--bile);text-shadow:4px 4px 0 var(--ink)}
+.per,.payel .hint,.paycard .paynote{color:var(--muted)}
+.perks li::before{color:var(--bile-ink)}
+.paycard .was{color:var(--muted)}
+.pro-deal{color:var(--bile-ink)!important;display:inline-flex;align-items:center;gap:6px}.pro-deal b{color:var(--ink)}
+/* get reviewed: white perk cards, each with a colored icon tile; colored step numbers */
+.gr-perk{--pc:var(--c-orange)}
+.gr-perk:nth-child(5n+2){--pc:var(--c-mint)}.gr-perk:nth-child(5n+3){--pc:var(--c-lilac)}.gr-perk:nth-child(5n+4){--pc:var(--c-blue)}.gr-perk:nth-child(5n+5){--pc:var(--c-lime)}
+.gr-perk .gr-i{display:grid;place-items:center;width:44px;height:44px;border-radius:14px;background:color-mix(in srgb,var(--pc) 28%,#fff);border:2px solid var(--ink);font-size:22px}
 .gr-steps li:nth-child(1)::before{background:var(--c-orange);color:var(--ink)}.gr-steps li:nth-child(2)::before{background:var(--c-mint);color:var(--ink)}
 .gr-steps li:nth-child(3)::before{background:var(--c-lilac);color:var(--ink)}.gr-steps li:nth-child(4)::before{background:var(--c-blue);color:var(--ink)}
-/* critics */
-.cr-card:nth-child(5n+1) .cr-photo{background:var(--c-orange)}.cr-card:nth-child(5n+2) .cr-photo{background:var(--c-mint)}.cr-card:nth-child(5n+3) .cr-photo{background:var(--c-lilac)}.cr-card:nth-child(5n+4) .cr-photo{background:var(--c-blue)}
-/* leaderboard: top three get medal colors */
-.lb-row.top:nth-child(1){background:var(--w-sun)}.lb-row.top:nth-child(2){background:var(--w-lilac)}.lb-row.top:nth-child(3){background:var(--w-orange)}
-/* email signup band */
-.wotw{background:linear-gradient(120deg,var(--w-pink),var(--w-sun) 50%,var(--w-orange))}
-/* writing tools: navy stages are back */
-.stage{background:var(--navy);color:#F2F3FF;border-color:var(--ink);box-shadow:0 6px 0 var(--c-orange)}
+/* writing tools: navy stages */
+.stage{background:var(--navy);color:#F2F3FF;border-color:var(--ink);box-shadow:0 6px 0 var(--ink)}
 .stword{color:#BCD83C}.strhy b{color:var(--sun)}
-.daw{background:var(--navy);color:#F2F3FF;border-color:var(--ink);box-shadow:0 6px 0 var(--c-mint)}
-.rbtn.rb-p{background:var(--c-orange);color:var(--ink);border-color:var(--ink)}
+.daw{background:var(--navy);color:#F2F3FF;border-color:var(--ink)}
+.rbtn.rb-p{background:var(--navy);color:#F4F5FF;border-color:var(--navy)}
 .vplay{background:rgba(31,35,64,.85)}
-/* section headings get a crew-colored highlighter stroke */
-.frh h2{--hm:var(--c-orange);display:inline;background:linear-gradient(transparent 62%,color-mix(in srgb,var(--hm) 45%,transparent) 62%,color-mix(in srgb,var(--hm) 45%,transparent) 92%,transparent 92%);padding:0 4px}
-.frow:nth-of-type(5n+2) .frh h2{--hm:var(--c-mint)}.frow:nth-of-type(5n+3) .frh h2{--hm:var(--c-lilac)}.frow:nth-of-type(5n+4) .frh h2{--hm:var(--c-blue)}.frow:nth-of-type(5n+5) .frh h2{--hm:var(--c-lime)}
+/* the crew, placed around the site */
+.cm{display:inline-block;flex:none;line-height:0}.cm svg{width:100%;height:100%;display:block}
+.gr-hero{position:relative}
+.cm-hero{position:absolute;right:clamp(14px,4vw,48px);top:50%;width:clamp(96px,13vw,150px);height:clamp(96px,13vw,150px);transform:translateY(-50%) rotate(6deg)}
+.gr-hero>:not(.cm){max-width:calc(100% - clamp(110px,15vw,180px))}
+@media (max-width:640px){.cm-hero{top:14px;transform:rotate(6deg);width:72px;height:72px}.gr-hero>.eyebrow{max-width:none}.gr-hero>:not(.cm):not(.eyebrow){max-width:none}.gr-hero h1{padding-right:74px}}
+.cm-h{width:44px;height:44px;vertical-align:-12px;margin-right:8px}
+.cm-h1{width:56px;height:56px;vertical-align:-10px;margin-right:10px}
+.cm-side{width:84px;height:84px;margin-right:-6px}
+.wotw{grid-template-columns:auto 1.2fr 1fr}
+@media (max-width:760px){.wotw{grid-template-columns:auto 1fr}.wotw-f{grid-column:1/-1}.cm-side{width:64px;height:64px}}
+.cm-xs{width:28px;height:28px}
+.plan.star{position:relative}
+.plan-ch{position:absolute;right:14px;top:-34px;width:78px;height:78px;transform:rotate(8deg)}
+.plan-ch svg{width:100%;height:100%}
+
+/* phones: header nav fits better, featured card reads cleanly */
+.fslide::before{display:none}
+.fsc{background:#fff;border:2px solid var(--ink);border-radius:16px}
+.fsc .pill,.fsc .rv-pill{font-size:12px;white-space:nowrap}
+.plan.star .plan-ch{position:static;display:block;width:60px;height:60px;margin:-44px 0 0 -4px;transform:rotate(-8deg)}
+@media (max-width:760px){
+  .rtop .rnav{-webkit-mask-image:linear-gradient(90deg,#000 85%,transparent);mask-image:linear-gradient(90deg,#000 85%,transparent);padding-right:24px}
+  .rnav .nd{display:none}
+  .fslides{border-radius:24px}
+  .fslide{padding:16px}
+  .fcover{max-width:none;width:100%}
+  .ftext h2{font-size:30px}
+  .fscores{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%}
+  .fsc{padding:10px 12px}
+  .adnote{font-size:13px;padding:8px 10px;border-radius:12px;gap:8px}
+  .adnote button{font-size:18px;padding:2px 6px}
+}
+.rnav .nm{display:none}@media (max-width:760px){.rnav .nm{display:inline}}
