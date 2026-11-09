@@ -4,6 +4,7 @@
 //   /badge/<slug>.svg     embeddable badge for artists ("Certified Wicked on Wackometer")
 //   /api/reviews/...      crowd votes, cover image proxy (for the share card), artist submissions
 //   /api/reviews-admin/...  the editor at /admin-reviews (admins only)
+import { adsenseTag } from "./ads-tag.js";
 import { TIERS, tierOf, MID } from "../web/js/score.js";
 import META from "./build-meta.js";
 import { siteHeader } from "./site-header.js";
@@ -70,6 +71,7 @@ ${noindex ? '<meta name="robots" content="noindex">' : `<link rel="canonical" hr
 ${ld ? `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, "\\u003c")}</script>` : ""}
 <script type="module" src="${META.reviewJs}"></script>
 <script type="module" src="${META.adsJs}"></script>
+${adsenseTag()}
 </head>
 <body${data ? ` data-review="${esc(data)}"` : ""}>
 <a class="skip" href="#main">Skip to content</a>

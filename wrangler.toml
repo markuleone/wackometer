@@ -27,6 +27,7 @@ PRO_PRICE_YEARLY = "price_1UZiSgDL1c3ciziU6eVzNnvT"    # $59/year
 PORTAL_CONFIG = "bpc_1UZiTWDL1c3ciziUmwImYtkR"        # Stripe customer portal set up for Wackometer Pro
 ADMIN_EMAILS = "info@donebyverde.com"          # who can open /admin (comma-separated)
 EMAIL_FROM = "Wackometer <hello@wackometer.com>" # sender for sign-in emails
+ADSENSE_CLIENT = "ca-pub-6154120555777230"   # Google AdSense publisher ID (public); also feeds /ads.txt
 TURNSTILE_SITE_KEY = "0x4AAAAAAFoKvh8oQOnhX6zJ"                         # public Turnstile site key (bot check); pair with the TURNSTILE_SECRET secret
 
 # Secrets (set with `npx wrangler secret put NAME`, never put them here):

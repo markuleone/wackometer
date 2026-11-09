@@ -9,22 +9,30 @@ if (!bot) init();
 async function init() {
   let cfg;
   try { cfg = await (await fetch("/api/ads-config", { credentials: "same-origin" })).json(); } catch (e) { return; }
-  if (!cfg.client || cfg.pro) return;
+  if (!cfg.client || cfg.pro) return; // Pro: requests stay paused, so no ads load at all
   const manual = !!cfg.slot && slots.length;
   if (manual) slots.forEach((s) => {
     s.hidden = false;
     s.innerHTML = `<span class="ad-label">Advertisement</span><ins class="adsbygoogle" style="display:block" data-ad-client="${cfg.client}" data-ad-slot="${cfg.slot}" data-ad-format="auto" data-full-width-responsive="true"></ins>`;
   });
-  const s = document.createElement("script");
-  s.async = true; s.crossOrigin = "anonymous";
-  s.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(cfg.client)}`;
-  s.onload = () => { if (manual) slots.forEach(() => { try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch (e) {} }); };
-  s.onerror = blocked;
-  document.head.appendChild(s);
+  const go = () => { const q = (window.adsbygoogle = window.adsbygoogle || []); if (manual) slots.forEach(() => { try { q.push({}); } catch (e) {} }); q.pauseAdRequests = 0; };
+  // The AdSense tag is already in the page head; only add it if this page doesn't have it.
+  let s = document.querySelector('script[src*="pagead2.googlesyndication.com"]');
+  if (!s) {
+    s = document.createElement("script"); s.async = true; s.crossOrigin = "anonymous";
+    s.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(cfg.client)}`;
+    document.head.appendChild(s);
+  }
+  s.addEventListener("error", blocked);
+  go();
+  // If a blocker killed the head tag before we got here, AdSense never defines its loader.
+  setTimeout(() => { if (!window.adsbygoogle || !window.adsbygoogle.loaded) blocked(); }, 8000);
 }
 
 // An ad blocker stopped the script: one friendly, dismissible note instead of a wall.
+let noted = false;
 function blocked() {
+  if (noted) return; noted = true;
   slots.forEach((s) => (s.hidden = true));
   let seen = 0; try { seen = Number(localStorage.getItem("wk-adnote")) || 0; } catch (e) {}
   if (Date.now() - seen < 7 * 864e5) return;

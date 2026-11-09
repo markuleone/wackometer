@@ -3,6 +3,7 @@
 //   /cliches/           index of clichés          /cliches/<slug>  why it's wack + fresh swaps
 //   /syllable-counter   a live syllable counter for lyrics
 // Each page is tiny, plain HTML with the shared stylesheet, so they load instantly and index well.
+import { adsenseTag } from "../src/ads-tag.js";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { CLICHES } from "../web/js/score.js";
 import { SWAPS } from "../web/js/swaps.js";
@@ -38,6 +39,7 @@ function page({ path, title, desc, body, ld }) {
 <script>try{var t=localStorage.getItem("wk-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
 <script>(function(c,l,a,r,i,t,y){if(navigator.webdriver||/bot|crawl|spider|slurp|headless|lighthouse/i.test(navigator.userAgent))return;c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y)})(window,document,"clarity","script","z8yr2p57ys");</script>
 <script>${TRACK(path)}</script>
+${adsenseTag()}
 ${ld ? `<script type="application/ld+json">${JSON.stringify(ld)}</script>` : ""}
 </head>
 <body>
