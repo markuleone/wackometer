@@ -28,6 +28,13 @@ window.addEventListener("blur", () => { if (!listened && document.activeElement 
 
 // The crew member for this tier, next to the score.
 document.querySelectorAll(".rv-char,.fp-char,.cm").forEach((el) => (el.innerHTML = charSVG(Number(el.dataset.tier) || 0)));
+// Header account button: show the signed-in name (the link opens the account box on /write).
+const acct = $("acctLink");
+if (acct && !IS_BOT) api("/api/me").then((me) => {
+  const label = me && me.username ? "@" + me.username : me && me.email ? me.email.split("@")[0] : "";
+  if (!label) return;
+  acct.innerHTML = `<span aria-hidden="true">👤</span><span class="albl"> ${label.replace(/[&<>"]/g, "")}</span>`; acct.setAttribute("aria-label", "Account: " + label);
+}).catch(() => {});
 // Header buttons and front-page cards that lead to the writing tools or the plugin.
 document.querySelectorAll("[data-hub]").forEach((el) => el.addEventListener("click", () => track("hub_" + el.dataset.hub)));
 

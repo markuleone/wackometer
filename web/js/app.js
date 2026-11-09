@@ -594,15 +594,16 @@ try {
   }
 } catch (e) {}
 {
+  const qs0 = new URLSearchParams(location.search); // read before show() rewrites the address
   const h = location.hash.slice(1), path = location.pathname.replace(/\/+$/, "") || "/";
   if (path.startsWith("/u/")) show("profile");
   else if (path.startsWith("/pen/")) show("community"); // old Pass the Pen links
   else if (path !== APP && path !== "/" && path !== "/index.html") { show("lost"); $("lostChar").innerHTML = charSVG(3); }
   else if (known(h) && h !== "lost") show(h);
   else show("weigh");
-  const qs0 = new URLSearchParams(location.search);
   if (qs0.get("unsubscribed")) { show("weigh"); setTimeout(() => { $("quip").textContent = "Wally: Done. No more emails from us."; $("mchar").innerHTML = charSVG(2); }, 300); }
   if (qs0.get("deleted")) { show("weigh"); setTimeout(() => { $("quip").textContent = "Wendy: Your account is gone. Sad to see you go. The door's always open."; $("mchar").innerHTML = charSVG(1); }, 300); }
+  if (qs0.get("account")) { history.replaceState(null, "", APP + location.hash); setTimeout(openLogin, 200); }
   const si = qs0.get("signin");
   if (si) { show("weigh"); if (si === "ok") { setTimeout(() => { $("quip").textContent = "Wendy: You're signed in! Your streak and profile are safe now."; $("mchar").innerHTML = charSVG(1); }, 300); } else { openLogin(); $("loginNote").textContent = "That link expired. Send a new one."; } }
   if (qs0.get("paid")) { track("pro_paid"); show("pro"); setTimeout(() => ($("demoNote").textContent = "Welcome to Wingman Pro. It can take a few seconds to switch on."), 600); history.replaceState(null, "", APP + "#pro"); }

@@ -44,6 +44,9 @@ export const MIGRATIONS = [
   "ALTER TABLE reviews ADD COLUMN ai_made INTEGER NOT NULL DEFAULT 0",
   // "Weighing the Big Ones": mainstream songs we put on the meter as a side lane. Kept off the charts, lists, leaderboard and genres.
   "ALTER TABLE reviews ADD COLUMN big INTEGER NOT NULL DEFAULT 0",
+  // One time only (Nov 9): the first batch of Big Ones, the clearly mainstream/classic artists. Untick ⚖️ Big One in the editor to undo one.
+  "UPDATE reviews SET big=1 WHERE lower(trim(artist)) IN ('prince','frank ocean','portishead','air','milky chance','empire of the sun') AND NOT EXISTS (SELECT 1 FROM admin_log WHERE path='migrate:big-batch-1')",
+  "INSERT INTO admin_log (at,email,path,detail) SELECT 1794260000000,'system','migrate:big-batch-1','First Big Ones flagged' WHERE NOT EXISTS (SELECT 1 FROM admin_log WHERE path='migrate:big-batch-1')",
   // back office: who did what
   "CREATE TABLE IF NOT EXISTS admin_log ( id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, email TEXT, path TEXT NOT NULL, detail TEXT )",
   // per-review counters (views, shares, listens...) per day, never tied to a person

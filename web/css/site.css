@@ -1314,3 +1314,15 @@ nav.rchips{background:none;border:0;padding:0;box-shadow:none;border-radius:0}
 /* Weighing the Big Ones */
 .rv-bignote{border:2px dashed var(--line);border-radius:16px;padding:10px 14px}
 .fbig-note{margin:-14px 0 0}
+
+/* ===== one look everywhere: /write matches the reviews pages (Nov 9) =====
+   Headlines in the display font, hero and meter as bold sticker cards (ink border + solid shadow), same header pieces. */
+.hero h1,.fintro h1{font-family:var(--display);letter-spacing:-.02em}
+.hero{background:var(--bile-wash);border:2px solid var(--ink);box-shadow:0 6px 0 var(--ink)}
+.hero h1 em{color:var(--bile-ink)}
+.meter{border:2px solid var(--ink);box-shadow:0 6px 0 var(--ink)}
+.rtop .util{display:flex;gap:6px;flex:none;align-items:center}
+.util a.ubtn{text-decoration:none;display:inline-flex;align-items:center;gap:2px}
+header.top .rsearch{margin-left:auto}
+@media (max-width:900px){.rtop .util{margin-left:auto}header.top .rsearch{order:5;flex-basis:100%;max-width:none;margin:0}}
+@media (max-width:520px){header.top .rsearch{display:none}}
