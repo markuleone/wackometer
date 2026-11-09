@@ -7,7 +7,7 @@
 //   artist claims (artists link their socials to their page, approved in the editor)
 //   reactions and short comments on each review
 //   the thank-you email a paid submitter gets right after paying
-import { shell, html, json, bad, esc, card, pill, safeUrl, igHandle, BASE, TC, tierName, submitHTML, emailShell, eCard, eBtn, emailHeadline, slugify, artistTable } from "./reviews.js";
+import { shell, html, json, bad, esc, card, pill, safeUrl, igHandle, BASE, TC, tierName, ctaHTML as submitHTML, emailShell, eCard, eBtn, emailHeadline, slugify, artistTable } from "./reviews.js";
 import { TIERS, tierOf } from "../web/js/score.js";
 import { containsSlur, containsProfanity } from "./moderation.js";
 
@@ -67,7 +67,7 @@ ${keys.length ? `<ul class="wl-months">${keys.map((k) => { const top = rank(mont
   return `<li class="wl-month"><a class="wl-mlink" href="/lists/${k}"><span class="wl-covers">${top.map((r) => r.cover_url ? `<img src="${esc(r.cover_url)}" alt="" width="64" height="64" loading="lazy">` : `<span class="rv-nocover">♪</span>`).join("")}</span><b>${monthName(k)}</b><span class="hint">${months[k].length} song${months[k].length === 1 ? "" : "s"} · #1: ${esc(top[0].title)}</span></a>
 ${gs.length ? `<span class="rchips">${gs.map(([g, n]) => `<a class="rchip" href="/lists/${k}/${g}">${esc(genreName(g))} <span class="hint">${n}</span></a>`).join("")}</span>` : ""}</li>`; }).join("")}</ul>` : `<div class="warn"><b>The first list drops when the reviews do.</b><p><a href="/reviews">Read the reviews</a> so far.</p></div>`}
 ${SUB}</article>`;
-    return html(shell({ active: "", path: "/lists", title: "The Wicked list: best new songs by month · Wackometer", desc: "The best songs Wackometer reviewed each month, ranked from Wicked to Wack, with genre lists for indie, R&B, hip-hop, pop and more.", body }));
+    return html(shell({ active: "lists", path: "/lists", title: "The Wicked list: best new songs by month · Wackometer", desc: "The best songs Wackometer reviewed each month, ranked from Wicked to Wack, with genre lists for indie, R&B, hip-hop, pop and more.", body }));
   }
   const m = path.match(/^\/lists\/(\d{4}-\d{2})(?:\/([a-z-]+))?$/);
   if (!m || !months[m[1]] || (m[2] && !GENRE_KEYS.includes(m[2]))) return html(shell({ path, title: "List not found · Wackometer", desc: "", noindex: true, body: `<article class="seoart"><h1>That list isn't here.</h1><p class="lead"><a href="/lists">See every Wicked list</a>.</p></article>` }), 404, "no-store");
@@ -93,12 +93,36 @@ ${gs.length || g ? `<nav class="rchips" aria-label="Other lists this month">${g 
 ${SUB}</article>`;
   const ld = [{ "@context": "https://schema.org", "@type": "ItemList", name: h1, itemListOrder: "https://schema.org/ItemListOrderAscending", numberOfItems: items.length, itemListElement: items.slice(0, 100).map((r, i) => ({ "@type": "ListItem", position: i + 1, url: `${BASE}/reviews/${r.slug}`, name: `${r.title} by ${r.artist}` })) },
     { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [{ "@type": "ListItem", position: 1, name: "The Wicked list", item: `${BASE}/lists` }, { "@type": "ListItem", position: 2, name: mn, item: `${BASE}/lists/${k}` }, ...(g ? [{ "@type": "ListItem", position: 3, name: gLabel, item: `${BASE}/lists/${k}/${g}` }] : [])] }];
-  return html(shell({ path, title: `Best ${g ? gLabel + " " : "new "}songs of ${mn}: the Wicked list · Wackometer`, desc: `The ${what} Wackometer reviewed in ${mn}, ranked from Wicked to Wack. #1: ${items[0].title} by ${items[0].artist} (${items[0].score}).`.slice(0, 300), body, ld, noindex: items.length < MIN_INDEX }));
+  return html(shell({ active: "lists", path, title: `Best ${g ? gLabel + " " : "new "}songs of ${mn}: the Wicked list · Wackometer`, desc: `The ${what} Wackometer reviewed in ${mn}, ranked from Wicked to Wack. #1: ${items[0].title} by ${items[0].artist} (${items[0].score}).`.slice(0, 300), body, ld, noindex: items.length < MIN_INDEX }));
 }
 function monthGenres(rows) {
   const n = {};
   for (const r of rows) for (const g of genresOf(r.genre)) n[g] = (n[g] || 0) + 1;
   return GENRE_KEYS.filter((g) => n[g]).map((g) => [g, n[g]]);
+}
+
+/* ---------- genres: tiles (front page, /genres) ---------- */
+const GENRE_EMOJI = { indie: "🌙", "r-and-b": "💜", soul: "🕯️", "hip-hop": "🎤", pop: "🍭", rock: "🎸", alternative: "🌀", electronic: "🎛️", "funk-and-disco": "🪩", latin: "💃", jazz: "🎷", folk: "🪕" };
+const GENRE_TINT = ["#FFF0E5", "#E2F7F0", "#EFEDFA", "#E7F0FF", "#F1F7D6"];
+export async function genreTilesHTML(DB, limit = 12, front = false) {
+  const rows = await liveReviews(DB), by = {};
+  for (const r of rows) for (const g of genresOf(r.genre)) (by[g] = by[g] || []).push(r);
+  const list = GENRE_KEYS.filter((g) => by[g]).sort((a, b) => by[b].length - by[a].length).slice(0, limit);
+  if (!list.length) return front ? "" : '<div class="warn"><b>Genres show up as reviews go live.</b><p><a href="/reviews">Read the reviews</a> so far.</p></div>';
+  const tiles = list.map((g, i) => { const top = rank(by[g]).slice(0, 3);
+    return `<a class="gtile" href="/reviews/${g}" style="--gt:${GENRE_TINT[i % GENRE_TINT.length]}"><span class="gt-e" aria-hidden="true">${GENRE_EMOJI[g] || "🎵"}</span><b>${esc(genreName(g))}</b><span class="hint">${by[g].length} review${by[g].length === 1 ? "" : "s"}</span><span class="gt-covers" aria-hidden="true">${top.map((r) => r.cover_url ? `<img src="${esc(r.cover_url)}" alt="" width="44" height="44" loading="lazy">` : "").join("")}</span></a>`; }).join("");
+  return front ? `<section class="fgenres" aria-labelledby="rGen"><div class="frh"><h2 id="rGen">Browse by genre</h2><a href="/genres">All genres <span aria-hidden="true">→</span></a></div><div class="gtiles">${tiles}</div></section>` : `<div class="gtiles">${tiles}</div>`;
+}
+export async function genresIndex(req, env, ensureSchema) {
+  await ensureSchema(env);
+  const body = `<article class="seoart">
+<p class="eyebrow">Song reviews</p>
+<h1><span class="cm cm-h1" data-tier="1" aria-hidden="true"></span>Browse by genre</h1>
+<p class="lead">Every review sorted by sound. A song can sit in more than one genre, so indie pop shows up under Indie and Pop.</p>
+${await genreTilesHTML(env.DB)}
+<p class="hint">Want the best of each month instead? <a href="/lists">See the Wicked lists</a>.</p>
+${submitHTML()}</article>`;
+  return html(shell({ active: "genres", path: "/genres", title: "Song reviews by genre: indie, R&B, hip-hop, pop and more · Wackometer", desc: "Browse Wackometer song reviews by genre: indie, R&B, hip-hop, pop, rock, electronic, Latin and more, each scored from Wicked to Wack.", body }));
 }
 
 /* ---------- genre pages (/reviews/indie) ---------- */
@@ -124,13 +148,13 @@ ${keys.length ? `<p class="hint">Monthly lists: ${keys.map((k) => `<a href="/lis
 <div class="ad-slot" hidden></div>
 ${submitHTML()}</article>`;
   const ld = { "@context": "https://schema.org", "@type": "CollectionPage", name: `${name} song reviews`, url: `${BASE}/reviews/${g}`, hasPart: rows.slice(0, 30).map((r) => ({ "@type": "Review", url: `${BASE}/reviews/${r.slug}`, name: `${r.artist}: ${r.title}` })) };
-  return html(shell({ active: "reviews", path: `/reviews/${g}`, title: `${name} song reviews: new ${name} music, Wicked to Wack · Wackometer`, desc: `Honest reviews of new ${name} songs and albums (lyrics, hook, vocals, production) scored from Wicked to Wack, plus a crowd score you can vote on.`, body, ld, noindex: rows.length < MIN_INDEX }));
+  return html(shell({ active: "genres", path: `/reviews/${g}`, title: `${name} song reviews: new ${name} music, Wicked to Wack · Wackometer`, desc: `Honest reviews of new ${name} songs and albums (lyrics, hook, vocals, production) scored from Wicked to Wack, plus a crowd score you can vote on.`, body, ld, noindex: rows.length < MIN_INDEX }));
 }
 
 /* ---------- sitemap entries ---------- */
 export async function hubUrls(DB) {
   const rows = await liveReviews(DB), months = byMonth(rows), out = [];
-  if (rows.length) out.push(["/lists", "weekly", "0.7"]);
+  if (rows.length) out.push(["/lists", "weekly", "0.7"], ["/genres", "weekly", "0.7"]);
   for (const [k, list] of Object.entries(months)) {
     if (list.length >= MIN_INDEX) out.push([`/lists/${k}`, "weekly", "0.7"]);
     for (const [g, n] of monthGenres(list)) if (n >= MIN_INDEX) out.push([`/lists/${k}/${g}`, "weekly", "0.6"]);

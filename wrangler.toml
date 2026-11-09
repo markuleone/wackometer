@@ -8,7 +8,7 @@ keep_vars = true  # keep variables set in the Cloudflare dashboard (e.g. ADSENSE
 directory = "./public"
 binding = "ASSETS"
 not_found_handling = "none"  # no asset? the worker answers (front page, reviews, 404s)
-run_worker_first = ["/", "/api/*", "/u/*", "/sitemap.xml", "/ads.txt", "/reviews", "/reviews/*", "/artists", "/artists/*", "/get-reviewed", "/critics", "/critics/*", "/badge/*", "/img/*", "/lists", "/lists/*"]
+run_worker_first = ["/", "/api/*", "/u/*", "/sitemap.xml", "/ads.txt", "/reviews", "/reviews/*", "/artists", "/artists/*", "/get-reviewed", "/critics", "/critics/*", "/badge/*", "/img/*", "/lists", "/lists/*", "/genres"]
 
 # Error logs and traces in the Cloudflare dashboard (Workers → wackometer → Observability)
 [observability]

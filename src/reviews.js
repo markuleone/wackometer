@@ -8,7 +8,7 @@ import { adsenseTag } from "./ads-tag.js";
 import { TIERS, tierOf, MID } from "../web/js/score.js";
 import META from "./build-meta.js";
 import { siteHeader } from "./site-header.js";
-import { GENRE_KEYS, genrePage, genreCounts, reviewSocialHTML, artistProfile, artistLinksHTML, artistExtrasHTML, thankSubmitter } from "./hub.js";
+import { GENRE_KEYS, genrePage, genreCounts, genreTilesHTML, reviewSocialHTML, artistProfile, artistLinksHTML, artistExtrasHTML, thankSubmitter } from "./hub.js";
 
 const BASE = "https://wackometer.com";
 const TC = ["#3D8BFF", "#22C29B", "#A9A2DA", "#FF8A3D", "#A8C42E"];
@@ -128,6 +128,13 @@ function card(r) {
 <span class="rv-cv">${esc(r.verdict)}</span></a>`;
 }
 
+// The two things we ask readers to do, as one calm pair of cards (the full payment form lives on /get-reviewed).
+export function ctaHTML() {
+  return `<section class="fpromo fcta" aria-label="Get involved">
+<a class="fp fp-get" href="/get-reviewed" data-hub="submit"><span class="fp-char" data-tier="1" aria-hidden="true"></span><span class="hey">🎧 Make music?</span><b>Get your song weighed.</b><span>A real person plays it start to finish and sends you written feedback within 7 days. $10.</span><span class="fpgo">Get reviewed <span aria-hidden="true">→</span></span></a>
+<a class="fp fp-weigh" href="/write#weigh" data-hub="write"><span class="fp-char" data-tier="4" aria-hidden="true"></span><span class="hey">✍️ For writers · Free</span><b>How wack are <em>your</em> lyrics?</b><span>Paste a verse. The Wackometer scores it in a second, circles the clichés and shows you how to fix them.</span><span class="fpgo">Weigh my lyrics <span aria-hidden="true">→</span></span></a>
+</section>`;
+}
 // Paid submissions: the card form (Stripe Payment Element) sits right in the page; see review.js.
 function submitHTML(critics = [], picked = "", more = true) {
   const opts = critics.map((c) => `<option value="${esc(c.slug)}"${c.slug === picked ? " selected" : ""}>${esc(c.name)}${c.tagline ? " · " + esc(c.tagline) : ""}</option>`).join("");
@@ -160,7 +167,7 @@ ${more ? '<a class="sub-more" href="/get-reviewed">What you get and who reviews 
 /* ---------- HTML routes ---------- */
 export async function reviewsPage(req, env, path, ensureSchema) {
   await ensureSchema(env);
-  const critics = await activeCritics(env.DB), SUB = submitHTML();
+  const critics = await activeCritics(env.DB), SUB = ctaHTML();
   const DB = env.DB, url = new URL(req.url);
   if (path === "/reviews") {
     const f = url.searchParams.get("f") || "", q = (url.searchParams.get("q") || "").trim().slice(0, 80);
@@ -215,11 +222,6 @@ ${SUB}
 <p class="rv-verdict">“${esc(r.verdict)}”</p>
 </div>
 </div>
-${breakdownHTML(r)}
-<section class="rv-vote" aria-labelledby="voteH"><h2 id="voteH">Your call: how's the song?</h2>
-<div class="rv-tiers" role="group" aria-label="Vote on the song">${TIERS.map((T, i) => `<button type="button" class="rv-t" data-t="${i}" style="--tc:${TC[i]};--to:${TEXT_ON[i]}" aria-pressed="false">${esc(T.n)}</button>`).join("")}</div>
-<span class="hint" id="voteNote" role="status"></span></section>
-${draft ? "" : await reviewSocialHTML(DB, slug)}
 ${sp ? `<div class="rv-listen"><iframe title="Listen to ${esc(r.title)} on Spotify" src="${esc(sp.src)}" width="100%" height="${sp.type === "track" ? 152 : 352}" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" style="border:0;border-radius:14px"></iframe></div>` : ""}
 ${yt ? `<div class="rv-listen yt" id="watch"><iframe title="Watch ${esc(r.title)} on YouTube" src="https://www.youtube-nocookie.com/embed/${yt}" loading="lazy" allow="encrypted-media; picture-in-picture; fullscreen" style="border:0"></iframe></div>` : ""}
 ${listen.length ? `<p class="rv-links">Listen on ${listen.map(([n, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener">${n}</a>`).join(" · ")}</p>` : ""}
@@ -230,6 +232,11 @@ ${standouts.length ? `<h2>Standout tracks</h2><ul class="rv-stand">${standouts.m
 ${r.submitted ? '<p class="hint rv-paid">💵 The artist sent this in through paid submissions. Paying gets a listen, not a better score.</p>' : ""}
 <p class="hint rv-sig">Reviewed by ${(() => { const c = critics.find((x) => x.name.toLowerCase() === String(r.reviewer || "").trim().toLowerCase()); return c ? `<a href="/critics/${esc(c.slug)}">${esc(c.name)}</a>` : esc(r.reviewer || "Wackometer"); })()} · <time datetime="${date.toISOString().slice(0, 10)}">${date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" })}</time></p>
 </div>
+${breakdownHTML(r)}
+<section class="rv-vote" aria-labelledby="voteH"><h2 id="voteH">Your call: how's the song?</h2>
+<div class="rv-tiers" role="group" aria-label="Vote on the song">${TIERS.map((T, i) => `<button type="button" class="rv-t" data-t="${i}" style="--tc:${TC[i]};--to:${TEXT_ON[i]}" aria-pressed="false">${esc(T.n)}</button>`).join("")}</div>
+<span class="hint" id="voteNote" role="status"></span></section>
+${draft ? "" : await reviewSocialHTML(DB, slug)}
 <div class="ad-slot" hidden></div>
 <section class="rv-share" id="share" aria-labelledby="shareH"><h2 id="shareH">Pass it on</h2>
 <div class="row"><button class="btn bile" type="button" id="rvShare">Share this review</button><button class="btn" type="button" id="rvCard">Save story card</button><button class="btn" type="button" id="rvVideo">🎬 Save video</button></div>
@@ -242,7 +249,6 @@ ${r.submitted ? '<p class="hint rv-paid">💵 The artist sent this in through pa
 </section>
 ${more.length ? `<section class="rv-more" aria-labelledby="moreH"><h2 id="moreH">More reviews</h2><div class="rv-grid">${more.map(card).join("")}</div><p><a href="/reviews">All reviews →</a></p></section>` : ""}
 <div class="ad-slot" hidden></div>
-<div class="cta"><b>Now weigh your own.</b><p>Paste a verse into the Wackometer. It scores it from Wicked to Wack, circles the clichés and lazy rhymes, and shows you how to fix them.</p><a class="btn bile" href="/write#weigh">Weigh my lyrics, free</a></div>
 ${SUB}
 </article>`;
   const item = { "@type": r.kind === "album" ? "MusicAlbum" : "MusicRecording", name: r.title, byArtist: { "@type": "MusicGroup", name: r.artist, ...(artistUrl ? { url: artistUrl } : {}) }, ...(r.cover_url ? { image: r.cover_url } : {}), ...(r.genre ? { genre: r.genre } : {}) };
@@ -307,17 +313,12 @@ ${hero.length ? `<section class="fhero" aria-roledescription="carousel" aria-lab
 ${all.length ? row("rNew", "Latest reviews", "/reviews", all.slice(0, 12).map((r) => rowCard(r, crowd)).join("")) : ""}
 ${(() => { if (!all.length) return ""; const k = new Date(all[0].published_at).toISOString().slice(0, 7), mo = ["January","February","March","April","May","June","July","August","September","October","November","December"][Number(k.slice(5)) - 1] + " " + k.slice(0, 4), top = all.filter((r) => new Date(r.published_at).toISOString().slice(0, 7) === k).sort((x, y) => x.score - y.score).slice(0, 4);
   return `<a class="fwl" href="/lists/${k}"><span class="fwl-covers">${top.map((r) => r.cover_url ? `<img src="${esc(r.cover_url)}" alt="" width="56" height="56" loading="lazy">` : `<span class="rv-nocover">♪</span>`).join("")}</span><span class="fwl-t"><span class="eyebrow">📅 The Wicked list</span><b>The best songs we weighed in ${mo}</b></span><span class="fwl-go">See the list →</span></a>`; })()}
+${await genreTilesHTML(DB, 8, true)}
 <div class="ad-slot" hidden></div>
-<section class="fpromo" aria-label="More from Wackometer">
-<a class="fp fp-weigh" href="/write#weigh" data-hub="write"><span class="fp-char" data-tier="4" aria-hidden="true"></span><span class="hey">✍️ For writers · Free</span><b>How wack are <em>your</em> lyrics?</b><span>Paste a verse and the Wackometer scores it in a second, circles the clichés, then helps you fix them with Wingman, the Workshop and Wordstorm.</span><span class="fpgo">Weigh my lyrics <span aria-hidden="true">→</span></span></a>
-<a class="fp fp-plug" href="/write#plugin" data-hub="plugin"><span class="fp-char" data-tier="5" aria-hidden="true"></span><span class="hey">🎛️ In the studio <span class="hsoon">Coming soon</span></span><b>Wingman plugin</b><span>The Wackometer inside FL Studio, Ableton and Logic. Weigh lines and get rewrites without leaving your session.</span><span class="fpgo">Get early access <span aria-hidden="true">→</span></span></a>
-</section>
-${wicked.length ? row("rWicked", "✨ Certified Wicked", "/reviews?f=wicked", wicked.map((r) => rowCard(r, crowd)).join("")) : ""}
 ${artists.length ? `<section class="flb" aria-labelledby="rLb"><div class="frh"><h2 id="rLb">🏆 Top artists</h2><a href="/artists">Full leaderboard <span aria-hidden="true">→</span></a></div><p class="hint">Each artist's score is the average of every song we've weighed. Lower is better.</p><ol class="lb-list">${leaderRows(artists.slice(0, 5))}</ol></section>` : ""}
+${ctaHTML()}
 <div class="ad-slot" hidden></div>
-${videos.length ? row("rVid", "🎬 Music videos", "/reviews?f=videos", videos.map(videoCard).join(""), " fvids") : ""}
-${split.length ? `<section class="fsplit" aria-labelledby="rSplit"><div class="frh"><h2 id="rSplit">⚔️ Critics vs. the crowd</h2></div><p class="hint">Where the voters and the Wackometer don't agree. Pick a side.</p><ol>${split.map(({ r, c }) => `<li><a href="/reviews/${esc(r.slug)}"><b>${esc(r.title)}</b> <span class="rv-ca">${esc(r.artist)}</span></a><span class="fvs">We said ${pill(tierOf(r.score), `${TIERS[tierOf(r.score)].n} ${r.score}`)} Crowd said ${pill(c.tier, `${TIERS[c.tier].n} ${c.avg}`)}</span></li>`).join("")}</ol></section>` : ""}
-${SUB}
+${"" && split.length ? `<section class="fsplit" aria-labelledby="rSplit"><div class="frh"><h2 id="rSplit">⚔️ Critics vs. the crowd</h2></div><p class="hint">Where the voters and the Wackometer don't agree. Pick a side.</p><ol>${split.map(({ r, c }) => `<li><a href="/reviews/${esc(r.slug)}"><b>${esc(r.title)}</b> <span class="rv-ca">${esc(r.artist)}</span></a><span class="fvs">We said ${pill(tierOf(r.score), `${TIERS[tierOf(r.score)].n} ${r.score}`)} Crowd said ${pill(c.tier, `${TIERS[c.tier].n} ${c.avg}`)}</span></li>`).join("")}</ol></section>` : ""}
 </div>`;
   const ld = [{ "@context": "https://schema.org", "@type": "WebSite", name: "Wackometer", url: BASE + "/", potentialAction: { "@type": "SearchAction", target: `${BASE}/reviews?q={search_term_string}`, "query-input": "required name=search_term_string" } },
     { "@context": "https://schema.org", "@type": "Organization", name: "Wackometer", url: BASE + "/", logo: BASE + "/brand/wacky-w.png", sameAs: ["https://instagram.com/wackometer"] }];
@@ -357,7 +358,7 @@ export function leaderRows(list) {
 
 export async function artistsPage(req, env, path, ensureSchema) {
   await ensureSchema(env);
-  const SUB = submitHTML();
+  const SUB = ctaHTML();
   const list = await artistTable(env.DB);
   if (path === "/artists") {
     const body = `<article class="seoart lb">

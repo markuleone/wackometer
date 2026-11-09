@@ -5,7 +5,7 @@ import { handleSocial, profileMeta } from "./social.js";
 import { cleanLyrics, cleanIdentity } from "./moderation.js";
 import SEO_URLS from "./seo-urls.js";
 import { checkUnsubscribe } from "./notify.js";
-import { listsPage, artistBadge, hubApi, hubUrls, thankSubmitter } from "./hub.js";
+import { listsPage, artistBadge, hubApi, hubUrls, thankSubmitter, genresIndex } from "./hub.js";
 import { reviewsPage, badgeSVG, reviewApi, reviewUrls, frontPage, artistsPage, artistTable, getReviewedPage, criticsPage, activeCritics, subscribe, imageResponse, listUnsubscribe } from "./reviews.js";
 import { analyze, tierOf, clamp, MID, TIERS, METRICS, words, dailyKey, dailyPrompt } from "../web/js/score.js";
 
@@ -179,6 +179,7 @@ export default {
     if (path === "/critics" || path.startsWith("/critics/")) { try { return await criticsPage(req, env, path, ensureSchema); } catch (e) { console.error(e); return new Response("Something broke on our side. Try again in a moment.", { status: 500 }); } }
     if (path === "/artists" || path.startsWith("/artists/")) { try { return await artistsPage(req, env, path, ensureSchema); } catch (e) { console.error(e); return new Response("Something broke on our side. Try again in a moment.", { status: 500 }); } }
     if (path.startsWith("/img/") && (method === "GET" || method === "HEAD")) { await ensureSchema(env); return imageResponse(env, path.slice(5)); }
+    if (path === "/genres") { try { return await genresIndex(req, env, ensureSchema); } catch (e) { console.error(e); return new Response("Something broke on our side. Try again in a moment.", { status: 500 }); } }
     if (path === "/lists" || path.startsWith("/lists/")) { try { return await listsPage(req, env, path, ensureSchema); } catch (e) { console.error(e); return new Response("Something broke on our side. Try again in a moment.", { status: 500 }); } }
     if (path.startsWith("/badge/artist/") && path.endsWith(".svg")) return artistBadge(env, path.slice(14, -4).toLowerCase(), ensureSchema);
     if (path.startsWith("/badge/") && path.endsWith(".svg")) return badgeSVG(env, path.slice(7, -4).toLowerCase(), ensureSchema);
