@@ -30,6 +30,9 @@ async function lookupCover(r) {
   // A Spotify track/album link gives the exact cover.
   const sp = spotifyEmbed(r.spotify_url || "");
   if (sp) { try { const o = await (await fetch(`https://open.spotify.com/oembed?url=${encodeURIComponent(r.spotify_url)}`, ua)).json(); if (o.thumbnail_url) return { cover: o.thumbnail_url }; } catch (e) {} }
+  // An Apple Music link points at the exact release.
+  const am = String(r.apple_url || "").match(/[?&]i=(\d+)/) || String(r.apple_url || "").match(/\/(\d{6,})(?:\?|$)/);
+  if (am) { try { const h = ((await (await fetch(`https://itunes.apple.com/lookup?id=${am[1]}`, ua)).json()).results || [])[0]; if (h && h.artworkUrl100) return { cover: String(h.artworkUrl100).replace(/\/\d+x\d+bb\./, "/600x600bb.") }; } catch (e) {} }
   // Otherwise Apple's catalog, but only when the artist and title really match (a wrong cover is worse than none).
   const artist = norm(String(r.artist || "").split(/,|&| x | feat\.?| ft\.?/i)[0]), title = norm(r.title);
   if (!artist || !title) return null;
@@ -39,6 +42,14 @@ async function lookupCover(r) {
       const res = await (await fetch(`https://itunes.apple.com/search?media=music&entity=${album ? "album" : "song"}&limit=10&term=${encodeURIComponent(term)}`, ua)).json();
       const hit = (res.results || []).find((h) => norm(h.artistName).includes(artist.split(" ")[0]) && norm(album ? h.collectionName : h.trackName).startsWith(title.split(" ").slice(0, 3).join(" ")));
       if (hit && hit.artworkUrl100) return { cover: String(hit.artworkUrl100).replace(/\/\d+x\d+bb\./, "/600x600bb."), apple_url: (album ? hit.collectionViewUrl : hit.trackViewUrl || "").split("?")[0] || null };
+    } catch (e) {}
+  }
+  // New albums often aren't in the album search yet, but their songs are.
+  if (album) {
+    try {
+      const res = await (await fetch(`https://itunes.apple.com/search?media=music&entity=song&limit=25&term=${encodeURIComponent(artist + " " + title)}`, ua)).json();
+      const hit = (res.results || []).find((h) => norm(h.artistName).includes(artist.split(" ")[0]) && norm(h.collectionName).startsWith(title.split(" ").slice(0, 3).join(" ")));
+      if (hit && hit.artworkUrl100) return { cover: String(hit.artworkUrl100).replace(/\/\d+x\d+bb\./, "/600x600bb."), apple_url: (hit.collectionViewUrl || "").split("?")[0] || null };
     } catch (e) {}
   }
   return null;
