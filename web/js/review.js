@@ -63,7 +63,7 @@ if (R.slug) {
 const tierLabel = () => (R.cert ? "Certified Wicked" : TIERS[R.tier].n);
 const shareText = () => {
   const who = R.ig ? `@${R.ig}` : R.artist;
-  return R.cert ? `${who}'s “${R.title}” is Certified Wicked on the Wackometer ✨` : `“${R.title}” by ${who} got weighed: ${tierLabel()} (${R.score}/100). Do you agree?`;
+  return R.cert ? `${who}'s “${R.title}” is Certified Wicked on @wackometer ✨` : `“${R.title}” by ${who} got weighed on @wackometer: ${tierLabel()} (${R.score}/100). Do you agree?`;
 };
 if ($("rvShare")) $("rvShare").onclick = async () => {
   const url = location.origin + location.pathname, note = $("shareNote");
@@ -141,7 +141,7 @@ function drawStory(x, { cover, ch }, p) {
   x.font = `italic 400 44px ${B}`; x.fillStyle = "#1F2340";
   wrap(x, `“${R.verdict}”`, W - 200, 3).forEach((l, i) => x.fillText(l, W / 2, y + i * 60));
   x.globalAlpha = 1; x.font = `700 40px ${D}`; x.fillStyle = "#5A6E0C"; x.fillText("wackometer.com/reviews", W / 2, 1830);
-  x.font = `600 30px ${B}`; x.fillStyle = "#646A8C"; x.fillText("Do you agree? Cast your vote.", W / 2, 1878);
+  x.font = `600 30px ${B}`; x.fillStyle = "#646A8C"; x.fillText("Do you agree? Vote at the link · @wackometer", W / 2, 1878);
 }
 // 7-second vertical video of the card building itself, for TikTok, Reels and Shorts.
 if ($("rvVideo")) $("rvVideo").onclick = async () => {

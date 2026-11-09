@@ -82,7 +82,7 @@ ${body}
 </main>
 <section class="wotw" aria-labelledby="wotwH"><div><h2 id="wotwH">Wicked of the week</h2><p>One email on Fridays: the best song we weighed that week, plus the one that got wrecked. No spam, leave anytime.</p></div>
 <form id="wotwForm" class="wotw-f"><label class="sr" for="wotwEmail">Your email</label><input id="wotwEmail" name="email" type="email" required maxlength="200" placeholder="you@email.com" autocomplete="email"><input type="hidden" name="source" value="${esc(String(path || "").split("/")[1] || "home")}"><button class="btn bile" type="submit">Get it</button><span class="hint" id="wotwNote" role="status"></span></form></section>
-<footer><p class="flinks">Wackometer · <a href="/reviews">Song reviews</a> · <a href="/get-reviewed">Get reviewed</a> · <a href="/critics">Become a critic</a> · <a href="/rhymes/">Fresh rhymes</a> · <a href="/cliches/">Cliché fixer</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a></p>${DBV}</footer>
+<footer><p class="flinks">Wackometer · <a href="/reviews">Song reviews</a> · <a href="/get-reviewed">Get reviewed</a> · <a href="/critics">Become a critic</a> · <a href="/rhymes/">Fresh rhymes</a> · <a href="/cliches/">Cliché fixer</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="https://instagram.com/wackometer" rel="me noopener" target="_blank">Instagram @wackometer</a></p>${DBV}</footer>
 </div>
 <div class="modal" id="humanModal" hidden role="dialog" aria-labelledby="humanH"><div class="mbox"><div class="mch" id="humanChar"></div><h3 id="humanH">Quick check: are you a human?</h3><p class="tag">Keeps bots out of the votes. You only do this once a month.</p><div id="turnstileBox"></div><span class="hint" id="humanNote"></span></div></div>
 </body>
@@ -227,7 +227,7 @@ ${r.submitted ? '<p class="hint rv-paid">💵 The artist sent this in through pa
 <p class="hint rv-sig">Reviewed by ${(() => { const c = critics.find((x) => x.name.toLowerCase() === String(r.reviewer || "").trim().toLowerCase()); return c ? `<a href="/critics/${esc(c.slug)}">${esc(c.name)}</a>` : esc(r.reviewer || "Wackometer"); })()} · <time datetime="${date.toISOString().slice(0, 10)}">${date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" })}</time></p>
 </div>
 <div class="ad-slot" hidden></div>
-<section class="rv-share" aria-labelledby="shareH"><h2 id="shareH">Pass it on</h2>
+<section class="rv-share" id="share" aria-labelledby="shareH"><h2 id="shareH">Pass it on</h2>
 <div class="row"><button class="btn bile" type="button" id="rvShare">Share this review</button><button class="btn" type="button" id="rvCard">Save story card</button><button class="btn" type="button" id="rvVideo">🎬 Save video</button></div>
 <span class="hint" id="shareNote" role="status"></span>
 <details class="rv-badge"><summary>Are you ${esc(r.artist)}? Get your badge</summary>
@@ -314,7 +314,7 @@ ${split.length ? `<section class="fsplit" aria-labelledby="rSplit"><div class="f
 ${SUB}
 </div>`;
   const ld = [{ "@context": "https://schema.org", "@type": "WebSite", name: "Wackometer", url: BASE + "/", potentialAction: { "@type": "SearchAction", target: `${BASE}/reviews?q={search_term_string}`, "query-input": "required name=search_term_string" } },
-    { "@context": "https://schema.org", "@type": "Organization", name: "Wackometer", url: BASE + "/", logo: BASE + "/favicon.svg" }];
+    { "@context": "https://schema.org", "@type": "Organization", name: "Wackometer", url: BASE + "/", logo: BASE + "/favicon.svg", sameAs: ["https://instagram.com/wackometer"] }];
   // Old links to the tools (wackometer.com/#weigh etc.) go to their new home before anything renders.
   const head = `<script>if(/^#(${OLD_TOOL_HASH})$/.test(location.hash)||/[?&](paid|signin|unsubscribed|deleted)=/.test(location.search))location.replace("/write"+location.search+location.hash)</script>`;
   return html(shell({ path: "/", title: "Wackometer · Song reviews of new music, from Wicked to Wack", desc: "Honest reviews of new songs, albums and music videos (lyrics, hook, vocals, production) scored from Wicked to Wack, with a crowd score you vote on. Plus free tools to weigh your own lyrics.", image: "", body, ld, head, data: JSON.stringify({ front: true }) }), 200, "no-cache");
@@ -687,6 +687,8 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
     }
     if (!prev || prev.slug !== slug) { const taken = await DB.prepare("SELECT slug FROM reviews WHERE slug=?").bind(slug).first(); if (taken) return bad("Another review already uses that link name. Change the slug."); }
     const status = body.status === "live" ? "live" : "draft", t = Date.now();
+    // Starting drafts written by Claude can't go live until a person has listened and confirmed it.
+    if (prev && prev.assist && status === "live" && !body.listened) return bad("This started as a Claude draft. Listen to the whole song, make it yours, then tick “I listened to the whole song” to publish.");
     const vals = [f("kind") === "album" ? "album" : "song", artist, title, f("genre", 60) || null, f("released", 40) || null, score, verdict, f("body", 12000) || null, best || null, f("standouts", 600) || null,
       safeUrl(f("cover_url", 500)) || null, safeUrl(f("spotify_url", 300)) || null, safeUrl(f("youtube_url", 300)) || null, safeUrl(f("apple_url", 300)) || null, safeUrl(f("artist_url", 300)) || null, igHandle(f("artist_ig", 80)) || null, f("reviewer", 60) || null, status, body.featured ? 1 : 0, body.submitted ? 1 : 0];
     const published = status === "live" ? (prev && prev.published_at) || t : (prev && prev.published_at) || null;
@@ -709,6 +711,7 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
       const r = await DB.prepare("SELECT * FROM reviews WHERE slug=?").bind(slug).first();
       if (r && !r.notified_at) notified = await tellArtist(env, DB, r, requestId, url);
     }
+    if (body.listened) await DB.prepare("UPDATE reviews SET assist=0 WHERE slug=?").bind(slug).run();
     return json({ ok: true, slug, status, notified });
   }
   if (path === "/api/reviews-admin/delete" && method === "POST") {
@@ -771,10 +774,13 @@ async function tellArtist(env, DB, r, requestId, url) {
   const fromRaw = env.EMAIL_FROM || "Wackometer <hello@wackometer.com>";
   const fm = fromRaw.match(/^\s*(.*?)\s*<([^>]+)>\s*$/), from = fm ? { name: fm[1] || "Wackometer", email: fm[2] } : { email: fromRaw.trim() };
   const e = (x) => esc(x);
-  const htmlBody = `<div style="font-family:Arial,sans-serif;font-size:16px;color:#1F2340;line-height:1.5"><p>Hey ${e(q.artist)},</p><p>Your review of <b>${e(r.title)}</b> is live on Wackometer. It weighed in at <b>${r.score} · ${e(r.score < 20 ? "Certified Wicked" : t)}</b>.</p><p><a href="${link}" style="display:inline-block;background:#A8C42E;color:#1F2340;padding:12px 20px;border-radius:999px;font-weight:bold;text-decoration:none">Read your review</a></p><p>On the page you'll find a story-sized share card for Instagram and a badge you can put on your site. Tag us so we can repost.</p><p>Thanks for trusting us with your music.<br>Wackometer</p></div>`;
+  const htmlBody = emailShell({ base, env, preheader: `${r.title} weighed in at ${r.score}.`, eyebrow: "YOUR REVIEW IS LIVE",
+    content: `${emailHeadline(`Hey ${q.artist}, you got weighed.`, `Thanks for trusting us with your music. Your review of “${r.title}” is up on Wackometer.`)}
+${heroCard(base, r, "🎧 YOUR REVIEW")}
+${eCard(`<div style="font-family:${EF};font-weight:700;font-size:20px;color:${INK}">Share it</div><div style="font-family:${EB};font-size:15px;line-height:1.55;color:${INK};padding:6px 0 14px">On the review page you'll find a story card and a 7-second video sized for Instagram and TikTok, plus a badge for your site. Tag <a href="https://instagram.com/wackometer" style="color:#5A6E0C;font-weight:bold">@wackometer</a> and we'll repost.</div>${eBtn(`${link}#share`, "Get your share card")}`)}` });
   try {
     const res = await fetch("https://api.sendgrid.com/v3/mail/send", { method: "POST", headers: { authorization: `Bearer ${env.SENDGRID_API_KEY}`, "content-type": "application/json" },
-      body: JSON.stringify({ personalizations: [{ to: [{ email: q.email }] }], from, subject: `Your Wackometer review is live: ${r.title}`, content: [{ type: "text/plain", value: `Hey ${q.artist},\n\nYour review of ${r.title} is live on Wackometer: ${r.score} (${r.score < 20 ? "Certified Wicked" : t}).\n\nRead it: ${link}\n\nThe page has a share card for Instagram and a badge for your site.\n\nWackometer` }, { type: "text/html", value: htmlBody }] }) });
+      body: JSON.stringify({ personalizations: [{ to: [{ email: q.email }] }], from, subject: `Your Wackometer review is live: ${r.title}`, content: [{ type: "text/plain", value: `Hey ${q.artist},\n\nYour review of ${r.title} is live on Wackometer: ${r.score} (${r.score < 20 ? "Certified Wicked" : t}).\n\nRead it: ${link}\n\nThe page has a share card and a short video for Instagram, and a badge for your site. Tag @wackometer and we'll repost.\n\nWackometer` }, { type: "text/html", value: htmlBody }] }) });
     if (!res.ok) { console.error("review notify", res.status, await res.text()); return { sent: false, email: q.email }; }
     await DB.prepare("UPDATE reviews SET notified_at=? WHERE slug=?").bind(Date.now(), r.slug).run();
     return { sent: true, email: q.email };
@@ -821,25 +827,88 @@ async function weekly(env, url, u, over = {}) {
   const subject = over.subject || (best ? `Wicked of the week: ${best.title} by ${best.artist}` : "Wicked of the week");
   const intro = over.intro || (fresh ? "Here's what we weighed this week: the song that earned it and the one that got wrecked." : "Catch up on our latest reviews: the best of the bunch and the one that got wrecked.");
   const e = esc, tn = (r) => (r.score < 20 ? "Certified Wicked" : TIERS_N[tierFor(r.score)]);
-  const card = (r, label) => `<tr><td style="padding:14px 0"><table role="presentation" width="100%" style="border:2px solid #1F2340;border-radius:18px;background:#FFFFFF"><tr>
-${r.cover_url ? `<td width="132" style="padding:14px"><a href="${base}/reviews/${r.slug}"><img src="${e(r.cover_url)}" width="118" height="118" alt="" style="border-radius:12px;display:block"></a></td>` : ""}
-<td style="padding:14px 14px 14px 0;font-family:Arial,sans-serif;color:#1F2340"><div style="font-size:12px;font-weight:bold;letter-spacing:1px;color:#646A8C">${label}</div>
-<div style="font-size:20px;font-weight:bold;margin:4px 0 2px">${e(r.title)}</div><div style="font-size:15px;color:#646A8C">${e(r.artist)}</div>
-<div style="margin:8px 0;font-size:15px"><b style="background:${TCOL[tierFor(r.score)]};color:#1F2340;border-radius:999px;padding:3px 10px">${r.score} · ${e(tn(r))}</b></div>
-<div style="font-size:15px;font-style:italic">“${e(r.verdict)}”</div><div style="margin-top:8px"><a href="${base}/reviews/${r.slug}" style="color:#5A6E0C;font-weight:bold">Read the review →</a></div></td></tr></table></td></tr>`;
-  const body = (unsub) => `<!doctype html><html><body style="margin:0;background:#F4F6EC"><table role="presentation" width="100%" style="background:#F4F6EC"><tr><td align="center" style="padding:24px 12px"><table role="presentation" width="100%" style="max-width:600px">
-<tr><td style="font-family:Arial,sans-serif;color:#1F2340;font-size:28px;font-weight:bold;padding-bottom:4px"><span style="color:#86A01A">W</span>ackometer</td></tr>
-<tr><td style="font-family:Arial,sans-serif;color:#1F2340;font-size:22px;font-weight:bold;padding:8px 0 4px">Wicked of the week</td></tr>
-<tr><td style="font-family:Arial,sans-serif;color:#1F2340;font-size:16px;line-height:1.5">${e(intro).replace(/\n/g, "<br>")}</td></tr>
-${best ? card(best, "THE WICKED ONE") : ""}${worst ? card(worst, "GOT WRECKED") : ""}
-${rest.length ? `<tr><td style="font-family:Arial,sans-serif;color:#1F2340;font-size:16px;padding-top:8px"><b>Also weighed:</b><br>${rest.map((r) => `<a href="${base}/reviews/${r.slug}" style="color:#1F2340">${e(r.title)} · ${e(r.artist)}</a> (${r.score})`).join("<br>")}</td></tr>` : ""}
-<tr><td style="font-family:Arial,sans-serif;font-size:15px;padding:18px 0"><a href="${base}/get-reviewed" style="display:inline-block;background:#A8C42E;color:#1F2340;padding:12px 20px;border-radius:999px;font-weight:bold;text-decoration:none">Make music? Get your song weighed</a></td></tr>
-<tr><td style="font-family:Arial,sans-serif;color:#646A8C;font-size:12px;line-height:1.5;padding-top:12px;border-top:1px solid #D9DCC8">You signed up for Wicked of the week at wackometer.com. <a href="${unsub}" style="color:#646A8C">Unsubscribe</a></td></tr>
-</table></td></tr></table></body></html>`;
+  const body = (unsub) => emailShell({ base, env, unsub, preheader: best ? `${best.title} by ${best.artist} earned it. ${worst ? `${worst.title} didn't.` : ""}` : "This week on the Wackometer",
+    eyebrow: `WICKED OF THE WEEK · ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }).toUpperCase()}`,
+    content: `${emailHeadline("This week on the meter", intro)}
+${best ? heroCard(base, best, "👑 THE WICKED ONE") : ""}
+${worst ? sideCard(base, worst, "🗑️ GOT WRECKED") : ""}
+${rest.length ? alsoCard(base, rest) : ""}
+${promoCard(base)}` });
   const text = (unsub) => `Wicked of the week\n\n${intro}\n\n${[best && ["THE WICKED ONE", best], worst && ["GOT WRECKED", worst]].filter(Boolean).map(([l, r]) => `${l}: ${r.title} by ${r.artist}, ${r.score} (${tn(r)})\n"${r.verdict}"\n${base}/reviews/${r.slug}`).join("\n\n")}\n\nUnsubscribe: ${unsub}`;
   return { subject, intro, best, worst, rest, subscribers: subs ? subs.c : 0, fresh, html: body("#"), _body: body, _text: text, canEmail: !!env.SENDGRID_API_KEY, testTo: u && u.email };
 }
 const TCOL = ["#3D8BFF", "#22C29B", "#A9A2DA", "#FF8A3D", "#A8C42E"];
+/* ---------- email building blocks (look like the site: lime wash, ink outlines, chunky rounded cards, the crew) ---------- */
+const EF = `'Fredoka','Arial Rounded MT Bold','Trebuchet MS',Arial,sans-serif`, EB = `-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif`;
+const INK = "#1F2340", MUT = "#646A8C", WASH = "#F1F7D6", BILE = "#A8C42E";
+const tierLabel = (r) => (r.score < 20 ? "Certified Wicked" : TIERS_N[tierFor(r.score)]);
+const eBtn = (href, label, bg = BILE, fg = INK) => `<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td style="background:${bg};border:2px solid ${INK};border-bottom-width:5px;border-radius:999px"><a href="${href}" style="display:inline-block;padding:12px 24px;font-family:${EF};font-weight:700;font-size:16px;color:${fg};text-decoration:none">${label}</a></td></tr></table>`;
+const ePill = (r, big) => `<span style="display:inline-block;background:${TCOL[tierFor(r.score)]};color:${INK};border:2px solid ${INK};border-radius:999px;padding:${big ? "6px 16px" : "3px 11px"};font-family:${EF};font-weight:700;font-size:${big ? 18 : 14}px;white-space:nowrap">${r.score}<span${big ? "" : ' class="hide-m"'}> · ${esc(tierLabel(r).toUpperCase())}</span></span>`;
+const eCover = (base, r, size, radius) => r.cover_url
+  ? `<a href="${base}/reviews/${r.slug}"><img src="${esc(r.cover_url)}" width="${size}" alt="${esc(r.title)} cover" style="display:block;width:100%;max-width:${size}px;height:auto;border:2px solid ${INK};border-radius:${radius}px"></a>`
+  : `<a href="${base}/reviews/${r.slug}" style="display:block;background:${TCOL[tierFor(r.score)]};border:2px solid ${INK};border-radius:${radius}px;text-align:center;padding:${Math.round(size * 0.18)}px 0"><img src="${base}/email/crew-${tierFor(r.score)}.png" width="${Math.round(size * 0.5)}" alt="" style="display:inline-block;width:${Math.round(size * 0.5)}px;height:auto"></a>`;
+const eCard = (inner, bg = "#FFFFFF", pad = 24) => `<tr><td style="padding:0 0 22px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${bg};border:2px solid ${INK};border-bottom-width:7px;border-radius:28px"><tr><td class="cp" style="padding:${pad}px">${inner}</td></tr></table></td></tr>`;
+const eEyebrow = (t, bg = WASH) => `<span style="display:inline-block;background:${bg};border:2px solid ${INK};border-radius:999px;padding:4px 12px;font-family:${EF};font-weight:700;font-size:12px;letter-spacing:1px;color:${INK}">${t}</span>`;
+function emailHeadline(h, sub) {
+  return `<tr><td style="padding:4px 4px 22px"><div class="h1" style="font-family:${EF};font-weight:700;font-size:34px;line-height:1.05;color:${INK};letter-spacing:-.5px">${esc(h)}</div>${sub ? `<div style="font-family:${EB};font-size:17px;line-height:1.55;color:${INK};padding-top:10px">${esc(sub).replace(/\n/g, "<br>")}</div>` : ""}</td></tr>`;
+}
+function heroCard(base, r, label) {
+  return eCard(`${eEyebrow(label)}
+<div style="padding:16px 0 18px">${eCover(base, r, 548, 20)}</div>
+<div style="font-family:${EF};font-weight:700;font-size:30px;line-height:1.1;color:${INK}">${esc(r.title)}</div>
+<div style="font-family:${EB};font-size:17px;color:${MUT};padding:4px 0 14px">${esc(r.artist)}</div>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding-right:10px"><img src="${base}/email/crew-${tierFor(r.score)}.png" width="60" height="60" alt="" style="display:block"></td><td>${ePill(r, true)}</td></tr></table>
+<div style="background:${WASH};border-radius:18px;padding:16px 18px;margin:16px 0 20px;font-family:${EB};font-style:italic;font-size:18px;line-height:1.5;color:${INK}">“${esc(r.verdict)}”</div>
+${eBtn(`${base}/reviews/${r.slug}`, "Read the full review →")}
+<div style="font-family:${EB};font-size:13px;color:${MUT};padding-top:12px">Agree? Disagree? Cast your vote on the review.</div>`);
+}
+function sideCard(base, r, label) {
+  return eCard(`${eEyebrow(label, "#FFE4D1")}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:16px"><tr>
+<td width="150" valign="top" class="side" style="padding-right:18px">${eCover(base, r, 150, 16)}</td>
+<td valign="top" class="side"><div style="font-family:${EF};font-weight:700;font-size:23px;line-height:1.1;color:${INK}">${esc(r.title)}</div>
+<div style="font-family:${EB};font-size:15px;color:${MUT};padding:3px 0 10px">${esc(r.artist)}</div>${ePill(r)}
+<div style="font-family:${EB};font-style:italic;font-size:15px;line-height:1.5;color:${INK};padding:10px 0 12px">“${esc(r.verdict)}”</div>
+<a href="${base}/reviews/${r.slug}" style="font-family:${EF};font-weight:700;font-size:15px;color:#5A6E0C">Read why →</a></td></tr></table>`);
+}
+function alsoCard(base, rows) {
+  return eCard(`<div style="font-family:${EF};font-weight:700;font-size:20px;color:${INK};padding-bottom:6px">Also on the meter</div>
+${rows.map((r) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:2px solid #E4E7F4"><tr>
+<td width="56" style="padding:12px 12px 12px 0">${r.cover_url ? `<img src="${esc(r.cover_url)}" width="48" height="48" alt="" style="display:block;border:2px solid ${INK};border-radius:10px">` : `<img src="${base}/email/crew-${tierFor(r.score)}.png" width="48" height="48" alt="" style="display:block">`}</td>
+<td style="padding:12px 0"><a href="${base}/reviews/${r.slug}" style="font-family:${EF};font-weight:700;font-size:16px;color:${INK};text-decoration:none">${esc(r.title)}</a><div style="font-family:${EB};font-size:14px;color:${MUT}">${esc(r.artist)}</div></td>
+<td align="right" style="padding:12px 0">${ePill(r)}</td></tr></table>`).join("")}`, "#FFFFFF", 20);
+}
+function promoCard(base) {
+  return eCard(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+<td valign="middle"><div style="font-family:${EF};font-weight:700;font-size:24px;line-height:1.15;color:#FFFFFF">Make music?<br><span style="color:#BCD83C">Get your song weighed.</span></div>
+<div style="font-family:${EB};font-size:15px;line-height:1.5;color:#C9CCEB;padding:8px 0 16px">A real person plays it start to finish, scores the lyrics, hook, vocals, production and replay value, and writes it up. $10.</div>
+${eBtn(`${base}/get-reviewed`, "Submit a song", "#BCD83C")}</td>
+<td width="110" valign="middle" align="right" class="hide-m"><img src="${base}/email/crew-1.png" width="100" height="100" alt="" style="display:block"></td></tr></table>`, INK);
+}
+// The frame every Wackometer email shares: logo header, content rows, footer with Instagram and unsubscribe.
+function emailShell({ base, env, unsub, preheader, eyebrow, content }) {
+  const addr = env && env.MAIL_ADDRESS ? `<br>${esc(env.MAIL_ADDRESS)}` : "";
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only"><meta name="supported-color-schemes" content="light">
+<title>Wackometer</title><style>@font-face{font-family:'Fredoka';font-weight:300 700;src:url(${base}/fonts/fredoka.woff2) format('woff2')}
+@media (max-width:480px){.px{padding-left:12px!important;padding-right:12px!important}.cp{padding:18px!important}.hide-m{display:none!important}.h1{font-size:28px!important}.side{display:block!important;width:100%!important;padding:0 0 14px!important}}</style></head>
+<body style="margin:0;padding:0;background:${WASH};-webkit-text-size-adjust:100%">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0">${esc(preheader || "")}&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${WASH}"><tr><td align="center" class="px" style="padding:28px 18px 40px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px">
+<tr><td style="padding:0 4px 24px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+<td valign="middle"><a href="${base}/"><img src="${base}/email/logo.png" width="190" alt="Wackometer" style="display:block;width:190px;height:auto"></a></td>
+<td valign="middle" align="right" class="hide-m">${eyebrow ? eEyebrow(eyebrow, "#FFFFFF") : ""}</td></tr></table></td></tr>
+${content}
+<tr><td align="center" style="padding:8px 4px 0">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+<td style="padding:0 6px"><a href="https://instagram.com/wackometer" style="font-family:${EF};font-weight:700;font-size:15px;color:${INK};text-decoration:none;white-space:nowrap">📸 @wackometer</a></td>
+<td style="padding:0 6px;color:${MUT}">·</td>
+<td style="padding:0 6px"><a href="${base}/reviews" style="font-family:${EF};font-weight:700;font-size:15px;color:${INK};text-decoration:none;white-space:nowrap">All reviews</a></td>
+<td style="padding:0 6px;color:${MUT}">·</td>
+<td style="padding:0 6px"><a href="${base}/write" style="font-family:${EF};font-weight:700;font-size:15px;color:${INK};text-decoration:none;white-space:nowrap">Weigh lyrics</a></td></tr></table>
+<div style="font-family:${EB};font-size:12px;line-height:1.6;color:${MUT};padding-top:16px">${unsub ? `You're getting this because you joined Wicked of the week at wackometer.com.<br><a href="${unsub}" style="color:${MUT}">Unsubscribe</a> · ` : ""}Wackometer, how wack are your lyrics?${addr}</div>
+</td></tr></table></td></tr></table></body></html>`;
+}
 async function sendList(env, url, n, emails) {
   const base = env.APP_URL || url.origin, fromRaw = env.EMAIL_FROM || "Wackometer <hello@wackometer.com>";
   const fm = fromRaw.match(/^\s*(.*?)\s*<([^>]+)>\s*$/), from = fm ? { name: fm[1] || "Wackometer", email: fm[2] } : { email: fromRaw.trim() };

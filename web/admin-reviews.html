@@ -87,6 +87,7 @@ body{margin:0}[hidden]{display:none!important}
   <span><img id="coverPrev" alt="" hidden></span>
   <label>Page link <span class="hint">wackometer.com/reviews/… (blank = artist-title)</span><input id="fSlug" maxlength="80"></label>
   <label class="chk admin-only"><input type="checkbox" id="fFeatured"> Feature on the front page <span class="hint">(the big banner at the top; up to 3)</span></label>
+  <div class="full tell" id="assistBox" hidden><b>✍️ Starting draft written by Claude</b><span>Claude can't hear music. This draft comes from what's publicly known about the song, and the scores are suggestions. Listen to the whole song, rewrite anything that doesn't match what you hear, add your Lyrics score with the Lyric check, then tick the box to publish it as yours.</span><label class="chk"><input type="checkbox" id="fListened"> I listened to the whole song and this review is mine</label></div>
   <label class="chk"><input type="checkbox" id="fSubmitted"> The artist paid to submit this <span class="hint">(adds a short note on the page)</span></label>
   <label>Status<select id="fStatus"><option value="draft">Draft (only you can see it)</option><option value="live">Live (public, in the sitemap)</option></select></label>
   <div class="row full"><button class="btn bile" type="submit" id="saveBtn">Save</button><a class="btn" id="viewBtn" target="_blank" hidden>View page</a><button class="btn" type="button" id="newBtn">New review</button><button class="btn quiet" type="button" id="delBtn" hidden>Delete</button><span class="hint" id="note" role="status"></span></div>
@@ -185,17 +186,18 @@ function fill(r) {
   original = r ? r.slug : null;
   for (const [k, id] of Object.entries(F)) $(id).value = r ? (r[k] ?? "") : k === "score" ? 15 : k === "kind" ? "song" : k === "status" ? "draft" : "";
   $("fFeatured").checked = !!(r && r.featured); $("fSubmitted").checked = !!(r && r.submitted);
+  $("assistBox").hidden = !(r && r.assist); $("fListened").checked = false;
   $("delBtn").hidden = !r || ROLE !== "admin"; $("viewBtn").hidden = !r; $("tell").hidden = true;
   if (ROLE === "critic") $("fReviewer").value = DATA.me.name;
   if (r && r.status === "live") showTell(r); if (r) $("viewBtn").href = `/reviews/${r.slug}${r.status === "live" ? "" : "?preview=1"}`;
   $("standRow").hidden = $("fKind").value !== "album";
-  $("note").textContent = r ? (r.verdict ? `Editing “${r.title}”.` : `“${r.title}” is ready for you: the cover, links and details are filled in. Listen to the whole song, paste the lyrics into the Lyric check, set the scores, write your verdict, then publish.`) : ""; showScore(); showCover();
+  $("note").textContent = r ? (r.assist ? `“${r.title}”: a starting draft is filled in below. Listen first, then make it yours.` : r.verdict ? `Editing “${r.title}”.` : `“${r.title}” is ready for you: the cover, links and details are filled in. Listen to the whole song, paste the lyrics into the Lyric check, set the scores, write your verdict, then publish.`) : ""; showScore(); showCover();
 }
 // After a review goes live: a ready-to-send note for the artist (Instagram DM or email).
 function showTell(r, notified) {
   const q = r.request_id ? (DATA.requests || []).find((x) => x.id === r.request_id) : null;
   const link = `https://wackometer.com/reviews/${r.slug}`, tier = r.score < 20 ? "Certified Wicked" : TIERS[tierOf(r.score)];
-  const msg = `Hey ${r.artist}! We just reviewed “${r.title}” on Wackometer: ${r.score} (${tier}). ${link}\n\nThe page has a story-sized share card and a badge for your site. Tag us if you post it and we'll repost.`;
+  const msg = `Hey ${r.artist}! We just reviewed “${r.title}” on Wackometer: ${r.score} (${tier}). ${link}\n\nThe page has a story-sized share card and a badge for your site. Tag @wackometer if you post it and we'll repost.`;
   const sent = notified && notified.sent ? `<b>Emailed the artist at ${esc(notified.email)} ✓</b>` : notified && notified.email ? `<b>Couldn't email ${esc(notified.email)} automatically</b> (email sending isn't set up yet). Copy this and send it yourself:` : "<b>Tell the artist.</b> Copy this into an Instagram DM or email:";
   $("tell").innerHTML = `${sent}<textarea id="tellTxt" readonly aria-label="Message for the artist">${esc(msg)}</textarea><span class="row"><button class="btn bile" type="button" id="tellCopy">Copy message</button>${r.artist_ig ? `<a class="btn" href="https://ig.me/m/${esc(r.artist_ig)}" target="_blank" rel="noopener">Open DM to @${esc(r.artist_ig)}</a>` : ""}${q && q.email ? `<a class="btn" href="mailto:${esc(q.email)}?subject=${encodeURIComponent("Your Wackometer review is live")}&body=${encodeURIComponent(msg)}">Email ${esc(q.email)}</a>` : ""}</span>`;
   $("tell").hidden = false;
@@ -236,7 +238,7 @@ function renderApps() {
 function renderList() {
   renderCritics(); renderApps();
   $("list").innerHTML = DATA.reviews.length ? DATA.reviews.map((r, i) => `<div class="it">${r.cover_url ? `<img src="${esc(r.cover_url)}" alt="">` : '<span class="ph"></span>'}
-    <span><b>${esc(r.title)}</b> · ${esc(r.artist)}<br><span class="hint">${!r.verdict ? "🎧 Needs a listen: not scored yet · " : `${r.score} ${TIERS[tierOf(r.score)]} · ${r.votes} crowd vote${r.votes === 1 ? "" : "s"} · `}${r.reviewer ? esc(r.reviewer) + " · " : ""}</span><span class="tag2 ${r.status}">${r.status}</span>${r.featured ? ' <span class="tag2">★ featured</span>' : ""}</span>
+    <span><b>${esc(r.title)}</b> · ${esc(r.artist)}<br><span class="hint">${!r.verdict ? "🎧 Needs a listen: not scored yet · " : r.assist ? `✍️ Claude starting draft (suggested ${r.score}) · listen before publishing · ` : `${r.score} ${TIERS[tierOf(r.score)]} · ${r.votes} crowd vote${r.votes === 1 ? "" : "s"} · `}${r.reviewer ? esc(r.reviewer) + " · " : ""}</span><span class="tag2 ${r.status}">${r.status}</span>${r.featured ? ' <span class="tag2">★ featured</span>' : ""}</span>
     <span class="row"><a class="btn" href="/reviews/${esc(r.slug)}${r.status === "live" ? "" : "?preview=1"}" target="_blank">View</a><button class="btn" data-edit="${i}">Edit</button></span></div>`).join("") : '<p class="hint">No reviews yet. Write the first one above.</p>';
   $("list").querySelectorAll("[data-edit]").forEach((b) => (b.onclick = () => { fill(DATA.reviews[Number(b.dataset.edit)]); window.scrollTo({ top: 0, behavior: "smooth" }); }));
   const open = DATA.requests.filter((q) => q.status !== "done").length, paidOpen = DATA.requests.filter((q) => q.status !== "done" && q.paid).length;
@@ -302,7 +304,7 @@ $("lookupBtn").onclick = async () => {
 };
 $("ed").onsubmit = async (e) => {
   e.preventDefault();
-  const body = { original, featured: $("fFeatured").checked, submitted: $("fSubmitted").checked, request_id: startedFrom }; for (const [k, id] of Object.entries(F)) body[k] = $(id).value;
+  const body = { original, featured: $("fFeatured").checked, submitted: $("fSubmitted").checked, request_id: startedFrom, listened: $("fListened").checked }; for (const [k, id] of Object.entries(F)) body[k] = $(id).value;
   $("saveBtn").disabled = true; $("note").textContent = "Saving…";
   try {
     const r = await api("/api/reviews-admin/save", body);
