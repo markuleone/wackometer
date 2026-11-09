@@ -5,7 +5,7 @@ import { $, SITE, S, isPro, charSVG, track } from "./core.js";
 /* ---------- share card ---------- */
 const CARD={w:1080,h:1920};
 const TC=["#3D8BFF","#22C29B","#A9A2DA","#FF8A3D","#A8C42E"];
-const TEXT_ON=["#FFFFFF","#1F2340","#1F2340","#1F2340","#1F2340"];
+const TEXT_ON=["#FFFFFF","#1D1D22","#1D1D22","#1D1D22","#1D1D22"];
 const CAPS=["Rated WICKED on the Wackometer. Your move.","Wackometer says WELL PUT. I'll take it.","Wackometer said WHATEVER. Rude, but fair?","Wackometer called this WEIRD. Is it?","My verse got rated WACK 🤢 Be honest, is it?"];
 let cardBlob=null,cardLinesTouched=false,cardImg=null;
 function defaultLines(){if(!S.last)return "";
@@ -17,30 +17,30 @@ const ease=(t)=>1-Math.pow(1-t,3), back=(t)=>{const c=1.9;return 1+(c+1)*Math.po
 function paintCard(x,p){
   const t=S.last.tier,col=TC[t],D='"Fredoka",system-ui,sans-serif',B='system-ui,-apple-system,"Segoe UI",Roboto,sans-serif';
   const pn=Math.min(1,p/0.55), pc=Math.max(0,Math.min(1,(p-0.45)/0.3)), pv=Math.max(0,Math.min(1,(p-0.62)/0.25)), pl=Math.max(0,Math.min(1,(p-0.8)/0.2));
-  x.save();x.textAlign="left";x.fillStyle="#FBFCFF";x.fillRect(0,0,CARD.w,CARD.h);
-  x.fillStyle=t>=3?"#EAF3C4":"#E8F1FF";x.fillRect(0,0,CARD.w,560);
+  x.save();x.textAlign="left";x.fillStyle="#FFFFFF";x.fillRect(0,0,CARD.w,CARD.h);
+  x.fillStyle=t>=4?"#EAF3C4":"#FFF0E5";x.fillRect(0,0,CARD.w,560);
   if(t>=3){for(let i=0;i<9;i++){const dx=60+i*120+(i%2)*30,len=(60+((i*53)%140))*ease(pv);x.beginPath();x.moveTo(dx-26,560);x.lineTo(dx+26,560);x.lineTo(dx+14,560+len);x.arc(dx,560+len,14,0,Math.PI);x.closePath();x.fill()}}
-  x.fillStyle="#1F2340";x.font=`700 88px ${D}`;x.textBaseline="alphabetic";
+  x.fillStyle="#1D1D22";x.font=`700 88px ${D}`;x.textBaseline="alphabetic";
   const wW=x.measureText("W").width,rest="ackometer",rW=x.measureText(rest).width,sx=(CARD.w-wW-rW)/2;
   x.save();x.translate(sx+wW/2,200);x.rotate(-.14);x.fillStyle="#86A01A";x.fillText("W",-wW/2,0);x.restore();x.fillText(rest,sx+wW,200);
-  x.font=`600 40px ${B}`;x.fillStyle="#646A8C";x.textAlign="center";x.fillText(($("postTitle").value.trim()?`"${$("postTitle").value.trim()}" `:"My lyrics ")+"got weighed",CARD.w/2,330);
+  x.font=`600 40px ${B}`;x.fillStyle="#66666F";x.textAlign="center";x.fillText(($("postTitle").value.trim()?`"${$("postTitle").value.trim()}" `:"My lyrics ")+"got weighed",CARD.w/2,330);
   const gx=CARD.w/2,gy=1020,gr=390;
   for(let i=0;i<5;i++){x.beginPath();x.strokeStyle=TC[i];x.lineWidth=70;const a0=Math.PI+(i*20+(i?1:0))/100*Math.PI,a1=Math.PI+((i+1)*20-(i<4?1:0))/100*Math.PI;x.arc(gx,gy,gr,a0,a1);x.stroke()}
-  x.font=`600 30px ${B}`;x.fillStyle="#646A8C";["Wicked","Well put","Whatever","Weird","Wack"].forEach((n,i)=>{const a=Math.PI+(i*20+10)/100*Math.PI;x.fillText(n,gx+(gr+80)*Math.cos(a),gy+(gr+80)*Math.sin(a)+10)});
+  x.font=`600 30px ${B}`;x.fillStyle="#66666F";["Wicked","Well put","Whatever","Weird","Wack"].forEach((n,i)=>{const a=Math.PI+(i*20+10)/100*Math.PI;x.fillText(n,gx+(gr+80)*Math.cos(a),gy+(gr+80)*Math.sin(a)+10)});
   const shown=S.last.score*back(pn);const na=Math.PI+Math.max(0,Math.min(104,shown))/100*Math.PI;
-  x.strokeStyle="#1F2340";x.lineWidth=14;x.lineCap="round";x.beginPath();x.moveTo(gx,gy);x.lineTo(gx+(gr-60)*Math.cos(na),gy+(gr-60)*Math.sin(na));x.stroke();
-  x.fillStyle="#1F2340";x.beginPath();x.arc(gx,gy,34,0,7);x.fill();x.fillStyle="#FBFCFF";x.beginPath();x.arc(gx,gy,12,0,7);x.fill();
+  x.strokeStyle="#1D1D22";x.lineWidth=14;x.lineCap="round";x.beginPath();x.moveTo(gx,gy);x.lineTo(gx+(gr-60)*Math.cos(na),gy+(gr-60)*Math.sin(na));x.stroke();
+  x.fillStyle="#1D1D22";x.beginPath();x.arc(gx,gy,34,0,7);x.fill();x.fillStyle="#FFFFFF";x.beginPath();x.arc(gx,gy,12,0,7);x.fill();
   if(cardImg&&pc>0){const s=250*back(pc);x.save();x.translate(221,gy+310);x.drawImage(cardImg,-s/2,-s,s,s);x.restore()}
-  x.fillStyle="#1F2340";x.font=`700 230px ${D}`;x.fillText(String(Math.round(Math.min(S.last.score,Math.max(0,shown)))),gx+60,gy+250);
+  x.fillStyle="#1D1D22";x.font=`700 230px ${D}`;x.fillText(String(Math.round(Math.min(S.last.score,Math.max(0,shown)))),gx+60,gy+250);
   if(pv>0){x.save();x.globalAlpha=Math.min(1,pv*2);const sc=1+(1-back(pv))*0.6;x.translate(gx,gy+365);x.scale(sc,sc);
     x.font=`700 96px ${D}`;const vt=TIERS[t].n.toUpperCase(),vw=x.measureText(vt).width+90;x.rotate(-0.04);
     x.fillStyle=col;x.beginPath();x.roundRect(-vw/2,-65,vw,130,65);x.fill();x.fillStyle=TEXT_ON[t];x.fillText(vt,0,33);x.restore()}
   const lines=$("cardLines").value.trim();
   if(lines&&pl>0){x.save();x.globalAlpha=pl;x.font=`italic 400 46px ${B}`;const ws=wrap(x,lines,CARD.w-200).slice(0,5);const top=1560-((ws.length-1)*64)/2+20;
-    x.fillStyle=S.last.best&&lines===S.last.best.line?"#FFD84D":"#A8C42E";x.fillRect(90,top-50,8,ws.length*64);x.fillStyle="#1F2340";x.textAlign="left";ws.forEach((l,i)=>x.fillText(l,130,top+i*64));
+    x.fillStyle=S.last.best&&lines===S.last.best.line?"#FFD84D":"#A8C42E";x.fillRect(90,top-50,8,ws.length*64);x.fillStyle="#1D1D22";x.textAlign="left";ws.forEach((l,i)=>x.fillText(l,130,top+i*64));
     if(S.last.best&&lines===S.last.best.line){x.font=`700 30px ${D}`;x.fillStyle="#B98A00";x.fillText("⭐ Wiz's pick",130,top-70)}
     x.restore();x.textAlign="center"}
-  x.font=`600 38px ${B}`;x.fillStyle="#646A8C";x.fillText("Is yours wack? Weigh it at "+SITE,gx,1840);
+  x.font=`600 38px ${B}`;x.fillStyle="#66666F";x.fillText("Is yours wack? Weigh it at "+SITE,gx,1840);
   if(!isPro()){x.save();x.globalAlpha=.5;x.font=`600 26px ${B}`;x.fillText("free plan",gx,1885);x.restore()}
   x.restore();
 }

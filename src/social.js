@@ -8,7 +8,7 @@ const json = (data, status = 200) =>
 const bad = (msg, status = 400) => json({ error: msg }, status);
 const now = () => Date.now();
 
-export const COLORS = ["#3D8BFF", "#22C29B", "#A9A2DA", "#FF8A3D", "#A8C42E", "#FF8FC0", "#FFD84D", "#1F2340"];
+export const COLORS = ["#3D8BFF", "#22C29B", "#A9A2DA", "#FF8A3D", "#A8C42E", "#FF8FC0", "#FFD84D", "#1D1D22"];
 export const GENRES = ["Pop", "Hip-hop", "R&B", "Rock", "Indie", "Alternative", "Country", "Latin", "Electronic", "Folk", "Jazz", "Gospel", "Metal", "Punk", "K-pop", "Poetry", "Other"];
 const RESERVED = new Set(["admin", "api", "wackometer", "wingman", "wiz", "wendy", "wally", "wobbles", "wretch", "support", "help", "root", "mod", "moderator", "staff", "official", "null", "undefined", "me", "you", "anonymous", "donebyverde", "terms", "privacy", "pen", "u"]);
 const LINK_RULES = {

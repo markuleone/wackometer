@@ -32,11 +32,11 @@ function page({ path, title, desc, body, ld }) {
 <meta property="og:image" content="${BASE}/og.png">
 <meta property="og:url" content="${BASE}${path}">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="theme-color" content="#FBFCFF">
+<meta name="theme-color" content="#FFFFFF">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="stylesheet" href="${CSS}">
-<script>try{var t=localStorage.getItem("wk-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+<meta name="color-scheme" content="light only">
 <script>(function(c,l,a,r,i,t,y){if(navigator.webdriver||/bot|crawl|spider|slurp|headless|lighthouse/i.test(navigator.userAgent))return;c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y)})(window,document,"clarity","script","z8yr2p57ys");</script>
 <script>${TRACK(path)}</script>
 ${adsenseTag()}

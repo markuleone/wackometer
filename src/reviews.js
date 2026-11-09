@@ -11,7 +11,7 @@ import { siteHeader } from "./site-header.js";
 
 const BASE = "https://wackometer.com";
 const TC = ["#3D8BFF", "#22C29B", "#A9A2DA", "#FF8A3D", "#A8C42E"];
-const TEXT_ON = ["#1F2340", "#1F2340", "#1F2340", "#1F2340", "#1F2340"];
+const TEXT_ON = ["#1D1D22", "#1D1D22", "#1D1D22", "#1D1D22", "#1D1D22"];
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...headers } });
 const bad = (msg, status = 400) => json({ error: msg }, status);
@@ -62,11 +62,11 @@ ${noindex ? '<meta name="robots" content="noindex">' : `<link rel="canonical" hr
 <meta property="og:image" content="${esc(image || BASE + "/og.png")}">
 <meta property="og:url" content="${BASE}${path}">
 <meta name="twitter:card" content="${image ? "summary" : "summary_large_image"}">
-<meta name="theme-color" content="#FBFCFF">
+<meta name="theme-color" content="#FFFFFF">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="stylesheet" href="${META.css}">
-<script>try{var t=localStorage.getItem("wk-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+<meta name="color-scheme" content="light only">
 <script>(function(c,l,a,r,i,t,y){if(navigator.webdriver||/bot|crawl|spider|slurp|headless|lighthouse/i.test(navigator.userAgent))return;c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y)})(window,document,"clarity","script","z8yr2p57ys");</script>
 ${ld ? `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, "\\u003c")}</script>` : ""}
 <script type="module" src="${META.reviewJs}"></script>
@@ -506,7 +506,7 @@ export async function badgeSVG(env, slug, ensureSchema) {
   const top = cert ? "CERTIFIED" : "RATED", word = TIERS[t].n.toUpperCase();
   const F = "font-family='Fredoka,Avenir Next,Segoe UI,Helvetica,Arial,sans-serif' font-weight='700'";
   return new Response(`<svg xmlns="http://www.w3.org/2000/svg" width="240" height="64" viewBox="0 0 240 64" role="img" aria-label="${top === "CERTIFIED" ? "Certified Wicked" : word} on Wackometer">
-<rect x="1.5" y="1.5" width="237" height="61" rx="30.5" fill="#1F2340"/>
+<rect x="1.5" y="1.5" width="237" height="61" rx="30.5" fill="#1D1D22"/>
 <rect x="98" y="7" width="134" height="50" rx="25" fill="${TC[t]}"/>
 <text x="18" y="29" ${F} font-size="12" fill="#A4A8CC" letter-spacing=".5">WACK</text><text x="18" y="45" ${F} font-size="13" fill="#FFFFFF">OMETER</text>
 <text x="165" y="27" ${F} font-size="10" fill="${TEXT_ON[t]}" text-anchor="middle" letter-spacing="1" opacity=".85">${top}</text>
@@ -840,7 +840,7 @@ ${promoCard(base)}` });
 const TCOL = ["#3D8BFF", "#22C29B", "#A9A2DA", "#FF8A3D", "#A8C42E"];
 /* ---------- email building blocks (look like the site: lime wash, ink outlines, chunky rounded cards, the crew) ---------- */
 const EF = `'Fredoka','Arial Rounded MT Bold','Trebuchet MS',Arial,sans-serif`, EB = `-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif`;
-const INK = "#1F2340", MUT = "#646A8C", WASH = "#F1F7D6", BILE = "#A8C42E";
+const INK = "#1D1D22", MUT = "#66666F", WASH = "#F1F7D6", BILE = "#A8C42E";
 const tierLabel = (r) => (r.score < 20 ? "Certified Wicked" : TIERS_N[tierFor(r.score)]);
 const eBtn = (href, label, bg = BILE, fg = INK) => `<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td style="background:${bg};border:2px solid ${INK};border-bottom-width:5px;border-radius:999px"><a href="${href}" style="display:inline-block;padding:12px 24px;font-family:${EF};font-weight:700;font-size:16px;color:${fg};text-decoration:none">${label}</a></td></tr></table>`;
 const ePill = (r, big) => `<span style="display:inline-block;background:${TCOL[tierFor(r.score)]};color:${INK};border:2px solid ${INK};border-radius:999px;padding:${big ? "6px 16px" : "3px 11px"};font-family:${EF};font-weight:700;font-size:${big ? 18 : 14}px;white-space:nowrap">${r.score}<span${big ? "" : ' class="hide-m"'}> · ${esc(tierLabel(r).toUpperCase())}</span></span>`;
@@ -873,7 +873,7 @@ function sideCard(base, r, label) {
 }
 function alsoCard(base, rows) {
   return eCard(`<div style="font-family:${EF};font-weight:700;font-size:20px;color:${INK};padding-bottom:6px">Also on the meter</div>
-${rows.map((r) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:2px solid #E4E7F4"><tr>
+${rows.map((r) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:2px solid #E9E9E3"><tr>
 <td width="56" style="padding:12px 12px 12px 0">${r.cover_url ? `<img src="${esc(r.cover_url)}" width="48" height="48" alt="" style="display:block;border:2px solid ${INK};border-radius:10px">` : `<img src="${base}/email/crew-${tierFor(r.score)}.png" width="48" height="48" alt="" style="display:block">`}</td>
 <td style="padding:12px 0"><a href="${base}/reviews/${r.slug}" style="font-family:${EF};font-weight:700;font-size:16px;color:${INK};text-decoration:none">${esc(r.title)}</a><div style="font-family:${EB};font-size:14px;color:${MUT}">${esc(r.artist)}</div></td>
 <td align="right" style="padding:12px 0">${ePill(r)}</td></tr></table>`).join("")}`, "#FFFFFF", 20);

@@ -9,13 +9,13 @@ body{margin:0}[hidden]{display:none!important}
 .ed-hero{display:flex;flex-direction:column;gap:10px;background:var(--bile-wash);border:2px solid var(--ink);box-shadow:0 6px 0 var(--ink);border-radius:28px;padding:clamp(18px,3vw,30px)}
 .ed-hero h1{margin:0;font-family:var(--display);font-size:clamp(32px,4.4vw,52px);line-height:1;letter-spacing:-.02em}.ed-hero h1 em{font-style:normal;color:var(--bile-ink)}
 .ed-hero p{margin:0}.ed-hero .rchips{display:flex;flex-wrap:wrap;gap:6px;background:none;border:0;box-shadow:none;padding:0}
-.lc{background:#1F2340;color:#F4F5FF;border:2px solid var(--ink);box-shadow:0 5px 0 var(--ink);border-radius:20px;padding:14px 16px}
+.lc{background:var(--orange-wash);color:var(--ink);border:2px solid var(--ink);box-shadow:0 5px 0 var(--ink);border-radius:20px;padding:14px 16px}
 .lc summary{cursor:pointer;font-family:var(--display);font-weight:700;font-size:17px}.lc[open]{display:flex;flex-direction:column;gap:10px}
-.lc .hint{color:#C9CCEB}.lc textarea{background:#2A2F52!important;color:#F4F5FF;border-color:#3A4070!important;min-height:150px}
-.lc-score{display:flex;align-items:center;gap:12px}.lc-num{font-family:var(--display);font-weight:700;font-size:44px;color:#BCD83C;line-height:1}
+.lc .hint{color:var(--muted)}.lc textarea{background:#fff!important;color:var(--ink);border-color:var(--ink)!important;min-height:150px}
+.lc-score{display:flex;align-items:center;gap:12px}.lc-num{font-family:var(--display);font-weight:700;font-size:44px;color:var(--orange-ink);line-height:1}
 .lc-metrics{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}.lc-metrics li{display:grid;grid-template-columns:170px 1fr 1.4fr;gap:12px;align-items:center;font-size:14px}
 .lc-lines{margin:0;padding-left:20px;font-style:italic}.lc p{margin:0}
-.lc .bk-bar{background:#3A4070}.lc .btn:not(.bile){color:#1F2340;background:#F4F5FF}
+.lc .bk-bar{background:#fff}.lc .btn:not(.bile){color:var(--ink);background:#fff}
 @media (max-width:760px){.lc-metrics li{grid-template-columns:1fr}}
 .ed{display:grid;grid-template-columns:1fr 1fr;gap:12px 18px;background:var(--surface);border:2px solid var(--ink);box-shadow:0 5px 0 var(--ink);border-radius:22px;padding:18px}
 .ed label{display:flex;flex-direction:column;gap:4px;font-weight:600;font-size:14px}
@@ -150,7 +150,7 @@ body{margin:0}[hidden]{display:none!important}
 <script type="module">
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const TIERS = ["Wicked", "Well put", "Whatever", "Weird", "Wack"], TC = ["#3D8BFF", "#22C29B", "#A9A2DA", "#FF8A3D", "#A8C42E"], TO = ["#1F2340", "#1F2340", "#1F2340", "#1F2340", "#1F2340"];
+const TIERS = ["Wicked", "Well put", "Whatever", "Weird", "Wack"], TC = ["#3D8BFF", "#22C29B", "#A9A2DA", "#FF8A3D", "#A8C42E"], TO = ["#1D1D22", "#1D1D22", "#1D1D22", "#1D1D22", "#1D1D22"];
 const tierOf = (s) => (s >= 80 ? 4 : s >= 60 ? 3 : s >= 40 ? 2 : s >= 20 ? 1 : 0);
 async function api(path, body) {
   const r = await fetch(path, body ? { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : {});

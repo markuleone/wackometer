@@ -363,18 +363,8 @@ function applyUnlocks() {
 window.addEventListener("popstate", () => { if (location.pathname.startsWith("/u/")) show("profile"); else { const h = location.hash.slice(1); show(VIEWS.includes(h) || ALIASES[h] ? h : "weigh"); } });
 
 /* ---------- theme ---------- */
-const THEMES = ["auto", "light", "dark"];
-let theme = ls("wk-theme") || "auto";
-function applyTheme() {
-  const r = document.documentElement;
-  if (theme === "auto") r.removeAttribute("data-theme"); else r.setAttribute("data-theme", theme);
-  $("themeBtn").textContent = theme === "light" ? "☀️" : theme === "dark" ? "🌙" : "🖥️"; $("themeBtn").setAttribute("aria-label", "Theme: " + theme);
-  const dark = theme === "dark" || (theme === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
-  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#13152A" : "#FBFCFF");
-}
-$("themeBtn").onclick = () => { theme = THEMES[(THEMES.indexOf(theme) + 1) % 3]; ls("wk-theme", theme); applyTheme(); };
-matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", applyTheme);
-applyTheme();
+// Always light: dark mode was retired (Nov 2026).
+try { localStorage.removeItem("wk-theme"); } catch (e) {}
 
 /* ---------- rotating hero word ---------- */
 const HERO_WORDS = ["wicked", "well put", "whatever", "weird", "wack"];

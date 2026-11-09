@@ -16,7 +16,7 @@ function run() {
   last = { a, score };
   const worst = [...METRICS].sort((x, y) => a.vals[y.k] - a.vals[x.k]);
   const lazy = [...a.lazyLines].sort((x, y) => x - y).slice(0, 6).map((i) => a.real[i]).filter(Boolean);
-  out.innerHTML = `<div class="lc-score"><span class="lc-num">${score}</span><span class="rv-pill" style="--tc:${TC[t]};--to:#1F2340">${TIERS[t].n}</span><span class="hint">Lyrics score from the Wackometer</span></div>
+  out.innerHTML = `<div class="lc-score"><span class="lc-num">${score}</span><span class="rv-pill" style="--tc:${TC[t]};--to:#1D1D22">${TIERS[t].n}</span><span class="hint">Lyrics score from the Wackometer</span></div>
 <ul class="lc-metrics">${worst.map((m) => { const v = Math.round(a.vals[m.k]); return `<li><b>${esc(m.n)}</b><span class="bk-bar" aria-hidden="true"><i style="--w:${Math.max(4, 100 - v)}%;--tc:${TC[tierOf(v)]}"></i></span><span class="hint">${esc(a.notes[m.k])}</span></li>`; }).join("")}</ul>
 ${a.found.length ? `<p><b>Clichés spotted:</b> ${a.found.slice(0, 8).map(([c, n]) => `“${esc(c)}”${n > 1 ? ` ×${n}` : ""}`).join(", ")}</p>` : ""}
 ${lazy.length ? `<p><b>Lines with lazy end rhymes:</b></p><ul class="lc-lines">${lazy.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>` : ""}

@@ -4,7 +4,7 @@ import { $, api, charSVG, track, sourceOf, copyText, IS_BOT } from "./core.js";
 import { TIERS } from "./score.js";
 
 const TC = ["#3D8BFF", "#22C29B", "#A9A2DA", "#FF8A3D", "#A8C42E"];
-const TEXT_ON = ["#1F2340", "#1F2340", "#1F2340", "#1F2340", "#1F2340"];
+const TEXT_ON = ["#1D1D22", "#1D1D22", "#1D1D22", "#1D1D22", "#1D1D22"];
 let R = {};
 try { R = JSON.parse(document.body.dataset.review || "{}"); } catch (e) {}
 
@@ -102,32 +102,32 @@ function drawStory(x, { cover, ch }, p) {
   const t = R.tier, col = TC[t];
   const kCover = easeOut(p / 0.25), kText = easeOut((p - 0.18) / 0.2), kScore = easeOut((p - 0.32) / 0.38), kStamp = clamp01((p - 0.7) / 0.1), kVerdict = easeOut((p - 0.8) / 0.2);
   x.globalAlpha = 1; x.textAlign = "left";
-  x.fillStyle = "#FBFCFF"; x.fillRect(0, 0, W, H);
-  x.fillStyle = t >= 3 ? "#EAF3C4" : "#E8F1FF"; x.fillRect(0, 0, W, 990);
+  x.fillStyle = "#FFFFFF"; x.fillRect(0, 0, W, H);
+  x.fillStyle = t >= 4 ? "#EAF3C4" : "#FFF0E5"; x.fillRect(0, 0, W, 990);
   // logo
-  x.textBaseline = "alphabetic"; x.fillStyle = "#1F2340"; x.font = `700 84px ${D}`;
+  x.textBaseline = "alphabetic"; x.fillStyle = "#1D1D22"; x.font = `700 84px ${D}`;
   const wW = x.measureText("W").width, rest = "ackometer", rW = x.measureText(rest).width, sx = (W - wW - rW) / 2;
   x.save(); x.translate(sx + wW / 2, 170); x.rotate(-0.14); x.fillStyle = "#86A01A"; x.fillText("W", -wW / 2, 0); x.restore(); x.fillText(rest, sx + wW, 170);
-  x.textAlign = "center"; x.font = `700 34px ${D}`; x.fillStyle = "#646A8C"; x.fillText("SONG REVIEW", W / 2, 240);
+  x.textAlign = "center"; x.font = `700 34px ${D}`; x.fillStyle = "#66666F"; x.fillText("SONG REVIEW", W / 2, 240);
   // cover (scales up into place)
   x.save(); x.globalAlpha = kCover; const sc = 0.82 + 0.18 * kCover; x.translate(W / 2, 620); x.scale(sc, sc); x.translate(-W / 2, -620 + (1 - kCover) * 60);
   const cs = 640, cx = (W - cs) / 2, cy = 300;
-  x.save(); x.shadowColor = "rgba(31,35,64,.25)"; x.shadowBlur = 40; x.shadowOffsetY = 16; x.fillStyle = "#1F2340"; x.beginPath(); x.roundRect(cx, cy, cs, cs, 36); x.fill(); x.restore();
+  x.save(); x.shadowColor = "rgba(29,29,34,.25)"; x.shadowBlur = 40; x.shadowOffsetY = 16; x.fillStyle = "#1D1D22"; x.beginPath(); x.roundRect(cx, cy, cs, cs, 36); x.fill(); x.restore();
   x.save(); x.beginPath(); x.roundRect(cx, cy, cs, cs, 36); x.clip();
   if (cover) x.drawImage(cover, cx, cy, cs, cs); else { x.fillStyle = col; x.fillRect(cx, cy, cs, cs); x.fillStyle = TEXT_ON[t]; x.font = `700 260px ${D}`; x.fillText("♪", W / 2, cy + cs / 2 + 90); }
   x.restore();
   if (R.cert) {
     x.save(); x.translate(cx + cs - 40, cy + 40); x.rotate(0.22); x.font = `700 44px ${D}`;
     const s = "CERTIFIED WICKED", sw = x.measureText(s).width + 70;
-    x.fillStyle = "#1F2340"; x.beginPath(); x.roundRect(-sw / 2, -46, sw, 92, 46); x.fill(); x.fillStyle = "#BCD83C"; x.fillText(s, 0, 16); x.restore();
+    x.fillStyle = "#1D1D22"; x.beginPath(); x.roundRect(-sw / 2, -46, sw, 92, 46); x.fill(); x.fillStyle = "#BCD83C"; x.fillText(s, 0, 16); x.restore();
   }
   x.restore();
   x.globalAlpha = kText;
   // title + artist
-  x.fillStyle = "#1F2340"; x.font = `700 76px ${D}`;
+  x.fillStyle = "#1D1D22"; x.font = `700 76px ${D}`;
   const tl = wrap(x, R.title, W - 160, 2); tl.forEach((l, i) => x.fillText(l, W / 2, 1060 + i * 84));
   let y = 1060 + tl.length * 84;
-  x.font = `600 44px ${B}`; x.fillStyle = "#646A8C"; x.fillText(`by ${R.artist}`, W / 2, y + 6); y += 110;
+  x.font = `600 44px ${B}`; x.fillStyle = "#66666F"; x.fillText(`by ${R.artist}`, W / 2, y + 6); y += 110;
   // verdict pill + score + character
   const vt = tierLabel().toUpperCase(); let fs = 84; x.font = `700 ${fs}px ${D}`;
   while (x.measureText(vt).width > W - 420 && fs > 48) { fs -= 4; x.font = `700 ${fs}px ${D}`; }
@@ -135,13 +135,13 @@ function drawStory(x, { cover, ch }, p) {
   x.globalAlpha = kStamp; const st = 1 + 0.6 * (1 - easeOut(kStamp));
   x.save(); x.translate(px, y + 40); x.rotate(-0.03); x.scale(st, st); x.fillStyle = col; x.beginPath(); x.roundRect(-vw / 2, -62, vw, 124, 62); x.fill(); x.fillStyle = TEXT_ON[t]; x.fillText(vt, 0, fs * 0.36); x.restore();
   if (ch) { const pop = easeOut(kStamp); x.save(); x.translate(px - vw / 2 - chS / 2 - 20, y + 30); x.scale(pop, pop); x.drawImage(ch, -chS / 2, -chS / 2, chS, chS); x.restore(); }
-  x.globalAlpha = kText; x.font = `600 38px ${B}`; x.fillStyle = "#646A8C"; x.fillText(`${Math.round(R.score * kScore)}/100 on the Wackometer`, W / 2, y + 160); y += 260;
+  x.globalAlpha = kText; x.font = `600 38px ${B}`; x.fillStyle = "#66666F"; x.fillText(`${Math.round(R.score * kScore)}/100 on the Wackometer`, W / 2, y + 160); y += 260;
   x.globalAlpha = kVerdict;
   // verdict
-  x.font = `italic 400 44px ${B}`; x.fillStyle = "#1F2340";
+  x.font = `italic 400 44px ${B}`; x.fillStyle = "#1D1D22";
   wrap(x, `“${R.verdict}”`, W - 200, 3).forEach((l, i) => x.fillText(l, W / 2, y + i * 60));
   x.globalAlpha = 1; x.font = `700 40px ${D}`; x.fillStyle = "#5A6E0C"; x.fillText("wackometer.com/reviews", W / 2, 1830);
-  x.font = `600 30px ${B}`; x.fillStyle = "#646A8C"; x.fillText("Do you agree? Vote at the link · @wackometer", W / 2, 1878);
+  x.font = `600 30px ${B}`; x.fillStyle = "#66666F"; x.fillText("Do you agree? Vote at the link · @wackometer", W / 2, 1878);
 }
 // 7-second vertical video of the card building itself, for TikTok, Reels and Shorts.
 if ($("rvVideo")) $("rvVideo").onclick = async () => {
@@ -205,7 +205,7 @@ if (form) {
     await loadStripe();
     stripe = window.Stripe(cfg.pk);
     elements = stripe.elements({ mode: "payment", amount: cfg.cents, currency: "usd", paymentMethodTypes: ["card", "link", "cashapp"],
-      appearance: { theme: "night", variables: { colorPrimary: "#BCD83C", colorBackground: "#2A2F52", colorText: "#F4F5FF", colorTextSecondary: "#C9CCEB", colorDanger: "#FF8A80", borderRadius: "12px", fontFamily: 'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif', spacingUnit: "4px" },
+      appearance: { theme: "stripe", variables: { colorPrimary: "#1D1D22", colorBackground: "#FFFFFF", colorText: "#1D1D22", colorTextSecondary: "#66666F", colorDanger: "#C0392B", borderRadius: "12px", fontFamily: 'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif', spacingUnit: "4px" },
         rules: { ".Input": { border: "2px solid #3A4070", boxShadow: "none" }, ".Input:focus": { border: "2px solid #BCD83C", boxShadow: "none" }, ".Tab": { border: "2px solid #3A4070" }, ".Tab--selected": { border: "2px solid #BCD83C" } } } });
     const pe = elements.create("payment", { layout: { type: "tabs" }, wallets: { applePay: "auto", googlePay: "auto" } });
     $("payEl").innerHTML = ""; pe.mount("#payEl");
