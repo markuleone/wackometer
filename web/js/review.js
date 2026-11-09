@@ -265,7 +265,26 @@ if (form) {
   else setup();
   form.addEventListener("focusin", setup, { once: true });
   const done = () => { form.hidden = true; $("subDone").hidden = false; $("subDone").focus(); track("submit_paid"); };
-  $("subAgain").onclick = () => { form.reset(); pending = null; form.hidden = false; $("subDone").hidden = true; note.textContent = NOTE0; };
+  // Free submissions: only shown while the switch is on and spots are left.
+  const freeBox = $("freeBox");
+  if (freeBox) {
+    api("/api/reviews/free").then((f) => {
+      if (!f.open) return;
+      freeBox.hidden = false; $("freeLeft").textContent = f.left === null ? "" : ` · ${f.left} spot${f.left === 1 ? "" : "s"} left`; track("free_seen");
+    }).catch(() => {});
+    $("freeBtn").onclick = async () => {
+      if (!form.reportValidity()) return;
+      const b = $("freeBtn"); b.disabled = true; note.textContent = "Sending…";
+      try {
+        await api("/api/reviews/submit", { body: { ...Object.fromEntries(new FormData(form)), free: 1 } });
+        $("subDoneP").textContent = "Your song is in the free pile. We listen when we can, often live on stream, and email you if it gets a review. Want a guaranteed review in 7 days? Send it again with the paid option.";
+        form.hidden = true; $("subDone").hidden = false; $("subDone").focus(); track("submit_free");
+      } catch (err) { note.textContent = err.message; }
+      b.disabled = false;
+    };
+  }
+  const DONE0 = $("subDoneP") ? $("subDoneP").textContent : "";
+  $("subAgain").onclick = () => { if ($("subDoneP")) $("subDoneP").textContent = DONE0; form.reset(); pending = null; form.hidden = false; $("subDone").hidden = true; note.textContent = NOTE0; };
   form.onsubmit = async (e) => {
     e.preventDefault();
     await setup(); if (!stripe) return;

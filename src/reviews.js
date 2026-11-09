@@ -304,21 +304,34 @@ ${critics.length ? `<label>Who should review it?<select name="critic" id="subCri
 <label class="sr" for="subLyrics">Lyrics</label><textarea id="subLyrics" name="lyrics" rows="6" maxlength="8000" placeholder="Paste the lyrics"></textarea>
 <label class="chk"><input type="checkbox" name="lyrics_ok" value="1"> I wrote these lyrics or have the right to share them, and Wackometer can show them on my review.</label>
 </details>
+<label class="chk sub-stream"><input type="checkbox" name="stream_ok" value="1"> 🔴 OK to play it live on the Wackometer stream <span class="hint">(you get the clip)</span></label>
 ${more ? '<a class="sub-more" href="/get-reviewed">What you get and who reviews it →</a>' : ""}
 </div>
 <div class="paycard" role="group" aria-labelledby="payH">
 <div class="pay-top"><h3 id="payH" class="price" aria-label="10 dollars"><span class="cur" aria-hidden="true">$</span><span aria-hidden="true" id="priceNum">10</span><span class="spark" aria-hidden="true">✦</span></h3>
 <div><p class="per"><span class="was" id="priceWas" hidden>${money(CFG.review_price_cents)}</span><span id="priceTag">one song or album · one-time</span></p>
-<ul class="perks"><li>A guaranteed listen</li><li>Written feedback in 7 days</li><li>A shot at Certified Wicked</li></ul></div></div>
+<ul class="perks"><li>A guaranteed listen</li><li>Feedback in 7 days or your money back</li><li>A shot at Certified Wicked</li></ul></div></div>
+<div class="freebox" id="freeBox" hidden><b>🆓 Free submissions are open<span id="freeLeft"></span></b><p>Free picks get a real listen when we can, often live on stream. No 7-day promise, and only songs we love get a page.</p><button class="btn" type="button" id="freeBtn">Send it free</button><span class="or">or pay for the guaranteed review</span></div>
 <div id="payEl" class="payel"><span class="hint">Loading the card form…</span></div>
 <button class="btn bile paybtn" type="submit" id="payBtn">Pay ${money(CFG.review_price_cents)} &amp; send it</button>
 <span class="hint paynote" id="subNote" role="status">🔒 Secure payment by Stripe. Paying gets you heard, not a better score.</span>
 <a class="pro-deal" id="proDeal" href="/write#pro"><span class="cm cm-xs" data-tier="5" aria-hidden="true"></span>Wingman Pro members pay <b>$7</b> →</a>
 </div>
 </form>
-<div class="sub-done" id="subDone" hidden tabindex="-1"><b>You're in. 🎧</b><p>Payment received. Your feedback lands in your inbox within 7 days, and Stripe is emailing your receipt now.</p><button class="btn" type="button" id="subAgain">Send another song</button></div>
+<div class="sub-done" id="subDone" hidden tabindex="-1"><b>You're in. 🎧</b><p id="subDoneP">Payment received. Your feedback lands in your inbox within 7 days, and Stripe is emailing your receipt now.</p><button class="btn" type="button" id="subAgain">Send another song</button></div>
 </section>`;
 }
+
+/* ---------- free submissions: an on/off switch with an optional cap ---------- */
+async function freeState(DB) {
+  const rows = (await DB.prepare("SELECT k,v FROM settings WHERE k IN ('free_open','free_cap','free_since')").all()).results;
+  const s = Object.fromEntries(rows.map((r) => [r.k, r.v]));
+  const on = s.free_open === "1", cap = Math.max(0, parseInt(s.free_cap, 10) || 0), since = +s.free_since || 0;
+  const used = on ? (await DB.prepare("SELECT COUNT(*) c FROM review_requests WHERE free=1 AND created_at>=?").bind(since).first()).c : 0;
+  const left = cap ? Math.max(0, cap - used) : null;
+  return { on, cap, used, left, open: on && (left === null || left > 0) };
+}
+const spotsLeft = (f) => (f.left === null ? "" : ` · ${f.left} spot${f.left === 1 ? "" : "s"} left`);
 
 /* ---------- HTML routes ---------- */
 export async function reviewsPage(req, env, path, ensureSchema) {
@@ -605,13 +618,30 @@ export async function getReviewedPage(req, env, ensureSchema) {
   await ensureSchema(env);
   const DB = env.DB, url = new URL(req.url), critics = await activeCritics(DB), counts = await criticCounts(DB);
   const picked = critics.some((c) => c.slug === url.searchParams.get("critic")) ? url.searchParams.get("critic") : "";
+  const free = await freeState(DB);
+  // Proof: a real review to look at, and how scores actually spread (paid ones once there are enough of them).
+  const example = await DB.prepare("SELECT * FROM reviews WHERE status='live' AND big=0 AND body IS NOT NULL AND length(body)>200 ORDER BY submitted DESC, (lyrics_ok=1) DESC, length(body) DESC, published_at DESC LIMIT 1").first();
+  const paidN = (await DB.prepare("SELECT COUNT(*) c FROM reviews WHERE status='live' AND big=0 AND submitted=1").first()).c;
+  const usePaid = paidN >= 10;
+  const spreadRows = (await DB.prepare(`SELECT score FROM reviews WHERE status='live' AND big=0${usePaid ? " AND submitted=1" : ""}`).all()).results;
+  const tierN = [0, 0, 0, 0, 0]; spreadRows.forEach((r) => tierN[tierOf(r.score)]++);
+  const total = spreadRows.length, pct = tierN.map((n) => (total ? Math.round((n / total) * 100) : 0));
+  const spread = total >= 5 ? `<div class="gr-spread" role="img" aria-label="${TIERS.map((t, i) => `${t.n} ${pct[i]}%`).join(", ")}">${tierN.map((n, i) => (n ? `<span style="flex:${n};background:${TC[i]}"></span>` : "")).join("")}</div>
+<ul class="gr-legend">${TIERS.map((t, i) => `<li><i style="background:${TC[i]}"></i><b>${pct[i]}%</b> ${t.n}</li>`).join("")}</ul>
+<p class="hint">${usePaid ? `Every paid submission we've reviewed (${total} songs).` : `Every review we've published so far (${total} songs). Once ten paid reviews are in, this shows paid ones only.`} If paying bought good scores, this bar would be all blue.</p>` : "";
+  const exampleHTML = example ? `<div class="gr-proof">
+<div class="gr-ex">${card(example)}</div>
+<div><p>This is a real review, exactly as it's live on the site. Every page like it comes with:</p>
+<ul class="gr-checks"><li>A written review from a real critic</li><li>A score from Wicked to Wack, with a breakdown for lyrics, hook, vocals, production and replay</li><li>A player, so people hear the song right on the page</li><li>Links to every platform you're on</li><li>Your lyrics, marked up by the meter (if you send them)</li><li>A share card for your story and a badge for your link in bio</li></ul>
+<a class="btn" href="/reviews/${esc(example.slug)}">Open the full example →</a></div></div>` : "";
   const perks = [
     ["🎧", "A guaranteed listen", "A real person plays your song start to finish: the words, the hook, the vocals, the mix. No bots, no skimming."],
-    ["✍️", "Written feedback in 7 days", "What lands, what's wack and what to fix in your lyrics, hook, vocals and production, straight to your inbox."],
+    ["✍️", "Feedback in 7 days, or your money back", "What lands, what's wack and what to fix in your lyrics, hook, vocals and production, straight to your inbox. Late? You get a full refund."],
     ["📄", "Your own review page", "If the song makes the cut, it gets a permanent page with both scores, your player and your links, built to show up on Google."],
     ["🏆", "A spot on the leaderboard", "Every reviewed song counts toward your artist page and your rank on the Top artists board."],
     ["✨", "A badge and a story card", "Certified Wicked? Get a badge for your website and link-in-bio and a ready-made card for your story."],
     ["👥", "A crowd score", "Listeners vote on your song too, so you see how the critic and the crowd compare."],
+    ["🔴", "Maybe heard live", "Tick the box and we might play it on the Wackometer stream. You get the clip of the real reaction to post."],
   ];
   const body = `<article class="seoart gr">
 <div class="gr-hero"><span class="cm cm-hero" data-tier="1" aria-hidden="true"></span>
@@ -619,10 +649,13 @@ export async function getReviewedPage(req, env, ensureSchema) {
 <h1>Get your song weighed by people who <em>make</em> music.</h1>
 <p class="lead">Every song is reviewed by a Wackometer critic: songwriters, rappers and producers who hear everything. <b>${money(CFG.review_price_cents)}</b> gets you a guaranteed listen and real feedback on your song.</p>
 <div class="row"><a class="btn bile" href="#submit">Send my song, ${money(CFG.review_price_cents)}</a><a class="btn" href="#apply">Review for us</a></div>
+${free.open ? `<p class="free-banner">🆓 <b>Free submissions are open right now${spotsLeft(free)}.</b> <a href="#submit">Send yours →</a></p>` : ""}
 </div>
 <section aria-labelledby="perksH"><h2 id="perksH">What you get</h2>
 <div class="gr-perks">${perks.map(([i, t, d], k) => `<div class="gr-perk${k > 1 ? " maybe" : ""}"><span class="gr-i" aria-hidden="true">${i}</span><b>${t}</b><p>${d}</p></div>`).join("")}</div>
 <p class="hint">The first two come with every submission. The rest happen when the song earns them. Paying gets you heard, not a better score.</p></section>
+${exampleHTML ? `<section aria-labelledby="exH"><h2 id="exH">See exactly what you get</h2>${exampleHTML}</section>` : ""}
+${spread ? `<section aria-labelledby="sprH"><h2 id="sprH">Paying gets you heard, not a better score</h2><p>Here's how our scores actually land:</p>${spread}</section>` : ""}
 <section aria-labelledby="forH" class="gr-for"><h2 id="forH">Who it's for</h2>
 <div class="gr-who"><span class="gr-i" aria-hidden="true">🌱</span><p><b>Underground and independent artists.</b> If you have under ${UNDERGROUND_RULE.listeners} monthly listeners on Spotify, or you're not signed to a major label, you're who we're here for. Any genre, any city, first single or fifth album.</p></div></section>
 <section aria-labelledby="critH"><h2 id="critH">Who reviews it</h2>
@@ -632,6 +665,9 @@ export async function getReviewedPage(req, env, ensureSchema) {
 ${submitHTML([], "", false)}
 <section aria-labelledby="faqH" class="gr-faq"><h2 id="faqH">Questions</h2>
 <details><summary>Does paying get me a better score?</summary><p>No. Paying gets you a guaranteed listen and written feedback. Scores are the critic's honest take, and reviews that came in through paid submissions say so on the page.</p></details>
+<details><summary>What if my feedback is late?</summary><p>If your written feedback doesn't land within 7 days of paying, email <a href="mailto:hello@wackometer.com">hello@wackometer.com</a> and we refund you in full.</p></details>
+<details><summary>Can I submit for free?</summary><p>Sometimes. A few times a month we open free submissions for a limited number of songs, announced here and on <a href="https://instagram.com/wackometer" target="_blank" rel="noopener">@wackometer</a>. Free picks get a real listen when we can, often live on stream, but there's no 7-day promise. Paying is the guaranteed way in.</p></details>
+<details><summary>What's the stream?</summary><p>We review songs live on stream. Tick "OK to play it live" when you send your song and yours could be one of them. You get the clip of the real reaction to post.</p></details>
 <details><summary>What if my song doesn't get a review page?</summary><p>You still get written feedback on your song within 7 days. Public pages are for songs the critic loves, which is what makes the badge worth having.</p></details>
 <details><summary>Is there a discount?</summary><p>Yes: <a href="/write#pro">Wingman Pro</a> members pay ${money(CFG.review_price_pro_cents)} per song instead of ${money(CFG.review_price_cents)}, on top of everything else Pro includes.</p></details>
 <details><summary>Who are the critics?</summary><p>Songwriters, rappers and producers we trust to be honest and specific. Want in? <a href="#apply">Apply below</a>.</p></details>
@@ -754,6 +790,16 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
     if (lyrics && !lyricsOk) return bad("Tick the box that lets us show your lyrics, or leave the lyrics empty.");
     const criticSlug = String(body.critic || "").slice(0, 80);
     const critic = criticSlug ? await DB.prepare("SELECT slug,name FROM critics WHERE slug=? AND active=1").bind(criticSlug).first() : null;
+    const streamOk = body.stream_ok === true || body.stream_ok === "1" || body.stream_ok === "on" ? 1 : 0;
+    if (body.free) {
+      const fs = await freeState(DB);
+      if (!fs.open) return bad("Free submissions just closed. Paying is the guaranteed way in.", 409);
+      const dup = await DB.prepare("SELECT COUNT(*) c FROM review_requests WHERE free=1 AND (email=? OR user_id=?) AND created_at>?").bind(email, u.id, Date.now() - 30 * 864e5).first();
+      if (dup.c >= 1) return bad("You've already sent a free song this month. Pay to send another, or catch the next free window.", 429);
+      await DB.prepare("INSERT INTO review_requests (id,artist,link,email,note,user_id,critic,status,created_at,free,stream_ok,lyrics,lyrics_ok) VALUES (?,?,?,?,?,?,?,'new',?,1,?,?,?)")
+        .bind(newId(), artist, link, email, note || null, u.id, critic ? critic.slug : null, Date.now(), streamOk, lyrics || null, lyrics ? 1 : 0).run();
+      return json({ ok: true, free: true });
+    }
     if (!env.STRIPE_SECRET_KEY) return bad("Paid submissions open very soon. Check back in a day or two.", 503);
     const recent = await DB.prepare("SELECT COUNT(*) c FROM review_requests WHERE user_id=? AND created_at>?").bind(u.id, Date.now() - 86400000).first();
     if (recent.c >= 10) return bad("That's plenty for today. Try again tomorrow.", 429);
@@ -769,8 +815,10 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
     });
     await DB.prepare("UPDATE review_requests SET stripe_session=? WHERE id=?").bind(pi.id, id).run();
     if (lyrics) await DB.prepare("UPDATE review_requests SET lyrics=?, lyrics_ok=1 WHERE id=?").bind(lyrics, id).run();
+    if (streamOk) await DB.prepare("UPDATE review_requests SET stream_ok=1 WHERE id=?").bind(id).run();
     return json({ id, clientSecret: pi.client_secret });
   }
+  if (path === "/api/reviews/free" && method === "GET") { const f = await freeState(DB); return json({ open: f.open, left: f.left }); }
   // What the card form needs to load. The publishable key is public by design.
   if (path === "/api/reviews/pay-config" && method === "GET") {
     const pro = !!(u && u.pro_until && u.pro_until > Date.now()), full = CFG.review_price_cents;
@@ -813,6 +861,15 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
     critic = u && u.email ? await DB.prepare("SELECT * FROM critics WHERE lower(email)=? AND active=1").bind(u.email.toLowerCase()).first() : null;
     if (!critic) return bad(u && u.email ? `You're signed in as ${u.email}, which isn't an admin or critic email. Ask Wackometer to add it to your critic profile.` : "Sign in first: admins and critics only.", 403);
     if (!["list", "lookup", "save", "upload", "me-save", "request", "og"].includes(path.slice(19))) return bad("Only admins can do that.", 403);
+  }
+  // The free-submissions switch. Turning it on starts a fresh count for the cap.
+  if (path === "/api/reviews-admin/free" && method === "POST") {
+    const on = !!body.open, cap = Math.max(0, Math.min(1000, parseInt(body.cap, 10) || 0)), prev = await freeState(DB);
+    const st = [DB.prepare("INSERT INTO settings (k,v) VALUES ('free_open',?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(on ? "1" : "0"),
+      DB.prepare("INSERT INTO settings (k,v) VALUES ('free_cap',?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(String(cap))];
+    if (on && !prev.on) st.push(DB.prepare("INSERT INTO settings (k,v) VALUES ('free_since',?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(String(Date.now())));
+    await DB.batch(st);
+    return json({ ok: true, free: await freeState(DB) });
   }
   if (path === "/api/reviews-admin/claims" && method === "GET") {
     const claims = (await DB.prepare("SELECT c.*, r.title, r.artist, r.lyrics AS current FROM lyric_claims c LEFT JOIN reviews r ON r.slug=c.slug WHERE c.status='new' ORDER BY c.created_at ASC LIMIT 50").all()).results;
@@ -881,7 +938,7 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
     const requests = (await DB.prepare("SELECT * FROM review_requests WHERE status<>'pending' ORDER BY status='done', paid DESC, created_at DESC LIMIT 300").all()).results;
     const applications = (await DB.prepare("SELECT * FROM critic_applications ORDER BY status='new' DESC, created_at DESC LIMIT 200").all()).results;
     const subs = await DB.prepare("SELECT COUNT(*) c FROM subscribers WHERE unsubscribed=0").first();
-    return json({ role: "admin", reviews, requests, critics, applications, subscribers: subs ? subs.c : 0, canEmail: !!env.SENDGRID_API_KEY });
+    return json({ role: "admin", reviews, requests, critics, applications, subscribers: subs ? subs.c : 0, canEmail: !!env.SENDGRID_API_KEY, free: await freeState(DB) });
   }
   // Pictures: the editor shrinks them in the browser first (about 600px JPEG), so they're small enough for the database.
   if (path === "/api/reviews-admin/upload" && method === "POST") {

@@ -57,6 +57,9 @@ export const MIGRATIONS = [
   "ALTER TABLE reviews ADD COLUMN lyrics_src TEXT",
   "ALTER TABLE review_requests ADD COLUMN lyrics TEXT",
   "ALTER TABLE review_requests ADD COLUMN lyrics_ok INTEGER NOT NULL DEFAULT 0",
+  // Free submissions (an on/off switch on the review editor) and "OK to play it live on stream".
+  "ALTER TABLE review_requests ADD COLUMN free INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE review_requests ADD COLUMN stream_ok INTEGER NOT NULL DEFAULT 0",
   // "Is this your song?" lyric claims from artists, approved on the review desk before anything goes up
   "CREATE TABLE IF NOT EXISTS lyric_claims ( id TEXT PRIMARY KEY, slug TEXT NOT NULL, name TEXT NOT NULL, role TEXT, email TEXT NOT NULL, lyrics TEXT NOT NULL, user_id TEXT, status TEXT NOT NULL DEFAULT 'new', created_at INTEGER NOT NULL, decided_at INTEGER )",
   "CREATE INDEX IF NOT EXISTS lyric_claims_status ON lyric_claims(status, created_at)",

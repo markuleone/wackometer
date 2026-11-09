@@ -78,12 +78,17 @@ body{margin:0}[hidden]{display:none!important}
   .desk.editing .dlist{display:none}
   #backBtn{display:inline-flex}
 }
+.freesw{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin:14px 0 0;padding:14px 18px;border:2px solid var(--line);border-radius:18px;background:var(--surface,#fff)}
+.freesw .cap{border:0;padding:0;background:none;box-shadow:none;display:flex;align-items:center;gap:8px;font-size:14px}.freesw .cap input{width:90px;padding:6px 10px}
 </style>
 </head><body><div class="wrap seo">
 <!--SITE_HEADER-->
 <main id="main"><div class="doc">
 <div class="ed-hero"><p class="eyebrow" id="heroEye">Admin</p><h1 id="heroH">Review <em>editor</em></h1><p class="lead" id="heroP">Write reviews, work the queue, and manage critics.</p>
 <nav class="rchips" aria-label="Jump to"><a class="rchip" href="/admin-quick">⚡ Quick Weigh queue</a><a class="rchip" href="#desk" data-go="queue">📥 Queue</a><a class="rchip" href="#desk" data-go="drafts">📝 Drafts</a><a class="rchip" href="#desk" data-go="live">✅ Live</a><a class="rchip admin-only" href="#critH">🎧 Critics</a><a class="rchip admin-only" href="#appH">📝 Applications</a><a class="rchip admin-only" href="#listH">💌 Email list</a><a class="rchip admin-only" href="#wlH">📅 Wicked lists</a><a class="rchip admin-only" href="#claimH">🎤 Artist claims</a><a class="rchip admin-only" href="#cmH">💬 Comments</a><a class="rchip critic-only" href="#meH" hidden>🙋 My critic page</a></nav></div>
+<div class="freesw admin-only" id="freeSw" hidden><label class="chk"><input type="checkbox" id="freeOn"> <b>🆓 Free submissions</b></label>
+<label class="cap">Close after <input type="number" id="freeCap" min="0" max="1000" placeholder="no limit" inputmode="numeric"> songs</label>
+<span class="hint" id="freeNote" role="status"></span></div>
 <p class="hint" id="err"></p>
 <div id="app" hidden>
 <div class="desk" id="desk">
@@ -330,8 +335,8 @@ function renderDesk() {
   let groups = [];
   if (TAB === "queue") {
     const rows = DATA.requests.filter((x) => hit(reqTitle(x)));
-    groups = [["Paid: owed feedback within 7 days", rows.filter((x) => x.status !== "done" && x.paid)], ["Waiting", rows.filter((x) => x.status !== "done" && !x.paid)], ["Done", rows.filter((x) => x.status === "done")]];
-    $("dItems").innerHTML = groups.filter(([, r]) => r.length).map(([g, r]) => `<p class="dgrp">${g} · ${r.length}</p>` + r.map((x) => `<div class="di${CUR === "q:" + x.id ? " on" : ""}" data-q="${esc(x.id)}"><input type="checkbox" data-sel="${esc(x.id)}"${SEL.has(x.id) ? " checked" : ""} aria-label="Select ${esc(reqTitle(x))}"><span class="ph">${x.paid ? "💵" : "🎵"}</span><span class="t"><b>${esc(reqTitle(x))}${x.paid ? '<span class="pd">Paid</span>' : ""}</b><small>${x.critic ? "For " + esc(critName(x.critic)) + " · " : ""}${new Date(x.created_at).toLocaleDateString()}${x.note ? " · " + esc(x.note) : ""}</small></span></div>`).join("")).join("") || '<p class="hint">Nothing in the queue. 🎉</p>';
+    groups = [["Paid: owed feedback within 7 days", rows.filter((x) => x.status !== "done" && x.paid)], ["Free picks", rows.filter((x) => x.status !== "done" && !x.paid && x.free)], ["Waiting", rows.filter((x) => x.status !== "done" && !x.paid && !x.free)], ["Done", rows.filter((x) => x.status === "done")]];
+    $("dItems").innerHTML = groups.filter(([, r]) => r.length).map(([g, r]) => `<p class="dgrp">${g} · ${r.length}</p>` + r.map((x) => `<div class="di${CUR === "q:" + x.id ? " on" : ""}" data-q="${esc(x.id)}"><input type="checkbox" data-sel="${esc(x.id)}"${SEL.has(x.id) ? " checked" : ""} aria-label="Select ${esc(reqTitle(x))}"><span class="ph">${x.paid ? "💵" : x.free ? "🆓" : "🎵"}</span><span class="t"><b>${esc(reqTitle(x))}${x.paid ? '<span class="pd">Paid</span>' : ""}</b><small>${x.critic ? "For " + esc(critName(x.critic)) + " · " : ""}${new Date(x.created_at).toLocaleDateString()}${x.note ? " · " + esc(x.note) : ""}</small></span></div>`).join("")).join("") || '<p class="hint">Nothing in the queue. 🎉</p>';
   } else {
     const rows = (TAB === "live" ? live : drafts).filter((r) => hit(r.title + " " + r.artist + " " + (r.reviewer || "")));
     groups = TAB === "live" ? [["Live", rows]] : [["Ready to publish", rows.filter((r) => r.verdict && !r.assist)], ["Claude starting drafts: listen first", rows.filter((r) => r.verdict && r.assist)], ["Needs writing", rows.filter((r) => !r.verdict)]];
@@ -368,7 +373,7 @@ function startFrom(id) {
   CUR = "q:" + id; fill(null); $("fArtist").value = q.artist === "Unknown" ? "" : q.artist.replace(/…$/, ""); $("fTitle").value = (q.title || "").replace(/\s*\(.*?\)\s*$/, "").replace(/…$/, ""); startedFrom = q.id;
   if (q.critic) { const c = (DATA.critics || []).find((x) => x.slug === q.critic); if (c) $("fReviewer").value = c.name; } $("fSubmitted").checked = !!q.paid;
   if (/open\.spotify\.com\/(intl-[a-z-]+\/)?(track|album)\//.test(q.link)) $("fSpotify").value = q.link; else if (/youtu/.test(q.link)) $("fYoutube").value = q.link;
-  $("note").innerHTML = `Started from the queue${q.note ? ": " + esc(q.note) : "."} ${q.link ? `<a href="${esc(q.link)}" target="_blank" rel="noopener">${/open\.spotify\.com\/search\//.test(q.link) ? "Find it on Spotify ↗" : "Open their link ↗"}</a>` : ""}`;
+  $("note").innerHTML = `${q.free ? "🆓 Free submission. " : ""}${q.stream_ok ? "🔴 OK to play on stream. " : ""}Started from the queue${q.note ? ": " + esc(q.note) : "."} ${q.link ? `<a href="${esc(q.link)}" target="_blank" rel="noopener">${/open\.spotify\.com\/search\//.test(q.link) ? "Find it on Spotify ↗" : "Open their link ↗"}</a>` : ""}`;
   $("edTitle").textContent = `New review: ${reqTitle(q)}`; renderDesk(); showEditor();
 }
 async function bulk(b) {
@@ -384,6 +389,17 @@ async function bulk(b) {
     SEL.clear(); await load();
   } catch (e) { $("bulkNote").textContent = e.message; renderDesk(); }
 }
+function renderFree() {
+  const f = DATA.free; if (!f || ROLE !== "admin") return;
+  $("freeSw").hidden = false; $("freeOn").checked = f.on; if (document.activeElement !== $("freeCap")) $("freeCap").value = f.cap || "";
+  $("freeNote").textContent = !f.on ? "Closed. Only paid submissions right now." : f.open ? `Open: ${f.used} free song${f.used === 1 ? "" : "s"} in so far${f.left !== null ? `, ${f.left} spot${f.left === 1 ? "" : "s"} left` : ""}. The site shows a banner.` : `Full: all ${f.cap} spots taken, so the site shows it closed. Raise the number or switch off.`;
+}
+async function saveFree() {
+  $("freeNote").textContent = "Saving…";
+  try { DATA.free = (await api("/api/reviews-admin/free", { open: $("freeOn").checked, cap: $("freeCap").value })).free; renderFree(); }
+  catch (e) { $("freeNote").textContent = e.message; }
+}
+$("freeOn").onchange = saveFree; $("freeCap").onchange = saveFree;
 async function load() {
   try {
     DATA = await api("/api/reviews-admin/list"); ROLE = DATA.role || "admin"; $("app").hidden = false;
@@ -395,7 +411,7 @@ async function load() {
       $("heroP").textContent = "Write and edit your reviews, pick up drafts from the queue, and keep your critic page fresh."; document.title = "Critic desk · Wackometer";
       $("fReviewer").readOnly = true; $("fReviewer").value = DATA.me.name; fillMe(DATA.me);
     } else { $("subCount").textContent = `(${DATA.subscribers || 0} signed up)`; if (!$("nlSubject").value) nlLoad(); }
-    renderList(); autoCovers();
+    renderList(); autoCovers(); renderFree();
   }
   catch (e) { $("err").innerHTML = esc(e.message) + ' <a href="/write#weigh">Sign in on the main site</a> (top right, “Sign in”) with your admin or critic email, then come back.'; }
 }
