@@ -40,12 +40,15 @@ body{margin:0}[hidden]{display:none!important}
 .crf{box-shadow:none;border:0;padding:8px 0 0}
 .qadd{background:var(--surface);border:2px solid var(--line);border-radius:16px;padding:10px 14px}.qadd summary{cursor:pointer;font-family:var(--display);font-weight:700}.qadd[open]{display:flex;flex-direction:column;gap:8px}.qadd textarea{width:100%;min-height:110px;border:2px solid var(--line);border-radius:12px;padding:8px 10px;background:var(--bg)}
 @media (max-width:760px){.ed{grid-template-columns:1fr}}
+.up{display:flex;gap:8px;align-items:center}.up input[type=url]{flex:1}.up input[type=file]{display:none}
+.tell{background:var(--bile-wash);border:2px solid var(--ink);border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}.tell textarea{width:100%;min-height:120px;border:2px solid var(--line);border-radius:12px;padding:8px 10px;background:var(--surface);font:inherit}
+#meImg{width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid var(--ink)}
 </style>
 </head><body><div class="wrap seo">
 <!--SITE_HEADER-->
 <main id="main"><div class="doc">
-<div class="ed-hero"><p class="eyebrow">Admin</p><h1>Review <em>editor</em></h1><p class="lead">Write reviews, work the queue, and manage critics.</p>
-<nav class="rchips" aria-label="Jump to"><a class="rchip" href="#ed">✍️ Write a review</a><a class="rchip" href="#queueH">📥 To review</a><a class="rchip" href="#critH">🎧 Critics</a><a class="rchip" href="#appH">📝 Applications</a><a class="rchip" href="#allH">📚 All reviews</a></nav></div>
+<div class="ed-hero"><p class="eyebrow" id="heroEye">Admin</p><h1 id="heroH">Review <em>editor</em></h1><p class="lead" id="heroP">Write reviews, work the queue, and manage critics.</p>
+<nav class="rchips" aria-label="Jump to"><a class="rchip" href="#ed">✍️ Write a review</a><a class="rchip" href="#queueH">📥 To review</a><a class="rchip admin-only" href="#critH">🎧 Critics</a><a class="rchip admin-only" href="#appH">📝 Applications</a><a class="rchip admin-only" href="#listH">💌 Email list</a><a class="rchip critic-only" href="#meH" hidden>🙋 My critic page</a><a class="rchip" href="#allH">📚 All reviews</a></nav></div>
 <p class="hint" id="err"></p>
 <div id="app" hidden>
 <form class="ed" id="ed" autocomplete="off">
@@ -80,27 +83,44 @@ body{margin:0}[hidden]{display:none!important}
   <label>Artist website or link-in-bio <span class="hint">(optional)</span><input id="fArtistUrl" type="url" maxlength="300"></label>
   <label>Apple Music link <span class="hint">(optional)</span><input id="fApple" type="url" maxlength="300"></label>
   <label>Music video (YouTube link) <span class="hint">(optional: shows on the review and in Music videos)</span><input id="fYoutube" type="url" maxlength="300"></label>
-  <label>Cover image URL <span class="hint">(Fill in finds it for you)</span><input id="fCover" type="url" maxlength="500"></label>
+  <label>Cover image <span class="hint">(Fill in finds it, or upload your own)</span><span class="up"><input id="fCover" type="url" maxlength="500" placeholder="https://…"><label class="btn" for="fCoverFile">Upload</label><input type="file" id="fCoverFile" accept="image/jpeg,image/png,image/webp"></span></label>
   <span><img id="coverPrev" alt="" hidden></span>
   <label>Page link <span class="hint">wackometer.com/reviews/… (blank = artist-title)</span><input id="fSlug" maxlength="80"></label>
-  <label class="chk"><input type="checkbox" id="fFeatured"> Feature on the front page <span class="hint">(the big banner at the top; up to 3)</span></label>
+  <label class="chk admin-only"><input type="checkbox" id="fFeatured"> Feature on the front page <span class="hint">(the big banner at the top; up to 3)</span></label>
   <label class="chk"><input type="checkbox" id="fSubmitted"> The artist paid to submit this <span class="hint">(adds a short note on the page)</span></label>
   <label>Status<select id="fStatus"><option value="draft">Draft (only you can see it)</option><option value="live">Live (public, in the sitemap)</option></select></label>
   <div class="row full"><button class="btn bile" type="submit" id="saveBtn">Save</button><a class="btn" id="viewBtn" target="_blank" hidden>View page</a><button class="btn" type="button" id="newBtn">New review</button><button class="btn quiet" type="button" id="delBtn" hidden>Delete</button><span class="hint" id="note" role="status"></span></div>
+  <div class="full tell" id="tell" hidden></div>
 </form>
+<section id="meSec" hidden>
+<h2 id="meH">My critic page</h2>
+<p class="hint">This is what artists and readers see at <a id="meLink" target="_blank"></a>. Your name is how your reviews are signed; ask Wackometer if it needs to change.</p>
+<form class="ed" id="meForm" autocomplete="off">
+  <span class="full row"><img id="meImg" alt="" hidden><b id="meName"></b></span>
+  <label>One-line tagline<input id="mTag" maxlength="100" placeholder="Producer & songwriter, Miami"></label>
+  <label>Photo <span class="hint">(square works best)</span><span class="up"><input id="mPhoto" type="url" maxlength="500" placeholder="https://…"><label class="btn" for="mPhotoFile">Upload</label><input type="file" id="mPhotoFile" accept="image/jpeg,image/png,image/webp"></span></label>
+  <label class="full">Short bio <span class="hint">(blank line = new paragraph)</span><textarea id="mBio" maxlength="3000"></textarea></label>
+  <label>Genres you love <span class="hint">(comma separated)</span><input id="mGenres" maxlength="200"></label>
+  <label>Instagram<input id="mIg" maxlength="80" placeholder="@handle"></label>
+  <label>Website or music link<input id="mLink" type="url" maxlength="300"></label>
+  <div class="row full"><button class="btn bile" type="submit">Save my page</button><span class="hint" id="mNote" role="status"></span></div>
+</form>
+</section>
 <h2 id="queueH">To review <span class="hint" id="reqCount"></span></h2>
 <p class="hint">Songs you've queued plus artist submissions from the “Want your music weighed?” form. Tap Start a review, then Fill in to grab the cover.</p>
-<details class="qadd"><summary>Add songs to the list</summary>
+<details class="qadd admin-only"><summary>Add songs to the list</summary>
 <textarea id="qLines" rows="5" placeholder="One per line: Title - Artist, or paste a link&#10;Lauren - Men I Trust&#10;https://open.spotify.com/track/..."></textarea>
 <div class="row"><button class="btn" type="button" id="qGo">Add to the list</button><span class="hint" id="qNote" role="status"></span></div></details>
 <div class="list" id="reqs"></div>
+<div class="admin-only">
 <h2 id="critH">Critics <span class="hint">(people artists can pick on the Get reviewed page)</span></h2>
 <details class="qadd" id="crBox"><summary id="crSum">Add a critic</summary>
 <form class="ed crf" id="crForm" autocomplete="off">
   <label>Name<input id="cName" required maxlength="80" placeholder="Their artist or writer name"></label>
   <label>One-line tagline <span class="hint">(shows under their name)</span><input id="cTag" maxlength="100" placeholder="Producer & songwriter, Miami"></label>
   <label class="full">Short bio <span class="hint">(their page; blank line = new paragraph)</span><textarea id="cBio" maxlength="3000"></textarea></label>
-  <label>Photo URL <span class="hint">(square works best)</span><input id="cPhoto" type="url" maxlength="500"></label>
+  <label>Photo <span class="hint">(square works best)</span><span class="up"><input id="cPhoto" type="url" maxlength="500" placeholder="https://…"><label class="btn" for="cPhotoFile">Upload</label><input type="file" id="cPhotoFile" accept="image/jpeg,image/png,image/webp"></span></label>
+  <label>Their sign-in email <span class="hint">(lets them sign in and edit their own reviews and page; never shown)</span><input id="cEmail" type="email" maxlength="200" placeholder="critic@email.com"></label>
   <label>Genres they love <span class="hint">(comma separated)</span><input id="cGenres" maxlength="200" placeholder="indie, R&amp;B, alt pop"></label>
   <label>Instagram<input id="cIg" maxlength="80" placeholder="@handle"></label>
   <label>Website or music link<input id="cLink" type="url" maxlength="300"></label>
@@ -111,6 +131,10 @@ body{margin:0}[hidden]{display:none!important}
 <div class="list" id="crList"></div>
 <h2 id="appH">Critic applications <span class="hint" id="appCount"></span></h2>
 <div class="list" id="apps"></div>
+<h2 id="listH">Email list <span class="hint" id="subCount"></span></h2>
+<p class="hint">Signups from the “Wicked of the week” box at the bottom of every review page. Download them and send the Friday email from any newsletter tool (Mailchimp, Beehiiv, Kit all import a CSV).</p>
+<div class="row"><a class="btn" href="/api/reviews-admin/subscribers.csv" download>Download the list (CSV)</a></div>
+</div>
 <h2 id="allH">All reviews</h2>
 <div class="list" id="list"></div>
 </div>
@@ -126,7 +150,25 @@ async function api(path, body) {
   const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || "Something went wrong."); return d;
 }
 const F = { spotify_url: "fSpotify", artist: "fArtist", title: "fTitle", kind: "fKind", genre: "fGenre", released: "fReleased", reviewer: "fReviewer", s_lyrics: "fS_lyrics", s_melody: "fS_melody", s_vocals: "fS_vocals", s_production: "fS_production", s_replay: "fS_replay", score: "fScore", verdict: "fVerdict", body: "fBody", best_line: "fBest", standouts: "fStand", artist_ig: "fIg", artist_url: "fArtistUrl", apple_url: "fApple", youtube_url: "fYoutube", cover_url: "fCover", slug: "fSlug", status: "fStatus" };
-let DATA = { reviews: [], requests: [] }, original = null, startedFrom = null;
+let DATA = { reviews: [], requests: [] }, original = null, startedFrom = null, ROLE = "admin";
+// Shrink a picture in the browser (longest side 800px, JPEG) and upload it. Returns its new URL.
+async function upload(file) {
+  if (!file) return "";
+  const img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => no(new Error("That file isn't a picture we can read.")); i.src = URL.createObjectURL(file); });
+  const k = Math.min(1, 800 / Math.max(img.width, img.height)), c = document.createElement("canvas");
+  c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+  c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+  return (await api("/api/reviews-admin/upload", { data: c.toDataURL("image/jpeg", 0.85) })).url;
+}
+function wireUpload(fileId, urlId, noteId, after) {
+  $(fileId).onchange = async () => {
+    const f = $(fileId).files[0]; if (!f) return;
+    $(noteId).textContent = "Uploading…";
+    try { $(urlId).value = await upload(f); $(noteId).textContent = "Picture uploaded. Save to keep it."; after && after(); }
+    catch (e) { $(noteId).textContent = e.message; }
+    $(fileId).value = "";
+  };
+}
 
 function showScore() {
   const s = Number($("fScore").value), t = tierOf(s), o = $("scoreOut");
@@ -137,15 +179,33 @@ function fill(r) {
   original = r ? r.slug : null;
   for (const [k, id] of Object.entries(F)) $(id).value = r ? (r[k] ?? "") : k === "score" ? 15 : k === "kind" ? "song" : k === "status" ? "draft" : "";
   $("fFeatured").checked = !!(r && r.featured); $("fSubmitted").checked = !!(r && r.submitted);
-  $("delBtn").hidden = !r; $("viewBtn").hidden = !r; if (r) $("viewBtn").href = `/reviews/${r.slug}${r.status === "live" ? "" : "?preview=1"}`;
+  $("delBtn").hidden = !r || ROLE !== "admin"; $("viewBtn").hidden = !r; $("tell").hidden = true;
+  if (ROLE === "critic") $("fReviewer").value = DATA.me.name;
+  if (r && r.status === "live") showTell(r); if (r) $("viewBtn").href = `/reviews/${r.slug}${r.status === "live" ? "" : "?preview=1"}`;
   $("standRow").hidden = $("fKind").value !== "album";
-  $("note").textContent = r ? `Editing “${r.title}”.` : ""; showScore(); showCover();
+  $("note").textContent = r ? (r.verdict ? `Editing “${r.title}”.` : `“${r.title}” is ready for you: the cover, links and details are filled in. Listen to the whole song, paste the lyrics into the Lyric check, set the scores, write your verdict, then publish.`) : ""; showScore(); showCover();
 }
+// After a review goes live: a ready-to-send note for the artist (Instagram DM or email).
+function showTell(r, notified) {
+  const q = r.request_id ? (DATA.requests || []).find((x) => x.id === r.request_id) : null;
+  const link = `https://wackometer.com/reviews/${r.slug}`, tier = r.score < 20 ? "Certified Wicked" : TIERS[tierOf(r.score)];
+  const msg = `Hey ${r.artist}! We just reviewed “${r.title}” on Wackometer: ${r.score} (${tier}). ${link}\n\nThe page has a story-sized share card and a badge for your site. Tag us if you post it and we'll repost.`;
+  const sent = notified && notified.sent ? `<b>Emailed the artist at ${esc(notified.email)} ✓</b>` : notified && notified.email ? `<b>Couldn't email ${esc(notified.email)} automatically</b> (email sending isn't set up yet). Copy this and send it yourself:` : "<b>Tell the artist.</b> Copy this into an Instagram DM or email:";
+  $("tell").innerHTML = `${sent}<textarea id="tellTxt" readonly aria-label="Message for the artist">${esc(msg)}</textarea><span class="row"><button class="btn bile" type="button" id="tellCopy">Copy message</button>${r.artist_ig ? `<a class="btn" href="https://ig.me/m/${esc(r.artist_ig)}" target="_blank" rel="noopener">Open DM to @${esc(r.artist_ig)}</a>` : ""}${q && q.email ? `<a class="btn" href="mailto:${esc(q.email)}?subject=${encodeURIComponent("Your Wackometer review is live")}&body=${encodeURIComponent(msg)}">Email ${esc(q.email)}</a>` : ""}</span>`;
+  $("tell").hidden = false;
+  $("tellCopy").onclick = async () => { try { await navigator.clipboard.writeText(msg); } catch (e) { $("tellTxt").select(); document.execCommand("copy"); } $("tellCopy").textContent = "Copied ✓"; };
+}
+function fillMe(c) {
+  $("meName").textContent = c.name; $("meLink").href = `/critics/${c.slug}`; $("meLink").textContent = `wackometer.com/critics/${c.slug}`;
+  $("mTag").value = c.tagline || ""; $("mBio").value = c.bio || ""; $("mPhoto").value = c.photo_url || ""; $("mGenres").value = c.genres || ""; $("mIg").value = c.ig || ""; $("mLink").value = c.link || "";
+  showMeImg();
+}
+function showMeImg() { const u = $("mPhoto").value.trim(); $("meImg").hidden = !u; if (u) $("meImg").src = u; }
 let crOriginal = null;
 function fillCritic(c) {
   crOriginal = c ? c.slug : null;
   $("cName").value = c ? c.name : ""; $("cTag").value = c ? c.tagline || "" : ""; $("cBio").value = c ? c.bio || "" : ""; $("cPhoto").value = c ? c.photo_url || "" : "";
-  $("cGenres").value = c ? c.genres || "" : ""; $("cIg").value = c ? c.ig || "" : ""; $("cLink").value = c ? c.link || "" : ""; $("cSort").value = c ? c.sort || 0 : 0; $("cActive").checked = c ? !!c.active : true;
+  $("cEmail").value = c ? c.email || "" : ""; $("cGenres").value = c ? c.genres || "" : ""; $("cIg").value = c ? c.ig || "" : ""; $("cLink").value = c ? c.link || "" : ""; $("cSort").value = c ? c.sort || 0 : 0; $("cActive").checked = c ? !!c.active : true;
   $("cDel").hidden = !c; $("crSum").textContent = c ? `Editing ${c.name}` : "Add a critic"; $("cNote").textContent = "";
 }
 function renderCritics() {
@@ -170,7 +230,7 @@ function renderApps() {
 function renderList() {
   renderCritics(); renderApps();
   $("list").innerHTML = DATA.reviews.length ? DATA.reviews.map((r, i) => `<div class="it">${r.cover_url ? `<img src="${esc(r.cover_url)}" alt="">` : '<span class="ph"></span>'}
-    <span><b>${esc(r.title)}</b> · ${esc(r.artist)}<br><span class="hint">${r.score} ${TIERS[tierOf(r.score)]} · ${r.votes} crowd vote${r.votes === 1 ? "" : "s"} · </span><span class="tag2 ${r.status}">${r.status}</span>${r.featured ? ' <span class="tag2">★ featured</span>' : ""}</span>
+    <span><b>${esc(r.title)}</b> · ${esc(r.artist)}<br><span class="hint">${!r.verdict ? "🎧 Needs a listen: not scored yet · " : `${r.score} ${TIERS[tierOf(r.score)]} · ${r.votes} crowd vote${r.votes === 1 ? "" : "s"} · `}${r.reviewer ? esc(r.reviewer) + " · " : ""}</span><span class="tag2 ${r.status}">${r.status}</span>${r.featured ? ' <span class="tag2">★ featured</span>' : ""}</span>
     <span class="row"><a class="btn" href="/reviews/${esc(r.slug)}${r.status === "live" ? "" : "?preview=1"}" target="_blank">View</a><button class="btn" data-edit="${i}">Edit</button></span></div>`).join("") : '<p class="hint">No reviews yet. Write the first one above.</p>';
   $("list").querySelectorAll("[data-edit]").forEach((b) => (b.onclick = () => { fill(DATA.reviews[Number(b.dataset.edit)]); window.scrollTo({ top: 0, behavior: "smooth" }); }));
   const open = DATA.requests.filter((q) => q.status !== "done").length, paidOpen = DATA.requests.filter((q) => q.status !== "done" && q.paid).length;
@@ -184,8 +244,19 @@ function renderList() {
       $("note").textContent = `Started from your list${q.note ? ": " + q.note : "."}`; window.scrollTo({ top: 0, behavior: "smooth" }); }));
 }
 async function load() {
-  try { DATA = await api("/api/reviews-admin/list"); $("app").hidden = false; renderList(); }
-  catch (e) { $("err").innerHTML = esc(e.message) + ' <a href="/">Sign in on the main site</a> with your admin email, then come back.'; }
+  try {
+    DATA = await api("/api/reviews-admin/list"); ROLE = DATA.role || "admin"; $("app").hidden = false;
+    document.querySelectorAll(".admin-only").forEach((el) => (el.hidden = ROLE !== "admin"));
+    document.querySelectorAll(".critic-only").forEach((el) => (el.hidden = ROLE !== "critic"));
+    $("meSec").hidden = ROLE !== "critic";
+    if (ROLE === "critic") {
+      $("heroEye").textContent = "Critic desk"; $("heroH").innerHTML = `Hey ${esc(DATA.me.name.split(" ")[0])}, <em>what are we weighing?</em>`;
+      $("heroP").textContent = "Write and edit your reviews, pick up drafts from the queue, and keep your critic page fresh."; document.title = "Critic desk · Wackometer";
+      $("fReviewer").readOnly = true; $("fReviewer").value = DATA.me.name; fillMe(DATA.me);
+    } else $("subCount").textContent = `(${DATA.subscribers || 0} signed up)`;
+    renderList();
+  }
+  catch (e) { $("err").innerHTML = esc(e.message) + ' <a href="/write#weigh">Sign in on the main site</a> (top right, “Sign in”) with your admin or critic email, then come back.'; }
 }
 $("fScore").oninput = showScore; $("fCover").oninput = showCover;
 $("fKind").onchange = () => ($("standRow").hidden = $("fKind").value !== "album");
@@ -193,7 +264,7 @@ $("cNew").onclick = () => fillCritic(null);
 $("crForm").onsubmit = async (e) => {
   e.preventDefault();
   try {
-    const r = await api("/api/reviews-admin/critic-save", { original: crOriginal, name: $("cName").value, tagline: $("cTag").value, bio: $("cBio").value, photo_url: $("cPhoto").value, genres: $("cGenres").value, ig: $("cIg").value, link: $("cLink").value, sort: $("cSort").value, active: $("cActive").checked });
+    const r = await api("/api/reviews-admin/critic-save", { original: crOriginal, email: $("cEmail").value, name: $("cName").value, tagline: $("cTag").value, bio: $("cBio").value, photo_url: $("cPhoto").value, genres: $("cGenres").value, ig: $("cIg").value, link: $("cLink").value, sort: $("cSort").value, active: $("cActive").checked });
     await load(); fillCritic((DATA.critics || []).find((c) => c.slug === r.slug)); $("cNote").innerHTML = `Saved. <a href="/critics/${esc(r.slug)}" target="_blank">See their page</a>`;
   } catch (err) { $("cNote").textContent = err.message; }
 };
@@ -225,19 +296,29 @@ $("lookupBtn").onclick = async () => {
 };
 $("ed").onsubmit = async (e) => {
   e.preventDefault();
-  const body = { original, featured: $("fFeatured").checked, submitted: $("fSubmitted").checked }; for (const [k, id] of Object.entries(F)) body[k] = $(id).value;
+  const body = { original, featured: $("fFeatured").checked, submitted: $("fSubmitted").checked, request_id: startedFrom }; for (const [k, id] of Object.entries(F)) body[k] = $(id).value;
   $("saveBtn").disabled = true; $("note").textContent = "Saving…";
   try {
     const r = await api("/api/reviews-admin/save", body);
-    if (startedFrom && r.status === "live") { await api("/api/reviews-admin/request", { id: startedFrom, status: "done" }).catch(() => {}); startedFrom = null; }
-    await load(); fill(DATA.reviews.find((x) => x.slug === r.slug));
+    if (r.status === "live") startedFrom = null;
+    await load(); const saved = DATA.reviews.find((x) => x.slug === r.slug); fill(saved);
     $("note").innerHTML = r.status === "live" ? `Live at <a href="/reviews/${esc(r.slug)}" target="_blank">wackometer.com/reviews/${esc(r.slug)}</a>` : `Saved as a draft. <a href="/reviews/${esc(r.slug)}?preview=1" target="_blank">Preview it</a>`;
+    if (saved && r.status === "live") showTell(saved, r.notified);
   } catch (e) { $("note").textContent = e.message; }
   $("saveBtn").disabled = false;
 };
 $("delBtn").onclick = async () => {
   if (!original || !confirm("Delete this review and its crowd votes? This can't be undone.")) return;
   await api("/api/reviews-admin/delete", { slug: original }); fill(null); load();
+};
+wireUpload("fCoverFile", "fCover", "note", showCover);
+wireUpload("cPhotoFile", "cPhoto", "cNote");
+wireUpload("mPhotoFile", "mPhoto", "mNote", showMeImg);
+$("mPhoto").oninput = showMeImg;
+$("meForm").onsubmit = async (e) => {
+  e.preventDefault();
+  try { await api("/api/reviews-admin/me-save", { tagline: $("mTag").value, bio: $("mBio").value, photo_url: $("mPhoto").value, genres: $("mGenres").value, ig: $("mIg").value, link: $("mLink").value }); await load(); $("mNote").innerHTML = `Saved. <a href="/critics/${esc(DATA.me.slug)}" target="_blank">See your page</a>`; }
+  catch (err) { $("mNote").textContent = err.message; }
 };
 fill(null); load();
 </script>

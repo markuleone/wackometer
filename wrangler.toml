@@ -1,13 +1,14 @@
 name = "wackometer"
 main = "src/worker.js"
 compatibility_date = "2026-09-01"
+keep_vars = true  # keep variables set in the Cloudflare dashboard (e.g. ADSENSE_CLIENT) when deploying
 
 # The front end lives in /public. The worker answers /api/* and Cloudflare serves everything else.
 [assets]
 directory = "./public"
 binding = "ASSETS"
 not_found_handling = "none"  # no asset? the worker answers (front page, reviews, 404s)
-run_worker_first = ["/", "/api/*", "/u/*", "/sitemap.xml", "/ads.txt", "/reviews", "/reviews/*", "/artists", "/artists/*", "/get-reviewed", "/critics", "/critics/*", "/badge/*"]
+run_worker_first = ["/", "/api/*", "/u/*", "/sitemap.xml", "/ads.txt", "/reviews", "/reviews/*", "/artists", "/artists/*", "/get-reviewed", "/critics", "/critics/*", "/badge/*", "/img/*"]
 
 # Error logs and traces in the Cloudflare dashboard (Workers → wackometer → Observability)
 [observability]
@@ -21,8 +22,9 @@ database_id = "45b8ce82-8a43-4e1f-ba85-d69c880c5ad5"
 [vars]
 APP_URL = "https://wackometer.com"
 WINGMAN_MODEL = "claude-haiku-5-5"   # cheapest Claude model; Wingman, Roast and Humanize are Pro-only
-PRO_PRICE_MONTHLY = ""   # Stripe price id, e.g. price_123
-PRO_PRICE_YEARLY = ""
+PRO_PRICE_MONTHLY = "price_1UZiSbDL1c3ciziURTLEPwwH"   # Stripe: Wackometer Wingman Pro, $7.99/month
+PRO_PRICE_YEARLY = "price_1UZiSgDL1c3ciziU6eVzNnvT"    # $59/year
+PORTAL_CONFIG = "bpc_1UZiTWDL1c3ciziUmwImYtkR"        # Stripe customer portal set up for Wackometer Pro
 ADMIN_EMAILS = "info@donebyverde.com"          # who can open /admin (comma-separated)
 EMAIL_FROM = "Wackometer <hello@wackometer.com>" # sender for sign-in emails
 TURNSTILE_SITE_KEY = "0x4AAAAAAFoKvh8oQOnhX6zJ"                         # public Turnstile site key (bot check); pair with the TURNSTILE_SECRET secret

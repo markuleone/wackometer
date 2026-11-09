@@ -215,3 +215,14 @@ if (applyForm) applyForm.onsubmit = async (e) => {
   catch (err) { note.textContent = err.message; }
   btn.disabled = false;
 };
+
+/* ---------- "Wicked of the week" email list ---------- */
+const wf = $("wotwForm");
+if (wf) wf.onsubmit = async (e) => {
+  e.preventDefault();
+  const note = $("wotwNote"), btn = wf.querySelector("button");
+  btn.disabled = true; note.textContent = "";
+  try { await api("/api/subscribe", { body: Object.fromEntries(new FormData(wf)) }); wf.querySelector("input[type=email]").value = ""; note.textContent = "You're in. Watch your inbox for the next one."; track("subscribe"); }
+  catch (err) { note.textContent = err.message; }
+  btn.disabled = false;
+};

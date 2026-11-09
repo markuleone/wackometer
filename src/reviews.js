@@ -78,6 +78,8 @@ ${siteHeader(active, q)}
 <main id="main">
 ${body}
 </main>
+<section class="wotw" aria-labelledby="wotwH"><div><h2 id="wotwH">Wicked of the week</h2><p>One email on Fridays: the best song we weighed that week, plus the one that got wrecked. No spam, leave anytime.</p></div>
+<form id="wotwForm" class="wotw-f"><label class="sr" for="wotwEmail">Your email</label><input id="wotwEmail" name="email" type="email" required maxlength="200" placeholder="you@email.com" autocomplete="email"><input type="hidden" name="source" value="${esc(String(path || "").split("/")[1] || "home")}"><button class="btn bile" type="submit">Get it</button><span class="hint" id="wotwNote" role="status"></span></form></section>
 <footer><p class="flinks">Wackometer · <a href="/reviews">Song reviews</a> · <a href="/get-reviewed">Get reviewed</a> · <a href="/critics">Become a critic</a> · <a href="/rhymes/">Fresh rhymes</a> · <a href="/cliches/">Cliché fixer</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a></p>${DBV}</footer>
 </div>
 <div class="modal" id="humanModal" hidden role="dialog" aria-labelledby="humanH"><div class="mbox"><div class="mch" id="humanChar"></div><h3 id="humanH">Quick check: are you a human?</h3><p class="tag">Keeps bots out of the votes. You only do this once a month.</p><div id="turnstileBox"></div><span class="hint" id="humanNote"></span></div></div>
@@ -590,13 +592,43 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
   }
 
   if (!path.startsWith("/api/reviews-admin/")) return null;
-  if (!admin) return bad("Admins only. Sign in with an admin email.", 403);
+  // Admins can do everything. A critic (signed in with the email on their critic profile) can write and edit
+  // their own reviews, pick up unclaimed drafts, upload pictures and edit their own profile. Nothing else.
+  let critic = null;
+  if (!admin) {
+    critic = u && u.email ? await DB.prepare("SELECT * FROM critics WHERE lower(email)=? AND active=1").bind(u.email.toLowerCase()).first() : null;
+    if (!critic) return bad(u && u.email ? `You're signed in as ${u.email}, which isn't an admin or critic email. Ask Wackometer to add it to your critic profile.` : "Sign in first: admins and critics only.", 403);
+    if (!["list", "lookup", "save", "upload", "me-save", "request"].includes(path.slice(19))) return bad("Only admins can do that.", 403);
+  }
+  const mine = (r) => !critic || !r || (r.reviewer || "").toLowerCase() === critic.name.toLowerCase() || (r.status === "draft" && !r.reviewer);
   if (path === "/api/reviews-admin/list" && method === "GET") {
+    if (critic) {
+      const reviews = (await DB.prepare("SELECT r.*, (SELECT COUNT(*) FROM review_votes v WHERE v.slug=r.slug) votes FROM reviews r WHERE lower(r.reviewer)=? OR (r.status='draft' AND (r.reviewer IS NULL OR r.reviewer='')) ORDER BY updated_at DESC LIMIT 500").bind(critic.name.toLowerCase()).all()).results;
+      const requests = (await DB.prepare("SELECT id,artist,title,link,note,status,created_at,paid,amount,critic FROM review_requests WHERE status<>'pending' AND (critic IS NULL OR critic=?) ORDER BY status='done', paid DESC, created_at DESC LIMIT 300").bind(critic.slug).all()).results;
+      return json({ role: "critic", me: critic, reviews, requests, critics: [critic], applications: [] });
+    }
     const reviews = (await DB.prepare("SELECT r.*, (SELECT COUNT(*) FROM review_votes v WHERE v.slug=r.slug) votes FROM reviews r ORDER BY updated_at DESC LIMIT 500").all()).results;
     const critics = (await DB.prepare("SELECT * FROM critics ORDER BY active DESC, sort, name").all()).results;
     const requests = (await DB.prepare("SELECT * FROM review_requests WHERE status<>'pending' ORDER BY status='done', paid DESC, created_at DESC LIMIT 300").all()).results;
     const applications = (await DB.prepare("SELECT * FROM critic_applications ORDER BY status='new' DESC, created_at DESC LIMIT 200").all()).results;
-    return json({ reviews, requests, critics, applications });
+    const subs = await DB.prepare("SELECT COUNT(*) c FROM subscribers WHERE unsubscribed=0").first();
+    return json({ role: "admin", reviews, requests, critics, applications, subscribers: subs ? subs.c : 0, canEmail: !!env.SENDGRID_API_KEY });
+  }
+  // Pictures: the editor shrinks them in the browser first (about 600px JPEG), so they're small enough for the database.
+  if (path === "/api/reviews-admin/upload" && method === "POST") {
+    const mm = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(String(body.data || ""));
+    if (!mm) return bad("Upload a JPG, PNG or WebP picture.");
+    if (mm[2].length > 900000) return bad("That picture is too big. Try a smaller one.");
+    const id = newId() + newId();
+    await DB.prepare("INSERT INTO images (id,type,data,user_id,created_at) VALUES (?,?,?,?,?)").bind(id, mm[1], mm[2], u.id, Date.now()).run();
+    return json({ ok: true, url: `${env.APP_URL || url.origin}/img/${id}` });
+  }
+  // A critic editing their own page. Name and link stay fixed (reviews are signed with the name); ask an admin to change those.
+  if (path === "/api/reviews-admin/me-save" && method === "POST") {
+    if (!critic) return bad("Admins edit critics in the Critics section.");
+    const f = (k, n = 200) => String(body[k] ?? "").trim().slice(0, n);
+    await DB.prepare("UPDATE critics SET tagline=?,bio=?,photo_url=?,genres=?,ig=?,link=? WHERE slug=?").bind(f("tagline", 100) || null, f("bio", 3000) || null, safeUrl(f("photo_url", 500)) || null, f("genres", 200) || null, igHandle(f("ig", 80)) || null, safeUrl(f("link", 300)) || null, critic.slug).run();
+    return json({ ok: true, slug: critic.slug });
   }
   if (path === "/api/reviews-admin/lookup" && method === "GET") {
     const link = safeUrl(url.searchParams.get("url")), q = (url.searchParams.get("q") || "").trim().slice(0, 120);
@@ -632,23 +664,35 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
     const slug = slugify(f("slug", 80) || `${artist} ${title}`);
     if (!slug) return bad("Couldn't make a link name from that. Add a slug.");
     const prev = body.original ? await DB.prepare("SELECT * FROM reviews WHERE slug=?").bind(slugify(body.original)).first() : null;
+    if (critic) {
+      if (prev && !mine(prev)) return bad("That review belongs to another critic.", 403);
+      body.reviewer = critic.name; body.featured = prev ? !!prev.featured : false;
+    }
     if (!prev || prev.slug !== slug) { const taken = await DB.prepare("SELECT slug FROM reviews WHERE slug=?").bind(slug).first(); if (taken) return bad("Another review already uses that link name. Change the slug."); }
     const status = body.status === "live" ? "live" : "draft", t = Date.now();
     const vals = [f("kind") === "album" ? "album" : "song", artist, title, f("genre", 60) || null, f("released", 40) || null, score, verdict, f("body", 12000) || null, best || null, f("standouts", 600) || null,
       safeUrl(f("cover_url", 500)) || null, safeUrl(f("spotify_url", 300)) || null, safeUrl(f("youtube_url", 300)) || null, safeUrl(f("apple_url", 300)) || null, safeUrl(f("artist_url", 300)) || null, igHandle(f("artist_ig", 80)) || null, f("reviewer", 60) || null, status, body.featured ? 1 : 0, body.submitted ? 1 : 0];
     const published = status === "live" ? (prev && prev.published_at) || t : (prev && prev.published_at) || null;
+    const requestId = String(body.request_id || (prev && prev.request_id) || "").slice(0, 60) || null;
     const parts = PARTS.map(([k]) => { const v = body[k]; if (v === "" || v === null || v === undefined) return null; const n = Math.round(Number(v)); return n >= 0 && n <= 100 ? n : null; });
     if (prev) {
       await DB.batch([
         DB.prepare("UPDATE reviews SET slug=?,kind=?,artist=?,title=?,genre=?,released=?,score=?,verdict=?,body=?,best_line=?,standouts=?,cover_url=?,spotify_url=?,youtube_url=?,apple_url=?,artist_url=?,artist_ig=?,reviewer=?,status=?,featured=?,submitted=?,updated_at=?,published_at=? WHERE slug=?").bind(slug, ...vals, t, published, prev.slug),
         DB.prepare("UPDATE review_votes SET slug=? WHERE slug=?").bind(slug, prev.slug),
-        DB.prepare(`UPDATE reviews SET ${PARTS.map(([k]) => k + "=?").join(",")} WHERE slug=?`).bind(...parts, slug),
+        DB.prepare(`UPDATE reviews SET ${PARTS.map(([k]) => k + "=?").join(",")}, request_id=? WHERE slug=?`).bind(...parts, requestId, slug),
       ]);
     } else {
       await DB.prepare("INSERT INTO reviews (slug,kind,artist,title,genre,released,score,verdict,body,best_line,standouts,cover_url,spotify_url,youtube_url,apple_url,artist_url,artist_ig,reviewer,status,featured,submitted,created_at,updated_at,published_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(slug, ...vals, t, t, published).run();
-      await DB.prepare(`UPDATE reviews SET ${PARTS.map(([k]) => k + "=?").join(",")} WHERE slug=?`).bind(...parts, slug).run();
+      await DB.prepare(`UPDATE reviews SET ${PARTS.map(([k]) => k + "=?").join(",")}, request_id=? WHERE slug=?`).bind(...parts, requestId, slug).run();
     }
-    return json({ ok: true, slug, status });
+    // First time a submitted song goes live: close the request and email the artist (once).
+    let notified = null;
+    if (status === "live" && requestId) {
+      await DB.prepare("UPDATE review_requests SET status='done' WHERE id=?").bind(requestId).run();
+      const r = await DB.prepare("SELECT * FROM reviews WHERE slug=?").bind(slug).first();
+      if (r && !r.notified_at) notified = await tellArtist(env, DB, r, requestId, url);
+    }
+    return json({ ok: true, slug, status, notified });
   }
   if (path === "/api/reviews-admin/delete" && method === "POST") {
     const slug = slugify(body.slug);
@@ -675,10 +719,10 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
     const slug = slugify(f("slug", 60) || name), prev = slugify(body.original || "");
     if (!slug) return bad("Couldn't make a link name from that.");
     if (slug !== prev && (await DB.prepare("SELECT slug FROM critics WHERE slug=?").bind(slug).first())) return bad("Another critic already uses that link name.");
-    const vals = [slug, name, f("tagline", 100) || null, f("bio", 3000) || null, safeUrl(f("photo_url", 500)) || null, f("genres", 200) || null, igHandle(f("ig", 80)) || null, safeUrl(f("link", 300)) || null, body.active === false ? 0 : 1, Math.round(Number(body.sort) || 0)];
+    const vals = [slug, name, f("tagline", 100) || null, f("bio", 3000) || null, safeUrl(f("photo_url", 500)) || null, f("genres", 200) || null, igHandle(f("ig", 80)) || null, safeUrl(f("link", 300)) || null, body.active === false ? 0 : 1, Math.round(Number(body.sort) || 0), (/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(f("email", 200)) ? f("email", 200).toLowerCase() : null)];
     if (prev && (await DB.prepare("SELECT slug FROM critics WHERE slug=?").bind(prev).first())) {
-      await DB.batch([DB.prepare("UPDATE critics SET slug=?,name=?,tagline=?,bio=?,photo_url=?,genres=?,ig=?,link=?,active=?,sort=? WHERE slug=?").bind(...vals, prev), DB.prepare("UPDATE review_requests SET critic=? WHERE critic=?").bind(slug, prev)]);
-    } else await DB.prepare("INSERT INTO critics (slug,name,tagline,bio,photo_url,genres,ig,link,active,sort,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)").bind(...vals, Date.now()).run();
+      await DB.batch([DB.prepare("UPDATE critics SET slug=?,name=?,tagline=?,bio=?,photo_url=?,genres=?,ig=?,link=?,active=?,sort=?,email=? WHERE slug=?").bind(...vals, prev), DB.prepare("UPDATE review_requests SET critic=? WHERE critic=?").bind(slug, prev)]);
+    } else await DB.prepare("INSERT INTO critics (slug,name,tagline,bio,photo_url,genres,ig,link,active,sort,email,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").bind(...vals, Date.now()).run();
     return json({ ok: true, slug });
   }
   if (path === "/api/reviews-admin/application" && method === "POST") {
@@ -690,10 +734,53 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
     return json({ ok: true });
   }
   if (path === "/api/reviews-admin/request" && method === "POST") {
+    if (critic) { const q = await DB.prepare("SELECT critic FROM review_requests WHERE id=?").bind(String(body.id || "")).first(); if (q && q.critic && q.critic !== critic.slug) return bad("That one is for another critic.", 403); }
     await DB.prepare("UPDATE review_requests SET status=? WHERE id=?").bind(body.status === "done" ? "done" : "new", String(body.id || "")).run();
     return json({ ok: true });
   }
+  if (path === "/api/reviews-admin/subscribers.csv" && method === "GET") {
+    const rows = (await DB.prepare("SELECT email, source, created_at FROM subscribers WHERE unsubscribed=0 ORDER BY created_at").all()).results;
+    const csv = "email,source,joined\n" + rows.map((r) => `${r.email},${(r.source || "").replace(/[,\n]/g, " ")},${new Date(r.created_at).toISOString().slice(0, 10)}`).join("\n");
+    return new Response(csv, { headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": 'attachment; filename="wackometer-subscribers.csv"', "cache-control": "no-store" } });
+  }
   return bad("Not found", 404);
+}
+
+// Email the artist who paid for a review when it goes live. Needs SENDGRID_API_KEY; without it the editor shows a ready-to-send message instead.
+async function tellArtist(env, DB, r, requestId, url) {
+  const q = await DB.prepare("SELECT email, artist FROM review_requests WHERE id=?").bind(requestId).first();
+  if (!q || !q.email || !env.SENDGRID_API_KEY) return { sent: false, email: q ? q.email : null };
+  const base = env.APP_URL || url.origin, link = `${base}/reviews/${r.slug}`, t = TIERS_N[tierFor(r.score)];
+  const fromRaw = env.EMAIL_FROM || "Wackometer <hello@wackometer.com>";
+  const fm = fromRaw.match(/^\s*(.*?)\s*<([^>]+)>\s*$/), from = fm ? { name: fm[1] || "Wackometer", email: fm[2] } : { email: fromRaw.trim() };
+  const e = (x) => esc(x);
+  const htmlBody = `<div style="font-family:Arial,sans-serif;font-size:16px;color:#1F2340;line-height:1.5"><p>Hey ${e(q.artist)},</p><p>Your review of <b>${e(r.title)}</b> is live on Wackometer. It weighed in at <b>${r.score} · ${e(r.score < 20 ? "Certified Wicked" : t)}</b>.</p><p><a href="${link}" style="display:inline-block;background:#A8C42E;color:#1F2340;padding:12px 20px;border-radius:999px;font-weight:bold;text-decoration:none">Read your review</a></p><p>On the page you'll find a story-sized share card for Instagram and a badge you can put on your site. Tag us so we can repost.</p><p>Thanks for trusting us with your music.<br>Wackometer</p></div>`;
+  try {
+    const res = await fetch("https://api.sendgrid.com/v3/mail/send", { method: "POST", headers: { authorization: `Bearer ${env.SENDGRID_API_KEY}`, "content-type": "application/json" },
+      body: JSON.stringify({ personalizations: [{ to: [{ email: q.email }] }], from, subject: `Your Wackometer review is live: ${r.title}`, content: [{ type: "text/plain", value: `Hey ${q.artist},\n\nYour review of ${r.title} is live on Wackometer: ${r.score} (${r.score < 20 ? "Certified Wicked" : t}).\n\nRead it: ${link}\n\nThe page has a share card for Instagram and a badge for your site.\n\nWackometer` }, { type: "text/html", value: htmlBody }] }) });
+    if (!res.ok) { console.error("review notify", res.status, await res.text()); return { sent: false, email: q.email }; }
+    await DB.prepare("UPDATE reviews SET notified_at=? WHERE slug=?").bind(Date.now(), r.slug).run();
+    return { sent: true, email: q.email };
+  } catch (err) { console.error("review notify", err); return { sent: false, email: q.email }; }
+}
+const TIERS_N = ["Wicked", "Well put", "Whatever", "Weird", "Wack"];
+const tierFor = (s) => (s >= 80 ? 4 : s >= 60 ? 3 : s >= 40 ? 2 : s >= 20 ? 1 : 0);
+
+// "Wicked of the week" email list signups (public).
+export async function subscribe(env, body, u) {
+  const email = String(body.email || "").trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 200) return bad("That doesn't look like an email address.");
+  await env.DB.prepare("INSERT INTO subscribers (email,source,user_id,created_at) VALUES (?,?,?,?) ON CONFLICT(email) DO UPDATE SET unsubscribed=0").bind(email, String(body.source || "").slice(0, 40) || null, u ? u.id : null, Date.now()).run();
+  return json({ ok: true });
+}
+
+// Uploaded pictures.
+export async function imageResponse(env, id) {
+  if (!/^[A-Za-z0-9_-]{8,80}$/.test(id)) return new Response("Not found", { status: 404 });
+  const row = await env.DB.prepare("SELECT type, data FROM images WHERE id=?").bind(id).first();
+  if (!row) return new Response("Not found", { status: 404 });
+  const bin = Uint8Array.from(atob(row.data), (c) => c.charCodeAt(0));
+  return new Response(bin, { headers: { "content-type": row.type, "cache-control": "public, max-age=31536000, immutable", "x-content-type-options": "nosniff" } });
 }
 
 // Live reviews for the sitemap.

@@ -1041,3 +1041,13 @@ a.rchip:hover{border-color:var(--ink)}
   #groupNav button[aria-current],#groupNav a[aria-current]{background:var(--bile-wash);color:var(--ink)}
   #groupNav button:hover,#groupNav a:hover{color:var(--ink);background:var(--surface)}
 }
+
+/* "Wicked of the week" signup band (every review page, above the footer) */
+.wotw{display:grid;grid-template-columns:1.2fr 1fr;gap:18px;align-items:center;margin:34px 0 8px;background:var(--bile-wash);border:2px solid var(--ink);box-shadow:0 6px 0 var(--ink);border-radius:26px;padding:clamp(18px,3vw,28px)}
+.wotw h2{margin:0 0 4px;font-family:var(--display);font-size:clamp(24px,3vw,34px);line-height:1.05}
+.wotw p{margin:0;max-width:60ch}
+.wotw-f{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.wotw-f input[type=email]{flex:1 1 200px;min-width:0;background:var(--surface);border:2px solid var(--ink);border-radius:999px;padding:11px 16px;font:inherit;color:inherit}
+.wotw-f .hint{flex-basis:100%}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media (max-width:760px){.wotw{grid-template-columns:1fr}}

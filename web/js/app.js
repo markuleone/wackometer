@@ -415,7 +415,7 @@ function openLogin() {
   $("loginModal").hidden = false; $("loginChar").innerHTML = charSVG(1); $("loginNote").textContent = "";
   const me = S.ME || {}, inn = !!me.email;
   $("loginOut").hidden = !inn; $("loginCode").hidden = true; $("loginForm").hidden = inn;
-  $("loginAgeRow").hidden = !!me.ageOk; $("adminLink").hidden = !me.admin;
+  $("loginAgeRow").hidden = !!me.ageOk; $("adminLink").hidden = !me.admin && !me.critic; $("adminLink").textContent = me.admin ? "Admin" : "Critic desk"; $("adminLink").href = me.admin ? "/admin" : "/admin-reviews";
   $("meNoEmail").hidden = !!me.username; $("loginX").hidden = !!me.username;
   if (inn) {
     $("loginH").textContent = "You're signed in";
