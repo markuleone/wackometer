@@ -1420,3 +1420,11 @@ header .util .albl{display:inline-block;max-width:14ch;min-width:5.2ch;overflow:
 .dailyv{gap:28px}
 @media (max-width:820px){.tabhero,.dhead{padding:26px 22px}.th-ch{width:84px;height:84px}}
 @media (max-width:600px){.tabhero,.dhead{padding:22px 18px}.th-ch{width:64px;height:64px}}
+/* search never squeezes its placeholder (Nov 9) */
+header .rsearch,header.top .rsearch,.rtop .rsearch{flex:0 0 auto;width:236px;min-width:236px;max-width:236px}
+header .rsearch input{text-overflow:ellipsis}
+@media (max-width:1100px){
+  header.rtop,header.top{flex-wrap:wrap}
+  header .rsearch,header.top .rsearch,.rtop .rsearch{order:5;flex:1 0 100%;width:100%;min-width:0;max-width:none;margin:0}
+}
+@media (max-width:520px){header .rsearch,header.top .rsearch,.rtop .rsearch{display:none}}
