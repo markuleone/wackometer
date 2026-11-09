@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Review editor · Wackometer</title><meta name="robots" content="noindex,nofollow"><link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/css/site.072fdcd31b.css">
+<link rel="stylesheet" href="/css/site.7dedcfd889.css">
 <style>
 body{margin:0}[hidden]{display:none!important}
 .doc{display:flex;flex-direction:column;gap:16px;padding-top:clamp(10px,2vh,22px)}
@@ -121,6 +121,7 @@ body{margin:0}[hidden]{display:none!important}
 <span class="scoreRow"><input id="fScore" type="range" min="0" max="100" value="15"><span id="scoreOut"></span></span></label>
 <fieldset class="full brk"><legend>The breakdown <span class="hint">0 = Wicked, 100 = Wack. Leave a part blank to skip it. The overall above is your call, not an average.</span></legend>
 <label class="chk" style="grid-column:1/-1;align-self:start"><input type="checkbox" id="fAi"> Made with AI <span class="hint">(adds a 🤖 badge)</span></label>
+<label class="chk" style="grid-column:1/-1;align-self:start"><input type="checkbox" id="fBig"> ⚖️ Big One <span class="hint">(a mainstream song: shows under Weighing the Big Ones, kept off the charts, lists, genres and leaderboard)</span></label>
 <label class="chk" style="grid-column:1/-1;align-self:start"><input type="checkbox" id="fInst"> Instrumental <span class="hint">(scores Hook, Build &amp; drop, Sound design and Groove instead of lyrics and vocals)</span></label>
 <label><span id="lbl_s_lyrics">Lyrics</span><input type="number" min="0" max="100" id="fS_lyrics" placeholder="—"></label>
 <label><span id="lbl_s_melody">Melody &amp; hook</span><input type="number" min="0" max="100" id="fS_melody" placeholder="—"></label>
@@ -255,7 +256,7 @@ function showCover() { const u = $("fCover").value.trim(); $("coverPrev").hidden
 function fill(r) {
 original = r ? r.slug : null;
 for (const [k, id] of Object.entries(F)) $(id).value = r ? (r[k] ?? "") : k === "score" ? 15 : k === "kind" ? "song" : k === "status" ? "draft" : "";
-$("fFeatured").checked = !!(r && r.featured); $("fSubmitted").checked = !!(r && r.submitted); $("fInst").checked = !!(r && r.instrumental); $("fAi").checked = !!(r && r.ai_made); relabel();
+$("fFeatured").checked = !!(r && r.featured); $("fSubmitted").checked = !!(r && r.submitted); $("fInst").checked = !!(r && r.instrumental); $("fAi").checked = !!(r && r.ai_made); $("fBig").checked = !!(r && r.big); relabel();
 $("ogBox").hidden = !(r && r.og_url); if (r && r.og_url) $("ogPrev").src = r.og_url.replace(/^https:\/\/wackometer\.com/, "");
 $("assistBox").hidden = !(r && r.assist); $("fListened").checked = false;
 $("delBtn").hidden = !r || ROLE !== "admin"; $("viewBtn").hidden = !r; $("tell").hidden = true;
@@ -469,7 +470,7 @@ showCover(); $("note").textContent = d.spotify ? "Filled in. Spotify doesn't sha
 $("ed").onsubmit = async (e) => {
 e.preventDefault();
 if (!$("fCover").value.trim() && $("fArtist").value.trim() && $("fTitle").value.trim()) { const f = await findCover($("fArtist").value, $("fTitle").value, $("fKind").value); if (f) { $("fCover").value = f.cover; if (!$("fApple").value) $("fApple").value = f.apple_url; showCover(); } }
-const body = { original, instrumental: $("fInst").checked, ai_made: $("fAi").checked, featured: $("fFeatured").checked, submitted: $("fSubmitted").checked, request_id: startedFrom, listened: $("fListened").checked }; for (const [k, id] of Object.entries(F)) body[k] = $(id).value;
+const body = { original, instrumental: $("fInst").checked, ai_made: $("fAi").checked, big: $("fBig").checked, featured: $("fFeatured").checked, submitted: $("fSubmitted").checked, request_id: startedFrom, listened: $("fListened").checked }; for (const [k, id] of Object.entries(F)) body[k] = $(id).value;
 $("saveBtn").disabled = true; $("note").textContent = "Saving…";
 try {
 const r = await api("/api/reviews-admin/save", body);

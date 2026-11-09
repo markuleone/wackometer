@@ -42,7 +42,7 @@ const monthKey = (ts) => new Date(ts).toISOString().slice(0, 7);
 const monthName = (k) => `${MONTHS[Number(k.slice(5, 7)) - 1]} ${k.slice(0, 4)}`;
 
 async function liveReviews(DB) {
-  return (await DB.prepare("SELECT slug,title,artist,score,cover_url,verdict,genre,kind,instrumental,published_at,s_lyrics,s_melody,s_vocals,s_production,s_replay FROM reviews WHERE status='live' ORDER BY published_at DESC LIMIT 5000").all()).results;
+  return (await DB.prepare("SELECT slug,title,artist,score,cover_url,verdict,genre,kind,instrumental,published_at,s_lyrics,s_melody,s_vocals,s_production,s_replay FROM reviews WHERE status='live' AND big=0 ORDER BY published_at DESC LIMIT 5000").all()).results;
 }
 // { "2026-11": [reviews...] }
 function byMonth(rows) {
@@ -134,7 +134,7 @@ ${submitHTML()}</article>`;
 /* ---------- genre pages (/reviews/indie) ---------- */
 export async function genreCounts(DB) {
   const n = {};
-  for (const r of (await DB.prepare("SELECT genre FROM reviews WHERE status='live'").all()).results) for (const g of genresOf(r.genre)) n[g] = (n[g] || 0) + 1;
+  for (const r of (await DB.prepare("SELECT genre FROM reviews WHERE status='live' AND big=0").all()).results) for (const g of genresOf(r.genre)) n[g] = (n[g] || 0) + 1;
   return GENRE_KEYS.filter((g) => n[g]).map((g) => [g, n[g], genreName(g)]);
 }
 export async function genrePage(req, env, g, ensureSchema) {

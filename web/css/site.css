@@ -1310,3 +1310,7 @@ nav.rchips{background:none;border:0;padding:0;box-shadow:none;border-radius:0}
 .announce{margin:10px 0 0;background:var(--sun);border:2px solid var(--ink);border-radius:14px;padding:8px 14px;font-weight:700;text-align:center}.announce a{color:var(--ink);text-decoration:none}
 
 .ai-tag{display:inline-block;background:#1F2340;color:#fff;border-radius:999px;padding:1px 9px;font-size:.92em;letter-spacing:0;text-transform:none;font-weight:700}.ai-tag.sm{font-size:11px;padding:1px 7px;margin-left:6px;vertical-align:middle}
+
+/* Weighing the Big Ones */
+.rv-bignote{border:2px dashed var(--line);border-radius:16px;padding:10px 14px}
+.fbig-note{margin:-14px 0 0}

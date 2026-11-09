@@ -42,6 +42,8 @@ export const MIGRATIONS = [
   // when we last tried to find a cover automatically; songs made with AI get a badge
   "ALTER TABLE reviews ADD COLUMN cover_checked INTEGER",
   "ALTER TABLE reviews ADD COLUMN ai_made INTEGER NOT NULL DEFAULT 0",
+  // "Weighing the Big Ones": mainstream songs we put on the meter as a side lane. Kept off the charts, lists, leaderboard and genres.
+  "ALTER TABLE reviews ADD COLUMN big INTEGER NOT NULL DEFAULT 0",
   // back office: who did what
   "CREATE TABLE IF NOT EXISTS admin_log ( id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, email TEXT, path TEXT NOT NULL, detail TEXT )",
   // per-review counters (views, shares, listens...) per day, never tied to a person
