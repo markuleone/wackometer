@@ -48,7 +48,7 @@ export async function copyText(t, btn, label) {
 export const CREW=[{name:"Wiz",col:"#3D8BFF"},{name:"Wendy",col:"#22C29B"},{name:"Wally",col:"#A9A2DA"},{name:"Wobbles",col:"#FF8A3D"},{name:"Wretch",col:"#A8C42E"},{name:"Wingman",col:"#FFFFFF"}];
 export const SHOUT=["Wicked!","Well put!","Meh.","Uhh…","Bleh! 🤢"];
 export const QUIPS=[["That's wicked. I'm framing this.","Okay, poet. That line hit.","Fresh. Nobody's said it like that."],["Well put. I'd nod to this.","Clean. A couple of safe picks, but clean.","Solid. Push one image harder."],["Whatever. It's… words.","Heard it. Already forgot it.","It's fine. Fine is the problem."],["Weird. Something smells borrowed.","Did you just rhyme fire with desire?","Half of this I've heard on the radio."],["Wack. Somebody hold my bucket.","I'm gonna be sick. In a fun way.","This belongs inside a greeting card."]];
-export const INK="#1D1D22";
+export const INK="#1F2340";
 function eye(cx,cy,r,dx=1,dy=1){return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#fff" stroke="${INK}" stroke-width="2.5"/><circle cx="${cx+dx*r*.25}" cy="${cy+dy*r*.15}" r="${r*.52}" fill="${INK}"/><circle cx="${cx+dx*r*.25-r*.2}" cy="${cy+dy*r*.15-r*.22}" r="${r*.18}" fill="#fff"/>`}
 export function charSVG(i,size,acc){
   const UL = acc || UNLOCK;

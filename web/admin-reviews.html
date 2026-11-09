@@ -150,7 +150,7 @@ body{margin:0}[hidden]{display:none!important}
 <script type="module">
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const TIERS = ["Wicked", "Well put", "Whatever", "Weird", "Wack"], TC = ["#3D8BFF", "#22C29B", "#A9A2DA", "#FF8A3D", "#A8C42E"], TO = ["#1D1D22", "#1D1D22", "#1D1D22", "#1D1D22", "#1D1D22"];
+const TIERS = ["Wicked", "Well put", "Whatever", "Weird", "Wack"], TC = ["#3D8BFF", "#22C29B", "#A9A2DA", "#FF8A3D", "#A8C42E"], TO = ["#1F2340", "#1F2340", "#1F2340", "#1F2340", "#1F2340"];
 const tierOf = (s) => (s >= 80 ? 4 : s >= 60 ? 3 : s >= 40 ? 2 : s >= 20 ? 1 : 0);
 async function api(path, body) {
   const r = await fetch(path, body ? { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : {});
