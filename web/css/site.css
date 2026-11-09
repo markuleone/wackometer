@@ -624,21 +624,47 @@ a.rchip:hover{border-color:var(--ink)}
 
 @media (max-width:480px){.logo{font-size:21px}.util{gap:4px}.ubtn{padding:3px 9px}.ubtn.ic{padding:3px 7px}#soundBtn{display:none}.toolhead .hc{width:44px;height:44px}.toolhead h2{font-size:24px}.hero h1{font-size:36px}}
 
-/* three-group nav: Write / Train / Play, then the tools in that group */
-#groupNav{display:flex;gap:2px;background:var(--surface);border:2px solid var(--line);border-radius:999px;padding:3px;flex:none}
-#groupNav a{text-decoration:none;display:inline-flex;align-items:center;gap:4px}
-#groupNav button,#groupNav a{border:0;background:none;padding:6px 14px;border-radius:999px;font-family:var(--display);font-weight:700;font-size:15px;color:var(--muted);cursor:pointer;white-space:nowrap}
-#groupNav button:hover,#groupNav a:hover{color:var(--ink)}
-#groupNav button[aria-current="true"]{background:var(--ink);color:var(--bg)}
-#mainNav{background:none;border:0;padding:0;gap:6px}
-#mainNav[data-group="write"] button:not([data-g="write"]),#mainNav[data-group="practice"] button:not([data-g="practice"]){display:none}
-#mainNav button{border:2px solid transparent;border-radius:999px;background:none;color:var(--muted)}
-#mainNav button:hover{color:var(--ink);border-color:var(--line)}
-#mainNav button[aria-current="page"]{background:var(--bile-wash);color:var(--ink);border-color:var(--bile)}
-
+/* /write header: same three doors and same look as the rest of the site (see .rnav) */
+#groupNav{display:flex;gap:4px;background:none;border:0;border-radius:0;padding:0;flex:none}
+#groupNav a,#groupNav button{text-decoration:none;display:inline-flex;align-items:center;gap:4px;border:0;background:none;padding:7px 12px;border-radius:999px;font-family:var(--display);font-weight:600;font-size:15px;color:var(--muted);cursor:pointer;white-space:nowrap}
+#groupNav a:hover,#groupNav button:hover{color:var(--ink);background:var(--surface)}
+#groupNav button[aria-current="true"]{color:var(--ink);background:var(--bile-wash)}
+/* Write's tools: one tab row under the header */
+.wtabs-bar{display:flex;align-items:center;gap:10px 16px;flex-wrap:wrap;justify-content:space-between}
+#writeTabs{background:none;border:0;padding:0;gap:6px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+#writeTabs::-webkit-scrollbar{display:none}
+#writeTabs button{display:inline-flex;align-items:center;gap:6px;border:2px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 14px;font-family:var(--display);font-weight:700;font-size:15px;color:var(--muted);white-space:nowrap;flex:none}
+#writeTabs button:hover{color:var(--ink);border-color:var(--ink)}
+#writeTabs button[aria-current="page"]{background:var(--bile-wash);border-color:var(--bile);color:var(--ink)}
+.wplus{font-size:11px;font-weight:700;background:var(--bile);color:#1D2013;border-radius:999px;padding:1px 6px;letter-spacing:.02em}
+.wtabs-get{font-size:14px;color:var(--muted);text-decoration:none;white-space:nowrap}
+.wtabs-get b{color:var(--ink);font-family:var(--display)}
+.wtabs-get:hover b{text-decoration:underline;text-underline-offset:3px}
 @media (max-width:980px){header.top{flex-wrap:wrap;row-gap:8px}.logo{font-size:23px}.util{margin-left:auto}
-  #groupNav{order:3;flex-basis:100%}#groupNav button,#groupNav a{flex:1;justify-content:center}
-  #mainNav{order:4;flex-basis:100%;justify-content:center}}
+  #groupNav{order:3;flex-basis:100%;overflow-x:auto;scrollbar-width:none}#groupNav a,#groupNav button{font-size:14px;padding:6px 10px;flex:none}}
+
+/* "Up against" bar (from a review's Your turn button) and the bridge back to the reviews after a weigh */
+.vsbar{grid-column:1/-1;display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;border:2px solid var(--ink);border-radius:18px;padding:10px 14px;background:var(--bile-wash);box-shadow:0 4px 0 var(--ink)}
+.vsbar a{display:inline-flex;align-items:center;gap:8px;color:var(--ink);text-decoration:none}
+.vsbar img{width:40px;height:40px;border-radius:8px;object-fit:cover}
+.vs-k{font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.bsc{font-family:var(--display);font-weight:700;font-size:13px;border-radius:999px;padding:3px 10px;white-space:nowrap;border:2px solid var(--ink)}
+.bridge{display:flex;flex-direction:column;gap:12px;border:2px solid var(--line);border-radius:24px;padding:18px 20px;background:var(--surface)}
+.bhead{display:flex;justify-content:space-between;align-items:baseline;gap:10px}.bhead h3{margin:0}.bhead a{font-size:14px;color:var(--bile-ink)}
+.bridge .hint{margin:0}
+.bvs{margin:0;font-size:17px;line-height:1.45}
+.bgrid,.seorev-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.bcard{display:grid;grid-template-columns:56px minmax(0,1fr);grid-template-rows:auto auto;gap:4px 12px;align-items:center;text-decoration:none;color:var(--ink);background:var(--bg);border:2px solid var(--line);border-radius:16px;padding:8px}
+.bcard:hover{border-color:var(--ink)}
+.bcard img{grid-row:1/3;width:56px;height:56px;border-radius:10px;object-fit:cover}
+.bct{display:flex;flex-direction:column;min-width:0}.bct b,.bct span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bct span{font-size:13px;color:var(--muted)}
+.bcard .bsc{justify-self:start;font-size:12px;padding:1px 8px}
+.bget{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:14px;align-items:center;text-decoration:none;color:var(--ink);background:#fff;border:2px solid var(--ink);border-radius:18px;padding:12px 16px;box-shadow:0 4px 0 var(--ink)}
+.bget:hover{transform:translateY(-1px)}
+.bget-ch{width:52px;height:52px}.bget-ch svg{width:100%;height:100%}
+.bget .fpgo{background:var(--ink);color:#fff;margin-top:0;white-space:nowrap}
+@media (max-width:600px){.bget{grid-template-columns:44px minmax(0,1fr)}.bget-ch{width:44px;height:44px}.bget .fpgo{grid-column:1/-1;justify-self:start}}
+.seorev{display:flex;flex-direction:column;gap:8px;margin:28px 0 8px}.seorev .hint{margin:0}
 
 /* Pro: plugin waitlist */
 .plan li.soon{color:var(--bile-ink);font-weight:600}
@@ -662,11 +688,15 @@ a.rchip:hover{border-color:var(--ink)}
   header.top{position:static;margin-top:0;padding:0 0 8px;row-gap:6px}
   .util{gap:6px}
   .ubtn{min-height:38px;min-width:38px;padding:4px 10px;display:inline-flex;align-items:center;justify-content:center}
-  /* Write / Train / Play becomes a bottom tab bar */
-  #groupNav{position:fixed;left:0;right:0;bottom:0;z-index:45;order:0;flex-basis:auto;border-radius:0;border:0;border-top:2px solid var(--line);
-    background:var(--surface);padding:6px 10px calc(6px + env(safe-area-inset-bottom,0px));gap:6px;box-shadow:0 -6px 18px rgba(31,35,64,.08)}
-  #groupNav button,#groupNav a{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px;border-radius:16px;font-size:13px;min-height:52px}
-  #groupNav .ni{display:block;font-size:21px;line-height:1}
+  /* Write's four tools become a bottom tab bar; the site nav (Wreviews / Write / Get Weighed) stays on top */
+  #writeTabs{position:fixed;left:0;right:0;bottom:0;z-index:45;border-radius:0;border:0;border-top:2px solid var(--line);
+    background:var(--surface);padding:6px 10px calc(6px + env(safe-area-inset-bottom,0px));gap:6px;box-shadow:0 -6px 18px rgba(31,35,64,.08);overflow:visible}
+  #writeTabs button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 4px;border-radius:16px;font-size:13px;min-height:52px;border:0;background:none}
+  #writeTabs button>span:first-child{font-size:21px;line-height:1}
+  #writeTabs .wplus{font-size:9.5px;padding:0 5px;position:absolute;margin:-30px 0 0 34px}
+  #writeTabs button{position:relative}
+  .wtabs-bar{justify-content:center}
+  #groupNav{order:3;flex-basis:100%}
   #mainNav{order:3;justify-content:flex-start;gap:6px}
   #mainNav button{min-height:40px;padding:6px 14px;background:var(--surface);border-color:var(--line)}
   /* Weigh: lyrics box reachable without scrolling a whole screen */
@@ -892,6 +922,16 @@ a.rchip:hover{border-color:var(--ink)}
 .fp b{font-family:var(--display);font-size:clamp(24px,2.4vw,32px);line-height:1.05;padding-right:80px}.fp b em{font-style:normal;color:var(--bile-ink)}
 .fp>span:not(.hey):not(.fpgo):not(.fp-char){max-width:46ch;line-height:1.5}
 .fp-weigh{background:var(--bile-wash)}
+.fpromo.fcta{grid-template-columns:repeat(3,minmax(0,1fr))}.fcta-h{grid-column:1/-1;margin-bottom:-6px}
+.fcta .fp b{font-size:clamp(22px,2vw,28px);padding-right:66px}.fcta .fp-char{width:64px;height:64px}
+.fp-work{background:#F0E8FA}
+.fp.fp-work .fpgo{background:#fff;color:var(--ink);border:2px solid var(--ink)}
+@media (max-width:980px){.fpromo.fcta{grid-template-columns:1fr}}
+/* Review page: your turn to go up against the song */
+.rv-turn{display:grid;grid-template-columns:72px minmax(0,1fr);gap:16px;align-items:start;border:2px solid var(--ink);border-radius:24px;padding:18px 20px;background:var(--bile-wash);box-shadow:0 5px 0 var(--ink)}
+.rv-turn h2{margin:0 0 4px}.rv-turn p{margin:0 0 12px}.rv-turn .rv-char{width:72px;height:72px;position:static}.rv-turn .rv-char svg{width:100%;height:100%}
+.rv-turn .row{display:flex;gap:8px;flex-wrap:wrap}.rv-turn .btn{text-decoration:none}
+@media (max-width:600px){.rv-turn{grid-template-columns:48px minmax(0,1fr);padding:16px}.rv-turn .rv-char{width:48px;height:48px}}
 .fp-plug{background:#1F2340;color:#F4F5FF!important}.fp.fp-plug .hey{color:#BCC0E4}
 .fp .hey{font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;gap:8px;align-items:center}
 .hsoon{background:#BCD83C;color:#1D2013;border-radius:999px;padding:2px 8px;font-size:11px;letter-spacing:.04em}

@@ -48,6 +48,9 @@ ${siteHeader("none")}
 <main id="main">
 ${body}
 <div class="ad-slot" hidden></div>
+<section class="seorev" id="seoRev" hidden aria-labelledby="seoRevH"><div class="frh"><h2 id="seoRevH">Fresh off the Wackometer</h2><a href="/reviews">All reviews <span aria-hidden="true">→</span></a></div><p class="hint">New songs we just weighed, Wicked to Wack.</p><div class="seorev-list" id="seoRevList"></div></section>
+<script>(function(){var N=["Wicked","Well put","Whatever","Weird","Wack"],e=function(s){return String(s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})};
+fetch("/api/reviews/latest").then(function(r){return r.json()}).then(function(l){if(!l||!l.length)return;document.getElementById("seoRevList").innerHTML=l.slice(0,4).map(function(r){var t=r.score>=80?4:r.score>=60?3:r.score>=40?2:r.score>=20?1:0;return '<a class="bcard" href="/reviews/'+e(r.slug)+'"><img src="'+e(r.cover_url)+'" alt="" width="64" height="64" loading="lazy"><span class="bct"><b>'+e(r.title)+'</b><span>'+e(r.artist)+'</span></span><span class="bsc bg-t'+t+'">'+N[t]+' '+r.score+'</span></a>'}).join("");document.getElementById("seoRev").hidden=false}).catch(function(){})})();</script>
 <div class="cta"><b>How wack are your lyrics?</b><p>Paste a verse into the Wackometer. It scores it from Wicked to Wack, circles the clichés and lazy rhymes, and shows you how to fix them.</p><a class="btn bile" href="/write#weigh">Weigh my lyrics, free</a></div>
 </main>
 <footer>${siteFooterLinks()}${DBV}</footer>

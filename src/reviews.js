@@ -172,12 +172,20 @@ function card(r) {
 <span class="rv-cv">${esc(r.verdict)}</span></a>`;
 }
 
-// The two things we ask readers to do, as one calm pair of cards (the full payment form lives on /get-reviewed).
-export function ctaHTML() {
-  return `<section class="fpromo fcta" aria-label="Get involved">
-<a class="fp fp-get" href="/get-reviewed" data-hub="submit"><span class="fp-char" data-tier="1" aria-hidden="true"></span><span class="hey">🎧 Make music?</span><b>Get your song weighed.</b><span>A real person plays it start to finish and sends you written feedback within 7 days. ${money(CFG.review_price_cents)}.</span><span class="fpgo">Get reviewed <span aria-hidden="true">→</span></span></a>
-<a class="fp fp-weigh" href="/write#weigh" data-hub="write"><span class="fp-char" data-tier="4" aria-hidden="true"></span><span class="hey">✍️ For writers · Free</span><b>How wack are <em>your</em> lyrics?</b><span>Paste a verse. The Wackometer scores it in a second, circles the clichés and shows you how to fix them.</span><span class="fpgo">Weigh my lyrics <span aria-hidden="true">→</span></span></a>
+// What we ask readers to do: get their own song weighed (paid), weigh their lyrics, or train (free).
+// One set of cards everywhere, so the tools always read as part of the reviews site.
+export function ctaHTML(heading = "") {
+  return `<section class="fpromo fcta" aria-label="Your turn">${heading ? `<div class="frh fcta-h"><h2>${heading}</h2></div>` : ""}
+<a class="fp fp-get" href="/get-reviewed" data-hub="submit"><span class="fp-char" data-tier="1" aria-hidden="true"></span><span class="hey">⚖️ Make music?</span><b>Get your song weighed.</b><span>A real critic plays it start to finish and sends you written feedback within 7 days. ${money(CFG.review_price_cents)}.</span><span class="fpgo">Get weighed <span aria-hidden="true">→</span></span></a>
+<a class="fp fp-weigh" href="/write#weigh" data-hub="write"><span class="fp-char" data-tier="4" aria-hidden="true"></span><span class="hey">✍️ For writers · Free</span><b>How wack are <em>your</em> lyrics?</b><span>Same meter we use on every review. Paste a verse and it scores it in a second, circles the clichés and shows you the fix.</span><span class="fpgo">Weigh my lyrics <span aria-hidden="true">→</span></span></a>
+<a class="fp fp-work" href="/write#workout" data-hub="workout"><span class="fp-char" data-tier="2" aria-hidden="true"></span><span class="hey">🏋️ Practice · Free</span><b>Write sharper.</b><span>Quick lessons on rhyme, imagery and flow, plus freestyle drills on a beat.</span><span class="fpgo">Start a Workout <span aria-hidden="true">→</span></span></a>
 </section>`;
+}
+// On every review: weigh your own verse against this song, or go train.
+function yourTurnHTML(r, t) {
+  return `<section class="rv-turn" aria-labelledby="turnH"><span class="rv-char" data-tier="${t === 0 ? 1 : 0}" aria-hidden="true"></span><div><h2 id="turnH">Your turn</h2>
+<p>“${esc(r.title)}” scored <b>${r.score}</b> on the Wackometer. Think your pen is sharper? Paste a verse and see who wins.</p>
+<div class="row"><a class="btn bile" href="/write?vs=${esc(r.slug)}#weigh" data-hub="yourturn_vs">⚔️ Go up against it</a><a class="btn" href="/write#workout" data-hub="yourturn_workout">🏋️ Sharpen up in Workout</a></div></div></section>`;
 }
 // Paid submissions: the card form (Stripe Payment Element) sits right in the page; see review.js.
 function submitHTML(critics = [], picked = "", more = true) {
@@ -279,6 +287,7 @@ ${r.submitted ? '<p class="hint rv-paid">💵 The artist sent this in through pa
 <p class="hint rv-sig">Reviewed by ${(() => { const c = critics.find((x) => x.name.toLowerCase() === String(r.reviewer || "").trim().toLowerCase()); return c ? `<a href="/critics/${esc(c.slug)}">${esc(c.name)}</a>` : esc(r.reviewer || "Wackometer"); })()} · <time datetime="${date.toISOString().slice(0, 10)}">${date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" })}</time></p>
 </div>
 ${breakdownHTML(r)}
+${draft ? "" : yourTurnHTML(r, t)}
 <section class="rv-vote" aria-labelledby="voteH"><h2 id="voteH">Your call: how's the song?</h2>
 <div class="rv-tiers" role="group" aria-label="Vote on the song">${TIERS.map((T, i) => `<button type="button" class="rv-t" data-t="${i}" style="--tc:${TC[i]};--to:${TEXT_ON[i]}" aria-pressed="false">${esc(T.n)}</button>`).join("")}</div>
 <span class="hint" id="voteNote" role="status"></span></section>
@@ -357,13 +366,13 @@ export async function frontPage(req, env, ensureSchema) {
 ${hero.length ? `<section class="fhero" aria-roledescription="carousel" aria-label="Featured reviews"><div class="fslides" id="fSlides">${hero.map(slide).join("")}</div>${hero.length > 1 ? `<div class="fdots" role="group" aria-label="Choose a featured review">${hero.map((r, i) => `<button type="button" data-i="${i}" aria-label="Show ${esc(r.title)}"${i ? "" : ' aria-current="true"'}></button>`).join("")}</div>` : ""}</section>`
       : `<section class="fempty"><b>The first reviews drop soon.</b><p>Know an artist whose writing deserves more ears? <a href="#submit">Send them our way</a>.</p></section>`}
 ${CFG.front_latest && all.length ? row("rNew", "Latest reviews", "/reviews", all.slice(0, 12).map((r) => rowCard(r, crowd)).join("")) : ""}
+${CFG.front_artists && artists.length ? `<section class="flb" aria-labelledby="rLb"><div class="frh"><h2 id="rLb">🏆 Top artists</h2><a href="/artists">Full leaderboard <span aria-hidden="true">→</span></a></div><p class="hint">Each artist's score is the average of every song we've weighed. Lower is better.</p><ol class="lb-list">${leaderRows(artists.slice(0, 5))}</ol></section>` : ""}
+${ctaHTML("Your turn")}
+<div class="ad-slot" hidden></div>
 ${(() => { if (!CFG.front_wicked_list || !all.length) return ""; const k = new Date(all[0].published_at).toISOString().slice(0, 7), mo = ["January","February","March","April","May","June","July","August","September","October","November","December"][Number(k.slice(5)) - 1] + " " + k.slice(0, 4), top = all.filter((r) => new Date(r.published_at).toISOString().slice(0, 7) === k).sort((x, y) => x.score - y.score).slice(0, 4);
   return `<a class="fwl" href="/lists/${k}"><span class="fwl-covers">${top.map((r) => coverOf(r) ? `<img src="${esc(coverOf(r))}" alt="" width="56" height="56" loading="lazy">` : `<span class="rv-nocover">♪</span>`).join("")}</span><span class="fwl-t"><span class="eyebrow">📅 The Wicked list</span><b>The best songs we weighed in ${mo}</b></span><span class="fwl-go">See the list →</span></a>`; })()}
 ${CFG.front_top10 ? `<section class="ftop10" aria-labelledby="rTop"><div class="frh"><h2 id="rTop">🔥 The Wackometer Top 10</h2><a href="https://open.spotify.com/playlist/${CFG.top10_playlist}" target="_blank" rel="noopener">Open in Spotify <span aria-hidden="true">↗</span></a></div><p class="hint">The ten most Wicked songs right now, in one playlist. Follow it and it updates as the scores do.</p>${playlistEmbed(CFG.top10_playlist, "Wackometer Top 10", 380)}</section>` : ""}
 ${CFG.front_genres ? await genreTilesHTML(DB, 8, true) : ""}
-<div class="ad-slot" hidden></div>
-${CFG.front_artists && artists.length ? `<section class="flb" aria-labelledby="rLb"><div class="frh"><h2 id="rLb">🏆 Top artists</h2><a href="/artists">Full leaderboard <span aria-hidden="true">→</span></a></div><p class="hint">Each artist's score is the average of every song we've weighed. Lower is better.</p><ol class="lb-list">${leaderRows(artists.slice(0, 5))}</ol></section>` : ""}
-${ctaHTML()}
 <div class="ad-slot" hidden></div>
 ${"" && split.length ? `<section class="fsplit" aria-labelledby="rSplit"><div class="frh"><h2 id="rSplit">⚔️ Critics vs. the crowd</h2></div><p class="hint">Where the voters and the Wackometer don't agree. Pick a side.</p><ol>${split.map(({ r, c }) => `<li><a href="/reviews/${esc(r.slug)}"><b>${esc(r.title)}</b> <span class="rv-ca">${esc(r.artist)}</span></a><span class="fvs">We said ${pill(tierOf(r.score), `${TIERS[tierOf(r.score)].n} ${r.score}`)} Crowd said ${pill(c.tier, `${TIERS[c.tier].n} ${c.avg}`)}</span></li>`).join("")}</ol></section>` : ""}
 </div>`;
@@ -596,6 +605,14 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
     const res = await fetch(src, { cf: { cacheTtl: 86400 } });
     if (!res.ok || !/^image\//.test(res.headers.get("content-type") || "")) return bad("No cover.", 404);
     return new Response(res.body, { headers: { "content-type": res.headers.get("content-type"), "cache-control": "public, max-age=86400" } });
+  }
+  // Songs we've reviewed near a score (the Write page's "How you stack up"), and/or one review to go up against (?vs=slug).
+  if (path === "/api/reviews/near" && method === "GET") {
+    const cols = "slug,title,artist,cover_url,genre,score", fix = (r) => r && { ...r, cover_url: coverOf(r, BASE) };
+    const sc = Number(url.searchParams.get("score")), vs = String(url.searchParams.get("vs") || "");
+    const near = Number.isFinite(sc) && url.searchParams.has("score") ? (await DB.prepare(`SELECT ${cols} FROM reviews WHERE status='live' ORDER BY ABS(score-?) ASC, published_at DESC LIMIT 3`).bind(Math.max(0, Math.min(100, Math.round(sc)))).all()).results.map(fix) : [];
+    const vsRow = /^[a-z0-9-]{1,80}$/.test(vs) ? fix(await DB.prepare(`SELECT ${cols} FROM reviews WHERE status='live' AND slug=?`).bind(vs).first()) : null;
+    return new Response(JSON.stringify({ near, vs: vsRow || null }), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=300" } });
   }
   if (path === "/api/reviews/latest" && method === "GET") {
     return json((await DB.prepare("SELECT slug,title,artist,cover_url,genre,score FROM reviews WHERE status='live' ORDER BY published_at DESC LIMIT 5").all()).results.map((r) => ({ ...r, cover_url: coverOf(r, BASE) })));

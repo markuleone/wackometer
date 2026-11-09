@@ -35,8 +35,7 @@
     <nav id="groupNav" aria-label="Main">
       <a href="/" data-g="reviews"><span class="ni" aria-hidden="true">🎧</span> Wreviews</a>
       <button data-v="weigh" data-g="write" aria-current="true"><span class="ni" aria-hidden="true">✍️</span> Write</button>
-      <button data-v="wingman" data-g="wingman"><span class="ni" aria-hidden="true">🪽</span> Wingman</button>
-      <button data-v="workout" data-g="workout"><span class="ni" aria-hidden="true">🏋️</span> Workout</button>
+      <a href="/get-reviewed" data-g="submit"><span class="ni" aria-hidden="true">⚖️</span> Get Weighed</a>
     </nav>
     <div class="util">
       <button class="ubtn pro" id="proBtn" data-v="pro" title="Wingman Pro">W+</button>
@@ -45,6 +44,16 @@
     </div>
   </header>
   <main id="main" tabindex="-1">
+  <!-- Write's own tools: one tab row so the four feel like rooms in one studio, not separate apps -->
+  <div class="wtabs-bar" id="wtabsBar">
+    <nav id="writeTabs" class="wtabs" aria-label="Writing tools">
+      <button data-v="weigh"><span aria-hidden="true">⚖️</span> Weigh</button>
+      <button data-v="wingman"><span aria-hidden="true">🪽</span> Wingman <span class="wplus">W+</span></button>
+      <button data-v="workout"><span aria-hidden="true">🏋️</span> Workout</button>
+      <button data-v="community"><span aria-hidden="true">🧱</span> The Wall</button>
+    </nav>
+    <a class="wtabs-get" href="/get-reviewed" id="tabsGet">Finished song? <b>Get it weighed →</b></a>
+  </div>
 
 
   <!-- WEIGH -->
@@ -57,6 +66,7 @@
       </div>
       <div class="crew" id="crew" aria-label="The Wackometer crew"></div>
     </div>
+    <div class="vsbar" id="vsBar" hidden></div>
     <div class="pad" data-clarity-mask="True">
       <label for="lyrics">Your words</label>
       <textarea id="lyrics" spellcheck="false" placeholder="Paste a verse, a hook, a poem…"></textarea>
@@ -131,6 +141,13 @@
           </div>
         </div>
       </div>
+      <section class="bridge" id="bridge" hidden aria-labelledby="bridgeH">
+        <div class="bhead"><h3 id="bridgeH">How you stack up</h3><a href="/reviews">All reviews →</a></div>
+        <p class="bvs" id="bridgeVs" hidden></p>
+        <p class="hint" id="bridgeLead"></p>
+        <div class="bgrid" id="bridgeList"></div>
+        <a class="bget" href="/get-reviewed" id="bridgeGet"><span class="bget-ch" id="bridgeChar" aria-hidden="true"></span><span><b>Got a finished song?</b> Get the whole thing weighed by a real critic: lyrics, hook, vocals and production. Written feedback in 7 days.</span><span class="fpgo">Get weighed →</span></a>
+      </section>
     </div>
   </section>
 

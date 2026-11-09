@@ -152,18 +152,53 @@ function renderReading() {
   $("roast").hidden = true;
   updateWingCtx();
   shareM().then((mod) => mod.freshCard());
+  renderBridge(score);
 }
+
+/* ---------- the bridge back to the reviews: how your words stack up against songs we've weighed ---------- */
+// ?vs=<review slug> comes from a review page's "Your turn" button: weigh your verse against that song.
+const VS_SLUG = (() => { const v = new URLSearchParams(location.search).get("vs") || ""; return /^[a-z0-9-]{1,80}$/.test(v) ? v : ""; })();
+let VS = null;
+const revCard = (r) => { const t = tierOf(r.score);
+  return `<a class="bcard" href="/reviews/${esc(r.slug)}"><img src="${esc(r.cover_url)}" alt="" width="64" height="64" loading="lazy"><span class="bct"><b>${esc(r.title)}</b><span>${esc(r.artist)}</span></span><span class="bsc bg-t${t}">${TIERS[t].n} ${r.score}</span></a>`; };
+if (VS_SLUG) api("/api/reviews/near?vs=" + VS_SLUG).then((d) => {
+  if (!d || !d.vs) return; VS = d.vs; const t = tierOf(VS.score);
+  $("vsBar").innerHTML = `<span class="vs-k">⚔️ Up against</span><a href="/reviews/${esc(VS.slug)}"><img src="${esc(VS.cover_url)}" alt="" width="40" height="40"><b>${esc(VS.title)}</b> by ${esc(VS.artist)}</a><span class="bsc bg-t${t}">${TIERS[t].n} ${VS.score}</span><span class="hint">Paste a verse and weigh it. Lower wins.</span>`;
+  $("vsBar").hidden = false; track("vs_open");
+}).catch(() => {});
+const nearCache = {};
+async function renderBridge(score) {
+  if (padIsExample) { $("bridge").hidden = true; return; }
+  const key = Math.round(score / 5) * 5;
+  try {
+    const d = nearCache[key] || (nearCache[key] = await api(`/api/reviews/near?score=${key}`));
+    const list = (d.near || []).filter((r) => !VS || r.slug !== VS.slug);
+    if (!list.length && !VS) { $("bridge").hidden = true; return; }
+    $("bridgeLead").textContent = `Your words scored ${score}. These songs we reviewed landed close by. (Our reviews weigh the whole song, not just the lyrics.)`;
+    $("bridgeList").innerHTML = list.map(revCard).join("");
+    if (VS) {
+      const diff = VS.score - score;
+      $("bridgeVs").innerHTML = diff > 0 ? `⚔️ You beat <b>${esc(VS.title)}</b> by ${diff}. ${score} vs. ${VS.score}, and lower wins.` : diff < 0 ? `⚔️ <b>${esc(VS.title)}</b> has you by ${-diff}. ${VS.score} vs. your ${score}. Rework a line and weigh it again.` : `⚔️ Dead even with <b>${esc(VS.title)}</b>: ${score} each.`;
+      $("bridgeVs").hidden = false; track("vs_weigh");
+    } else $("bridgeVs").hidden = true;
+    $("bridgeChar").innerHTML = charSVG(1);
+    $("bridge").hidden = false;
+  } catch (e) { $("bridge").hidden = true; }
+}
+document.addEventListener("click", (e) => { const a = e.target.closest && e.target.closest("#bridge a"); if (a) track(a.id === "bridgeGet" ? "bridge_submit" : "bridge_review"); });
+$("tabsGet").addEventListener("click", () => track("hub_nav_submit"));
 function wipe() {
   $("lyrics").value = ""; try { localStorage.removeItem("wk-draft"); } catch (e) {}
   $("map").hidden = true; $("post").hidden = true; $("roast").hidden = true; $("bestPick").hidden = true; $("metrics").innerHTML = ""; $("score").textContent = "–";
   const v = $("verdict"); v.textContent = "Waiting"; v.className = "verdict bg-t2 t2"; $("blurb").textContent = "Paste some lines and hit Weigh it."; $("tune").textContent = "";
-  setNeedle(50); S.last = null; $("share").hidden = true; $("coach").hidden = true; $("robot").hidden = true; padIsExample = false;
+  setNeedle(50); S.last = null; $("share").hidden = true; $("bridge").hidden = true; $("coach").hidden = true; $("robot").hidden = true; padIsExample = false;
   renderCrew(null); $("mchar").innerHTML = charSVG(5); $("quip").textContent = "The crew is ready. Paste something."; updateWingCtx(); $("lyrics").focus();
 }
 
 /* ---------- tabs ---------- */
 // Write (Weigh, Wingman, Community) and Practice (Workshop, Wordstorm). Profiles sit under Community.
-const GROUP = { weigh: "write", wingman: "wingman", workout: "workout" };
+// Everything here is the Write section; the tab row (#writeTabs) shows which room you are in.
+const WRITE_TABS = ["weigh", "wingman", "workout", "community"];
 const TAB = { profile: "community", me: "community" };
 const TITLES = { workout: "Workout", wingman: "Wingman", community: "The Wall", workshop: "Workshop", storm: "Wordstorm", why: "Why it's wack", pro: "Wingman Pro", lost: "Page not found", me: "Your profile" };
 const VIEWS = ["weigh", "wingman", "community", "workshop", "storm", "why", "pro", "lost", "profile", "me"];
@@ -176,8 +211,9 @@ const known = (h) => VIEWS.includes(h) || !!ALIASES[h] || !!SHOWS[h];
 function show(v) {
   const plugin = v === "plugin";
   v = ALIASES[v] || v;
-  const g = GROUP[v], tab = TAB[v] || v;
-  document.querySelectorAll("#groupNav button").forEach((b) => (b.dataset.g === g ? b.setAttribute("aria-current", "true") : b.removeAttribute("aria-current")));
+  const tab = TAB[v] || v;
+  document.querySelectorAll("#writeTabs button").forEach((b) => (b.dataset.v === v ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current")));
+  $("wtabsBar").hidden = v === "lost";
   document.querySelectorAll("#proBtn").forEach((b) => (b.dataset.v === tab ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current")));
   if (v !== "workout" && stormOn) { stormOn = false; stormM().then((st) => st.onHide()); }
   const vis = SHOWS[v] || [v];
@@ -462,7 +498,7 @@ $("wipeBtn").onclick = wipe;
 document.querySelectorAll("[data-ex]").forEach((b) => (b.onclick = () => loadExample(b.dataset.ex)));
 $("lyrics").addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") renderReading(); });
 $("lyrics").addEventListener("input", () => { padIsExample = false; ls("wk-draft", $("lyrics").value); $("draftBack").hidden = true; });
-document.querySelectorAll("#groupNav button,#proBtn,#wingLockGo").forEach((b) => (b.onclick = () => show(b.dataset.v)));
+document.querySelectorAll("#groupNav button,#writeTabs button,#proBtn,#wingLockGo").forEach((b) => (b.onclick = () => show(b.dataset.v)));
 window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if (known(h)) show(h); else if (!h) show("weigh"); });
 $("toWing").onclick = () => { show("wingman"); if (!canAI()) { track("ai_locked"); return; } if (words($("lyrics").value).length >= 8) { if (!S.last) renderReading(); ask("Make my lyrics less wack"); } };
 $("whyList").innerHTML = METRICS.map((m) => `<dt>${m.n} <span class="hint">(${Math.round(m.w * 100)}%)</span></dt><dd>${m.d}</dd>`).join("");
@@ -511,7 +547,7 @@ Object.assign(A, { show, ask, renderReading, loadMe, openLogin, renderQuota, add
 /* ---------- first-visit tour ---------- */
 const TOUR = [
   ["weighBtn", 1, "Weigh your words", "Paste lyrics and hit Weigh it. The meter scores them from Wicked to Wack, circles what's wack, and checks if it sounds like a robot wrote it."],
-  ["groupNav", 3, "Four W's", "Wreviews: songs we've weighed. Write: score your lyrics. Wingman: your AI co-writer. Workout: lessons and freestyle drills on a beat."],
+  ["writeTabs", 3, "Your writing room", "Weigh scores your lyrics. Wingman is your AI co-writer. Workout has lessons and freestyle drills on a beat. The Wall is where the crowd votes. Same meter we use on every song we review."],
   ["heroDare", 4, "Start with a wack one", "Not ready to share your own? Load a wack example and watch me gag. Each tap brings a new one."],
 ];
 let tourI = 0;
