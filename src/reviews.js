@@ -45,7 +45,7 @@ async function crowdOf(DB, slug, userId) {
 
 /* ---------- page shell (matches the rhyme/cliché pages) ---------- */
 const DBV = `<a class="dbv" href="https://donebyverde.com" target="_blank" rel="noopener noreferrer" aria-label="Website by donebyverde (opens in a new tab)" title="Website by donebyverde"><svg viewBox="0 0 200 200" aria-hidden="true"><path d="M75 0H125L123 61L174 28L200 72L146 100L200 128L174 172L123 139L125 200H75L77 139L26 172L0 128L54 100L0 72L26 28L77 61Z"/></svg></a>`;
-export function shell({ path, title, desc, image, body, ld, noindex, data, active = "", q = "", head = "" }) {
+export function shell({ path, title, desc, image, wide, body, ld, noindex, data, active = "", q = "", head = "" }) {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -59,9 +59,9 @@ ${noindex ? '<meta name="robots" content="noindex">' : `<link rel="canonical" hr
 <meta property="og:site_name" content="Wackometer">
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(desc)}">
-<meta property="og:image" content="${esc(image || BASE + "/og.png")}">
+<meta property="og:image" content="${esc(image || BASE + "/og-reviews.png")}">${!image || wide ? '\n<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">' : ""}
 <meta property="og:url" content="${BASE}${path}">
-<meta name="twitter:card" content="${image ? "summary" : "summary_large_image"}">
+<meta name="twitter:card" content="${image && !wide ? "summary" : "summary_large_image"}">
 <meta name="theme-color" content="#FFFFFF">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="manifest" href="/manifest.webmanifest">
@@ -248,7 +248,7 @@ ${SUB}
     { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [{ "@type": "ListItem", position: 1, name: "Song reviews", item: `${BASE}/reviews` }, { "@type": "ListItem", position: 2, name: `${r.artist}: ${r.title}`, item: `${BASE}/reviews/${slug}` }] }];
   const title = `${r.title} by ${r.artist} review: ${tierName(r)} · Wackometer`;
   const desc = `${tierName(r)} (${r.score}/100). ${r.verdict} Read the review of ${r.artist}'s ${r.kind === "album" ? "album" : "song"} “${r.title}” and cast your vote.`.slice(0, 300);
-  return html(shell({ active: "reviews", path: `/reviews/${slug}`, title, desc, image: r.cover_url || "", body, ld: draft ? null : ld, noindex: draft, data: JSON.stringify({ slug, artist: r.artist, title: r.title, kind: r.kind, score: r.score, tier: t, cert: certified(r), verdict: r.verdict, cover: !!r.cover_url, ig }) }), 200, draft ? "no-store" : "no-cache");
+  return html(shell({ active: "reviews", path: `/reviews/${slug}`, title, desc, image: r.og_url || r.cover_url || "", wide: !!r.og_url, body, ld: draft ? null : ld, noindex: draft, data: JSON.stringify({ slug, artist: r.artist, title: r.title, kind: r.kind, score: r.score, tier: t, cert: certified(r), verdict: r.verdict, cover: !!r.cover_url, ig }) }), 200, draft ? "no-store" : "no-cache");
 }
 
 /* ---------- front page (/) ---------- */
@@ -600,7 +600,7 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
   if (!admin) {
     critic = u && u.email ? await DB.prepare("SELECT * FROM critics WHERE lower(email)=? AND active=1").bind(u.email.toLowerCase()).first() : null;
     if (!critic) return bad(u && u.email ? `You're signed in as ${u.email}, which isn't an admin or critic email. Ask Wackometer to add it to your critic profile.` : "Sign in first: admins and critics only.", 403);
-    if (!["list", "lookup", "save", "upload", "me-save", "request"].includes(path.slice(19))) return bad("Only admins can do that.", 403);
+    if (!["list", "lookup", "save", "upload", "me-save", "request", "og"].includes(path.slice(19))) return bad("Only admins can do that.", 403);
   }
   if (path === "/api/reviews-admin/newsletter" && method === "GET") return json(await weekly(env, url, u));
   if (path === "/api/reviews-admin/newsletter" && method === "POST") {
@@ -618,6 +618,18 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
     return json({ ok: true, sent: to.length, week: wk });
   }
   const mine = (r) => !critic || !r || (r.reviewer || "").toLowerCase() === critic.name.toLowerCase() || (r.status === "draft" && !r.reviewer);
+  // The link-preview image for a review (drawn by the editor in the browser, 1200x630 JPEG).
+  if (path === "/api/reviews-admin/og" && method === "POST") {
+    const r = await DB.prepare("SELECT slug, reviewer, status FROM reviews WHERE slug=?").bind(slugify(body.slug)).first();
+    if (!r) return bad("No review with that link.", 404);
+    if (!mine(r)) return bad("That review belongs to another critic.", 403);
+    const mm = /^data:image\/jpeg;base64,([A-Za-z0-9+/=]+)$/.exec(String(body.data || ""));
+    if (!mm || mm[1].length > 900000) return bad("That image didn't come through. Try again.");
+    const id = newId() + newId();
+    await DB.batch([DB.prepare("INSERT INTO images (id,type,data,user_id,created_at) VALUES (?,?,?,?,?)").bind(id, "image/jpeg", mm[1], u.id, Date.now()),
+      DB.prepare("UPDATE reviews SET og_url=? WHERE slug=?").bind(`${env.APP_URL || url.origin}/img/${id}`, r.slug)]);
+    return json({ ok: true });
+  }
   if (path === "/api/reviews-admin/list" && method === "GET") {
     if (critic) {
       const reviews = (await DB.prepare("SELECT r.*, (SELECT COUNT(*) FROM review_votes v WHERE v.slug=r.slug) votes FROM reviews r WHERE lower(r.reviewer)=? OR (r.status='draft' AND (r.reviewer IS NULL OR r.reviewer='')) ORDER BY updated_at DESC LIMIT 500").bind(critic.name.toLowerCase()).all()).results;

@@ -42,6 +42,7 @@ body{margin:0}[hidden]{display:none!important}
 @media (max-width:760px){.ed{grid-template-columns:1fr}}
 .up{display:flex;gap:8px;align-items:center}.up input[type=url]{flex:1}.up input[type=file]{display:none}
 .tell{background:var(--bile-wash);border:2px solid var(--ink);border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}.tell textarea{width:100%;min-height:120px;border:2px solid var(--line);border-radius:12px;padding:8px 10px;background:var(--surface);font:inherit}
+.ogbox{margin:0;display:flex;flex-direction:column;gap:6px}.ogbox img{width:100%;max-width:600px;border:2px solid var(--ink);border-radius:14px}
 #meImg{width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid var(--ink)}
 </style>
 </head><body><div class="wrap seo">
@@ -92,6 +93,7 @@ body{margin:0}[hidden]{display:none!important}
   <label>Status<select id="fStatus"><option value="draft">Draft (only you can see it)</option><option value="live">Live (public, in the sitemap)</option></select></label>
   <div class="row full"><button class="btn bile" type="submit" id="saveBtn">Save</button><a class="btn" id="viewBtn" target="_blank" hidden>View page</a><button class="btn" type="button" id="newBtn">New review</button><button class="btn quiet" type="button" id="delBtn" hidden>Delete</button><span class="hint" id="note" role="status"></span></div>
   <div class="full tell" id="tell" hidden></div>
+  <figure class="full ogbox" id="ogBox" hidden><figcaption class="hint">Link preview: what people see when this review is shared on iMessage, Instagram, X or Facebook. It updates every time you save.</figcaption><img id="ogPrev" alt="Link preview for this review"></figure>
 </form>
 <section id="meSec" hidden>
 <h2 id="meH">My critic page</h2>
@@ -143,6 +145,7 @@ body{margin:0}[hidden]{display:none!important}
 </form>
 </div>
 <h2 id="allH">All reviews</h2>
+<div class="row admin-only"><button class="btn" type="button" id="ogAll">Make link previews for all live reviews</button><span class="hint" id="ogAllNote" role="status"></span></div>
 <div class="list" id="list"></div>
 </div>
 </div></main></div>
@@ -186,6 +189,7 @@ function fill(r) {
   original = r ? r.slug : null;
   for (const [k, id] of Object.entries(F)) $(id).value = r ? (r[k] ?? "") : k === "score" ? 15 : k === "kind" ? "song" : k === "status" ? "draft" : "";
   $("fFeatured").checked = !!(r && r.featured); $("fSubmitted").checked = !!(r && r.submitted);
+  $("ogBox").hidden = !(r && r.og_url); if (r && r.og_url) $("ogPrev").src = r.og_url.replace(/^https:\/\/wackometer\.com/, "");
   $("assistBox").hidden = !(r && r.assist); $("fListened").checked = false;
   $("delBtn").hidden = !r || ROLE !== "admin"; $("viewBtn").hidden = !r; $("tell").hidden = true;
   if (ROLE === "critic") $("fReviewer").value = DATA.me.name;
@@ -310,6 +314,7 @@ $("ed").onsubmit = async (e) => {
     const r = await api("/api/reviews-admin/save", body);
     if (r.status === "live") startedFrom = null;
     await load(); const saved = DATA.reviews.find((x) => x.slug === r.slug); fill(saved);
+    if (saved && window.wkOG) window.wkOG.saveOG(saved).then((d) => { $("ogPrev").src = d; $("ogBox").hidden = false; }).catch(() => {});
     $("note").innerHTML = r.status === "live" ? `Live at <a href="/reviews/${esc(r.slug)}" target="_blank">wackometer.com/reviews/${esc(r.slug)}</a>` : `Saved as a draft. <a href="/reviews/${esc(r.slug)}?preview=1" target="_blank">Preview it</a>`;
     if (saved && r.status === "live") showTell(saved, r.notified);
   } catch (e) { $("note").textContent = e.message; }
@@ -348,6 +353,13 @@ $("meForm").onsubmit = async (e) => {
   e.preventDefault();
   try { await api("/api/reviews-admin/me-save", { tagline: $("mTag").value, bio: $("mBio").value, photo_url: $("mPhoto").value, genres: $("mGenres").value, ig: $("mIg").value, link: $("mLink").value }); await load(); $("mNote").innerHTML = `Saved. <a href="/critics/${esc(DATA.me.slug)}" target="_blank">See your page</a>`; }
   catch (err) { $("mNote").textContent = err.message; }
+};
+$("ogAll").onclick = async () => {
+  const live = DATA.reviews.filter((r) => r.status === "live");
+  if (!window.wkOG || !live.length) return;
+  $("ogAll").disabled = true; let n = 0;
+  for (const r of live) { $("ogAllNote").textContent = `Drawing ${++n} of ${live.length}…`; try { await window.wkOG.saveOG(r); } catch (e) { $("ogAllNote").textContent = e.message; } }
+  $("ogAllNote").textContent = `Done: ${live.length} link previews updated.`; $("ogAll").disabled = false; load();
 };
 fill(null); load();
 </script>
