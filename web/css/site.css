@@ -1393,3 +1393,30 @@ header .util .albl{display:inline-block;max-width:14ch;min-width:5.2ch;overflow:
 .sub-lyr textarea{width:100%;margin-top:8px}
 #subForm .sub-lyr label.chk{display:flex;flex-direction:row;gap:8px;align-items:flex-start;font-weight:500;font-size:14px;margin-top:8px}
 #subForm .sub-lyr label.chk input{width:18px;height:18px;min-height:0;flex:none;margin:2px 0 0;padding:0}
+
+/* ===== /write spacing and sizing = the reviews pages (Nov 9) =====
+   Same hero padding and type scale as Get Weighed, real section headings, white cards, roomier gaps. */
+.hero{padding:40px 40px 0;gap:24px}
+.hero-copy{padding-bottom:40px;gap:14px}
+.hero h1{font-size:clamp(36px,4.6vw,58px)}
+.hero p{font-size:17px;line-height:1.55;max-width:48ch}
+.hero .eyebrow{font-size:13px;color:var(--bile-ink);margin:0;line-height:1.2}
+.weigh{gap:30px 26px}
+.pad label[for="lyrics"]{font-family:var(--display);font-size:28px;font-weight:700;letter-spacing:-.01em;text-transform:none;color:var(--ink);line-height:1.2}
+.meter{background:#fff}
+#weighBtn{background:var(--bile);color:#1D2013;border-color:var(--ink)}
+#weighBtn:hover{filter:brightness(1.04)}
+.toolhead h2,.wo-h1{font-size:28px}
+@media (max-width:820px){.hero{padding:26px 22px 0}.hero-copy{padding-bottom:26px}}
+@media (max-width:600px){.hero{padding:22px 18px 0}.pad label[for="lyrics"]{font-size:24px}}
+.tabhero{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:24px;background:var(--bile-wash);border:2px solid var(--ink);box-shadow:0 6px 0 var(--ink);border-radius:28px;padding:40px;margin-bottom:12px}
+.th-copy{display:flex;flex-direction:column;gap:14px;min-width:0}
+.tabhero h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(36px,4.6vw,58px);line-height:1;letter-spacing:-.02em}
+.tabhero p{margin:0;font-size:17px;line-height:1.55;color:var(--muted);max-width:52ch}
+.tabhero .eyebrow{font-size:13px;color:var(--bile-ink);line-height:1.2}
+.th-ch{width:120px;height:120px;flex:none}.th-ch svg{width:100%;height:100%}
+.dhead{background:var(--bile-wash);border:2px solid var(--ink);box-shadow:0 6px 0 var(--ink);padding:40px}
+.dhead .tag{font-size:17px;line-height:1.55}
+.dailyv{gap:28px}
+@media (max-width:820px){.tabhero,.dhead{padding:26px 22px}.th-ch{width:84px;height:84px}}
+@media (max-width:600px){.tabhero,.dhead{padding:22px 18px}.th-ch{width:64px;height:64px}}
