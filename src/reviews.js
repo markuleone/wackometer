@@ -297,7 +297,7 @@ export async function frontPage(req, env, ensureSchema) {
 <a class="btn bile" href="/reviews/${esc(r.slug)}">Read the review</a></div></article>`;
   };
   const body = `<div class="front">
-<div class="fintro"><h1>Wicked or <em>wack</em>?</h1><p>Reviews of new music, from the lyrics to the hook to the production, scored from Wicked to Wack. We weigh in, then you do.</p></div>
+<div class="fintro"><img class="fwacko" src="/brand/wacko.svg" alt="" width="88" height="100"><h1>Wicked or <em>wack</em>?</h1><p>Reviews of new music, from the lyrics to the hook to the production, scored from Wicked to Wack. We weigh in, then you do.</p></div>
 ${hero.length ? `<section class="fhero" aria-roledescription="carousel" aria-label="Featured reviews"><div class="fslides" id="fSlides">${hero.map(slide).join("")}</div>${hero.length > 1 ? `<div class="fdots" role="group" aria-label="Choose a featured review">${hero.map((r, i) => `<button type="button" data-i="${i}" aria-label="Show ${esc(r.title)}"${i ? "" : ' aria-current="true"'}></button>`).join("")}</div>` : ""}</section>`
       : `<section class="fempty"><b>The first reviews drop soon.</b><p>Know an artist whose writing deserves more ears? <a href="#submit">Send them our way</a>.</p></section>`}
 ${all.length ? row("rNew", "Latest reviews", "/reviews", all.slice(0, 12).map((r) => rowCard(r, crowd)).join("")) : ""}
@@ -314,7 +314,7 @@ ${split.length ? `<section class="fsplit" aria-labelledby="rSplit"><div class="f
 ${SUB}
 </div>`;
   const ld = [{ "@context": "https://schema.org", "@type": "WebSite", name: "Wackometer", url: BASE + "/", potentialAction: { "@type": "SearchAction", target: `${BASE}/reviews?q={search_term_string}`, "query-input": "required name=search_term_string" } },
-    { "@context": "https://schema.org", "@type": "Organization", name: "Wackometer", url: BASE + "/", logo: BASE + "/favicon.svg", sameAs: ["https://instagram.com/wackometer"] }];
+    { "@context": "https://schema.org", "@type": "Organization", name: "Wackometer", url: BASE + "/", logo: BASE + "/brand/wacky-w.png", sameAs: ["https://instagram.com/wackometer"] }];
   // Old links to the tools (wackometer.com/#weigh etc.) go to their new home before anything renders.
   const head = `<script>if(/^#(${OLD_TOOL_HASH})$/.test(location.hash)||/[?&](paid|signin|unsubscribed|deleted)=/.test(location.search))location.replace("/write"+location.search+location.hash)</script>`;
   return html(shell({ path: "/", title: "Wackometer · Song reviews of new music, from Wicked to Wack", desc: "Honest reviews of new songs, albums and music videos (lyrics, hook, vocals, production) scored from Wicked to Wack, with a crowd score you vote on. Plus free tools to weigh your own lyrics.", image: "", body, ld, head, data: JSON.stringify({ front: true }) }), 200, "no-cache");

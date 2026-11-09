@@ -87,8 +87,8 @@ let ASSETS = null;
 async function storyAssets() {
   if (ASSETS) return ASSETS;
   try { await document.fonts.load(`700 100px "Fredoka"`); } catch (e) {}
-  const [cover, ch] = await Promise.all([R.cover ? loadImg(`/api/reviews/${R.slug}/cover`) : null, loadImg("data:image/svg+xml;charset=utf-8," + encodeURIComponent(charSVG(R.tier, 400)))]);
-  return (ASSETS = { cover, ch });
+  const [cover, ch, wmark] = await Promise.all([R.cover ? loadImg(`/api/reviews/${R.slug}/cover`) : null, loadImg("data:image/svg+xml;charset=utf-8," + encodeURIComponent(charSVG(R.tier, 400))), loadImg("/brand/wacky-w.svg")]);
+  return (ASSETS = { cover, ch, wmark });
 }
 const clamp01 = (v) => Math.max(0, Math.min(1, v)), easeOut = (v) => 1 - Math.pow(1 - clamp01(v), 3);
 async function storyCard() {
@@ -98,7 +98,7 @@ async function storyCard() {
   return new Promise((r) => c.toBlob(r, "image/png"));
 }
 // The story card at animation progress p (0..1). p = 1 is the finished still.
-function drawStory(x, { cover, ch }, p) {
+function drawStory(x, { cover, ch, wmark }, p) {
   const t = R.tier, col = TC[t];
   const kCover = easeOut(p / 0.25), kText = easeOut((p - 0.18) / 0.2), kScore = easeOut((p - 0.32) / 0.38), kStamp = clamp01((p - 0.7) / 0.1), kVerdict = easeOut((p - 0.8) / 0.2);
   x.globalAlpha = 1; x.textAlign = "left";
@@ -107,7 +107,8 @@ function drawStory(x, { cover, ch }, p) {
   // logo
   x.textBaseline = "alphabetic"; x.fillStyle = "#1F2340"; x.font = `700 84px ${D}`;
   const wW = x.measureText("W").width, rest = "ackometer", rW = x.measureText(rest).width, sx = (W - wW - rW) / 2;
-  x.save(); x.translate(sx + wW / 2, 170); x.rotate(-0.14); x.fillStyle = "#86A01A"; x.fillText("W", -wW / 2, 0); x.restore(); x.fillText(rest, sx + wW, 170);
+  if (wmark) x.drawImage(wmark, sx - 4, 100, wW + 14, (wW + 14) * 1.1); else { x.save(); x.translate(sx + wW / 2, 170); x.rotate(-0.14); x.fillStyle = "#86A01A"; x.fillText("W", -wW / 2, 0); x.restore(); }
+  x.fillText(rest, sx + wW + 6, 170);
   x.textAlign = "center"; x.font = `700 34px ${D}`; x.fillStyle = "#646A8C"; x.fillText("SONG REVIEW", W / 2, 240);
   // cover (scales up into place)
   x.save(); x.globalAlpha = kCover; const sc = 0.82 + 0.18 * kCover; x.translate(W / 2, 620); x.scale(sc, sc); x.translate(-W / 2, -620 + (1 - kCover) * 60);

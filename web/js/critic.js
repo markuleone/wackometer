@@ -51,7 +51,7 @@ function lines(x, text, maxW, max) {
 export async function drawOG(r) {
   try { await document.fonts.load(`700 60px "Fredoka"`); } catch (e) {}
   const t = tierOf(r.score), col = TC[t], cert = r.score < 20, label = cert ? "Certified Wicked" : TIERS[t].n;
-  const [cover, ch] = await Promise.all([r.cover_url ? img(`/api/reviews/${encodeURIComponent(r.slug)}/cover`) : null, img("data:image/svg+xml;charset=utf-8," + encodeURIComponent(charSVG(t, 240)))]);
+  const [cover, ch, wmark] = await Promise.all([r.cover_url ? img(`/api/reviews/${encodeURIComponent(r.slug)}/cover`) : null, img("data:image/svg+xml;charset=utf-8," + encodeURIComponent(charSVG(t, 240))), img("/brand/wacky-w.svg")]);
   const c = document.createElement("canvas"); c.width = OG_W; c.height = OG_H; const x = c.getContext("2d");
   x.fillStyle = "#fff"; x.fillRect(0, 0, OG_W, OG_H);
   x.fillStyle = WASH[t]; x.beginPath(); x.arc(OG_W - 40, 30, 380, 0, Math.PI * 2); x.fill();
@@ -65,9 +65,10 @@ export async function drawOG(r) {
   // text column
   const tx = 560, tw = OG_W - tx - 56;
   x.textAlign = "left"; x.textBaseline = "alphabetic";
-  x.font = `700 30px ${FD}`; x.fillStyle = INK; const wW = x.measureText("W").width;
+  x.font = `700 30px ${FD}`; x.fillStyle = INK; const wW = wmark ? 34 : x.measureText("W").width;
   const logoW = wW + x.measureText("ackometer").width;
-  x.save(); x.translate(tx + wW / 2, 128); x.rotate(-0.14); x.fillStyle = "#86A01A"; x.fillText("W", -wW / 2, 0); x.restore(); x.fillText("ackometer", tx + wW, 128);
+  if (wmark) x.drawImage(wmark, tx - 2, 96, 34, 38); else { x.save(); x.translate(tx + wW / 2, 128); x.rotate(-0.14); x.fillStyle = "#86A01A"; x.fillText("W", -wW / 2, 0); x.restore(); }
+  x.fillText("ackometer", tx + wW, 128);
   x.font = `700 18px ${FD}`; x.fillStyle = "#646A8C"; x.fillText("·  " + (r.kind === "album" ? "ALBUM REVIEW" : "SONG REVIEW"), tx + logoW + 14, 125);
   let fs = 64; x.font = `700 ${fs}px ${FD}`; let tl = lines(x, r.title, tw, 2);
   while ((tl.length > 1 && x.measureText(tl.join(" ")).width > tw * 1.9) && fs > 46) { fs -= 4; x.font = `700 ${fs}px ${FD}`; tl = lines(x, r.title, tw, 2); }
