@@ -51,7 +51,7 @@ function lines(x, text, maxW, max) {
 export async function drawOG(r) {
   try { await document.fonts.load(`700 60px "Fredoka"`); } catch (e) {}
   const t = tierOf(r.score), col = TC[t], cert = r.score < 20, label = cert ? "Certified Wicked" : TIERS[t].n;
-  const [cover, ch, wmark] = await Promise.all([r.cover_url ? img(`/api/reviews/${encodeURIComponent(r.slug)}/cover`) : null, img("data:image/svg+xml;charset=utf-8," + encodeURIComponent(charSVG(t, 240))), img("/brand/wacky-w.svg")]);
+  const [cover, ch, wmark] = await Promise.all([img(`/api/reviews/${encodeURIComponent(r.slug)}/cover`), img("data:image/svg+xml;charset=utf-8," + encodeURIComponent(charSVG(t, 240))), img("/brand/wacky-w.svg")]);
   const c = document.createElement("canvas"); c.width = OG_W; c.height = OG_H; const x = c.getContext("2d");
   x.fillStyle = "#fff"; x.fillRect(0, 0, OG_W, OG_H);
   x.fillStyle = WASH[t]; x.beginPath(); x.arc(OG_W - 40, 30, 380, 0, Math.PI * 2); x.fill();

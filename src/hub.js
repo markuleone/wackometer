@@ -28,6 +28,8 @@ export const GENRE_INFO = {
   "wrock-and-wroll": { playlist: "6waZ4TX6p6lOoLLDj8TsyR", bg: "#DC2625", tint: "#FDE7E7", blurb: "Guitars up. Rock, punk, garage and anything that needs earplugs." },
   wrap: { playlist: "1z4IpLlUksLRMoiMprJZLi", bg: "#6D28D9", tint: "#EEE7FC", blurb: "Hip-hop, rap, trap and drill. Bars get weighed here." },
 };
+// Every review gets a picture: its own cover, or the Wacko for its genre.
+export const coverOf = (r, base = "") => (r && r.cover_url) || `${base}/brand/genres/${genresOf(r && r.genre)[0]}.jpg`;
 export const TOP10_PLAYLIST = "4ljZ2a0DEpeTR4iWOO3Lnb";
 // The old genre addresses point at the new ones.
 export const OLD_GENRES = { indie: "windie", "r-and-b": "wrythme-and-blues", soul: "wrythme-and-blues", "hip-hop": "wrap", pop: "windie", rock: "wrock-and-wroll", alternative: "walternative", electronic: "windie", "funk-and-disco": "wrythme-and-blues", latin: "windie", jazz: "wrythme-and-blues", folk: "windie" };
@@ -55,7 +57,7 @@ const MIN_INDEX = 3; // fewer reviews than this: the page works but stays out of
 function listItem(r, i) {
   const t = tierOf(r.score);
   return `<li class="wl-item"><span class="wl-rank">${i + 1}</span>
-<a class="wl-cover" href="/reviews/${esc(r.slug)}" tabindex="-1" aria-hidden="true">${r.cover_url ? `<img src="${esc(r.cover_url)}" alt="" width="120" height="120" loading="lazy">` : `<span class="rv-nocover">♪</span>`}</a>
+<a class="wl-cover" href="/reviews/${esc(r.slug)}" tabindex="-1" aria-hidden="true">${coverOf(r) ? `<img src="${esc(coverOf(r))}" alt="" width="120" height="120" loading="lazy">` : `<span class="rv-nocover">♪</span>`}</a>
 <div class="wl-text"><a class="wl-title" href="/reviews/${esc(r.slug)}"><b>${esc(r.title)}</b></a><span class="wl-artist">by <a href="/artists/${esc(slugify(r.artist))}">${esc(r.artist)}</a>${r.genre ? ` · ${esc(r.genre)}` : ""}</span>
 <span class="wl-verdict">“${esc(r.verdict)}”</span></div>
 <span class="wl-score">${pill(t, `${t === 0 && r.score < 20 ? "Wicked" : TIERS[t].n} · ${r.score}`)}</span></li>`;
@@ -71,7 +73,7 @@ export async function listsPage(req, env, path, ensureSchema) {
 <p class="lead">Every month we rank the songs we reviewed, most Wicked first. Pick a month, or a genre inside it.</p>
 <section class="ftop10" aria-labelledby="wlTop"><h2 id="wlTop">🔥 Listen to the Top 10</h2>${playlistEmbed(CFG.top10_playlist || TOP10_PLAYLIST, "Wackometer Top 10", 232)}</section>
 ${keys.length ? `<ul class="wl-months">${keys.map((k) => { const top = rank(months[k]).slice(0, 3); const gs = monthGenres(months[k]);
-  return `<li class="wl-month"><a class="wl-mlink" href="/lists/${k}"><span class="wl-covers">${top.map((r) => r.cover_url ? `<img src="${esc(r.cover_url)}" alt="" width="64" height="64" loading="lazy">` : `<span class="rv-nocover">♪</span>`).join("")}</span><b>${monthName(k)}</b><span class="hint">${months[k].length} song${months[k].length === 1 ? "" : "s"} · #1: ${esc(top[0].title)}</span></a>
+  return `<li class="wl-month"><a class="wl-mlink" href="/lists/${k}"><span class="wl-covers">${top.map((r) => coverOf(r) ? `<img src="${esc(coverOf(r))}" alt="" width="64" height="64" loading="lazy">` : `<span class="rv-nocover">♪</span>`).join("")}</span><b>${monthName(k)}</b><span class="hint">${months[k].length} song${months[k].length === 1 ? "" : "s"} · #1: ${esc(top[0].title)}</span></a>
 ${gs.length ? `<span class="rchips">${gs.map(([g, n]) => `<a class="rchip" href="/lists/${k}/${g}">${esc(genreName(g))} <span class="hint">${n}</span></a>`).join("")}</span>` : ""}</li>`; }).join("")}</ul>` : `<div class="warn"><b>The first list drops when the reviews do.</b><p><a href="/reviews">Read the reviews</a> so far.</p></div>`}
 ${SUB}</article>`;
     return html(shell({ active: "lists", path: "/lists", title: "The Wicked list: best new songs by month · Wackometer", desc: "The best songs Wackometer reviewed each month, ranked from Wicked to Wack, with genre lists for Walternative, Windie, Wrythme & Blues, Wrock & Wroll and Wrap, plus the Top 10 playlist.", body }));

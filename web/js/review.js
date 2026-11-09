@@ -98,7 +98,7 @@ let ASSETS = null;
 async function storyAssets() {
   if (ASSETS) return ASSETS;
   try { await document.fonts.load(`700 100px "Fredoka"`); } catch (e) {}
-  const [cover, ch, wmark] = await Promise.all([R.cover ? loadImg(`/api/reviews/${R.slug}/cover`) : null, loadImg("data:image/svg+xml;charset=utf-8," + encodeURIComponent(charSVG(R.tier, 400))), loadImg("/brand/wacky-w.svg")]);
+  const [cover, ch, wmark] = await Promise.all([loadImg(`/api/reviews/${R.slug}/cover`), loadImg("data:image/svg+xml;charset=utf-8," + encodeURIComponent(charSVG(R.tier, 400))), loadImg("/brand/wacky-w.svg")]);
   return (ASSETS = { cover, ch, wmark });
 }
 const clamp01 = (v) => Math.max(0, Math.min(1, v)), easeOut = (v) => 1 - Math.pow(1 - clamp01(v), 3);

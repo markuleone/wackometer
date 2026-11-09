@@ -9,7 +9,7 @@ import { TIERS, tierOf, MID } from "../web/js/score.js";
 import META from "./build-meta.js";
 import { siteHeader, siteFooterLinks } from "./site-header.js";
 import { CFG, money } from "./settings.js";
-import { GENRE_KEYS, OLD_GENRES, TOP10_PLAYLIST, playlistEmbed, genrePage, genreCounts, genreTilesHTML, reviewSocialHTML, artistProfile, artistLinksHTML, artistExtrasHTML, thankSubmitter } from "./hub.js";
+import { coverOf, GENRE_KEYS, OLD_GENRES, TOP10_PLAYLIST, playlistEmbed, genrePage, genreCounts, genreTilesHTML, reviewSocialHTML, artistProfile, artistLinksHTML, artistExtrasHTML, thankSubmitter } from "./hub.js";
 
 const BASE = "https://wackometer.com";
 const TC = ["#3D8BFF", "#22C29B", "#A9A2DA", "#FF8A3D", "#A8C42E"];
@@ -123,7 +123,7 @@ function bodyHTML(text) {
 function card(r) {
   const t = tierOf(r.score);
   return `<a class="rv-card" href="/reviews/${esc(r.slug)}">
-<span class="rv-cover">${r.cover_url ? `<img src="${esc(r.cover_url)}" alt="" loading="lazy" width="300" height="300">` : `<span class="rv-nocover" aria-hidden="true">♪</span>`}${certified(r) ? '<span class="rv-cert">Certified Wicked</span>' : ""}</span>
+<span class="rv-cover">${coverOf(r) ? `<img src="${esc(coverOf(r))}" alt="" loading="lazy" width="300" height="300">` : `<span class="rv-nocover" aria-hidden="true">♪</span>`}${certified(r) ? '<span class="rv-cert">Certified Wicked</span>' : ""}</span>
 <span class="rv-meta">${pill(t, `${TIERS[t].n} · ${r.score}`)}<span class="rv-kind">${r.kind === "album" ? "Album" : "Song"}</span></span>
 <b class="rv-ct">${esc(r.title)}</b><span class="rv-ca">${esc(r.artist)}</span>
 <span class="rv-cv">${esc(r.verdict)}</span></a>`;
@@ -212,7 +212,7 @@ ${SUB}
 <article class="rv" data-slug="${esc(slug)}">
 <p class="eyebrow"><a href="/reviews">Song reviews</a> · ${r.kind === "album" ? "Album" : "Song"}${r.genre ? " · " + esc(r.genre) : ""}</p>
 <div class="rv-hero">
-<div class="rv-art">${r.cover_url ? `<img src="${esc(r.cover_url)}" alt="Cover art for ${esc(r.title)} by ${esc(r.artist)}" width="640" height="640">` : `<span class="rv-nocover" aria-hidden="true">♪</span>`}${certified(r) ? '<span class="rv-cert big">Certified Wicked</span>' : ""}</div>
+<div class="rv-art">${coverOf(r) ? `<img src="${esc(coverOf(r))}" alt="Cover art for ${esc(r.title)} by ${esc(r.artist)}" width="640" height="640">` : `<span class="rv-nocover" aria-hidden="true">♪</span>`}${certified(r) ? '<span class="rv-cert big">Certified Wicked</span>' : ""}</div>
 <div class="rv-head">
 <h1>${esc(r.title)}</h1>
 <p class="rv-by">by <a href="/artists/${esc(slugify(r.artist))}">${esc(r.artist)}</a>${artistUrl ? ` · <a class="rv-ext" href="${esc(artistUrl)}" target="_blank" rel="noopener">${ig ? "@" + esc(ig) : "Website"} ↗</a>` : ""}${r.released ? ` · ${esc(r.released)}` : ""}</p>
@@ -253,14 +253,14 @@ ${more.length ? `<section class="rv-more" aria-labelledby="moreH"><h2 id="moreH"
 <div class="ad-slot" hidden></div>
 ${SUB}
 </article>`;
-  const item = { "@type": r.kind === "album" ? "MusicAlbum" : "MusicRecording", name: r.title, byArtist: { "@type": "MusicGroup", name: r.artist, ...(artistUrl ? { url: artistUrl } : {}) }, ...(r.cover_url ? { image: r.cover_url } : {}), ...(r.genre ? { genre: r.genre } : {}) };
+  const item = { "@type": r.kind === "album" ? "MusicAlbum" : "MusicRecording", name: r.title, byArtist: { "@type": "MusicGroup", name: r.artist, ...(artistUrl ? { url: artistUrl } : {}) }, ...(r.cover_url ? { image: coverOf(r, BASE) } : {}), ...(r.genre ? { genre: r.genre } : {}) };
   if (crowd.n >= 5) item.aggregateRating = { "@type": "AggregateRating", ratingValue: 100 - crowd.avg, bestRating: 100, worstRating: 0, ratingCount: crowd.n };
   const ld = [{ "@context": "https://schema.org", "@type": "Review", name: `${r.title} by ${r.artist}: review`, reviewBody: r.verdict, datePublished: date.toISOString().slice(0, 10), author: { "@type": "Organization", name: "Wackometer", url: BASE }, publisher: { "@type": "Organization", name: "Wackometer", url: BASE },
       reviewRating: { "@type": "Rating", ratingValue: 100 - r.score, bestRating: 100, worstRating: 0, ratingExplanation: `${tierName(r)} on the Wackometer (${r.score}/100, lower is better)` }, itemReviewed: item },
     { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [{ "@type": "ListItem", position: 1, name: "Song reviews", item: `${BASE}/reviews` }, { "@type": "ListItem", position: 2, name: `${r.artist}: ${r.title}`, item: `${BASE}/reviews/${slug}` }] }];
   const title = `${r.title} by ${r.artist} review: ${tierName(r)} · Wackometer`;
   const desc = `${tierName(r)} (${r.score}/100). ${r.verdict} Read the review of ${r.artist}'s ${r.kind === "album" ? "album" : "song"} “${r.title}” and cast your vote.`.slice(0, 300);
-  return html(shell({ active: "reviews", path: `/reviews/${slug}`, title, desc, image: r.og_url || r.cover_url || "", wide: !!r.og_url, body, ld: draft ? null : ld, noindex: draft, data: JSON.stringify({ slug, artist: r.artist, title: r.title, kind: r.kind, score: r.score, tier: t, cert: certified(r), verdict: r.verdict, cover: !!r.cover_url, ig }) }), 200, draft ? "no-store" : "no-cache");
+  return html(shell({ active: "reviews", path: `/reviews/${slug}`, title, desc, image: r.og_url || coverOf(r, BASE), wide: !!r.og_url, body, ld: draft ? null : ld, noindex: draft, data: JSON.stringify({ slug, artist: r.artist, title: r.title, kind: r.kind, score: r.score, tier: t, cert: certified(r), verdict: r.verdict, cover: !!r.cover_url, ig }) }), 200, draft ? "no-store" : "no-cache");
 }
 
 /* ---------- front page (/) ---------- */
@@ -275,7 +275,7 @@ const ytThumb = (id) => `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
 function rowCard(r, crowd) {
   const t = tierOf(r.score), c = crowd[r.slug];
   return `<a class="rcard" href="/reviews/${esc(r.slug)}">
-<span class="rv-cover">${r.cover_url ? `<img src="${esc(r.cover_url)}" alt="" loading="lazy" width="300" height="300">` : `<span class="rv-nocover" aria-hidden="true">♪</span>`}${certified(r) ? '<span class="rv-cert">Certified Wicked</span>' : ""}</span>
+<span class="rv-cover">${coverOf(r) ? `<img src="${esc(coverOf(r))}" alt="" loading="lazy" width="300" height="300">` : `<span class="rv-nocover" aria-hidden="true">♪</span>`}${certified(r) ? '<span class="rv-cert">Certified Wicked</span>' : ""}</span>
 <span class="rsc"><span class="rsw" title="Wackometer score">${pill(t, `${TIERS[t].n} ${r.score}`)}</span><span class="rsc-c" title="Crowd score">👥 ${c ? esc(TIERS[c.tier].n) : "No votes"}</span></span>
 <b class="rv-ct">${esc(r.title)}</b><span class="rv-ca">${esc(r.artist)}</span></a>`;
 }
@@ -300,8 +300,8 @@ export async function frontPage(req, env, ensureSchema) {
   const split = all.filter((r) => crowd[r.slug] && crowd[r.slug].n >= 3).map((r) => ({ r, c: crowd[r.slug], d: Math.abs(crowd[r.slug].avg - r.score) })).filter((x) => x.d >= 15).sort((a, b) => b.d - a.d).slice(0, 6);
   const slide = (r, i) => {
     const t = tierOf(r.score), c = crowd[r.slug];
-    return `<article class="fslide" id="fs${i}" aria-roledescription="slide" aria-label="${i + 1} of ${hero.length}"${r.cover_url ? ` style="--bg:url('${esc(r.cover_url)}')"` : ""}>
-<a class="fcover" href="/reviews/${esc(r.slug)}" tabindex="-1" aria-hidden="true">${r.cover_url ? `<img src="${esc(r.cover_url)}" alt="" width="640" height="640"${i ? ' loading="lazy"' : ""}>` : `<span class="rv-nocover">♪</span>`}${certified(r) ? '<span class="rv-cert big">Certified Wicked</span>' : ""}</a>
+    return `<article class="fslide" id="fs${i}" aria-roledescription="slide" aria-label="${i + 1} of ${hero.length}"${coverOf(r) ? ` style="--bg:url('${esc(coverOf(r))}')"` : ""}>
+<a class="fcover" href="/reviews/${esc(r.slug)}" tabindex="-1" aria-hidden="true">${coverOf(r) ? `<img src="${esc(coverOf(r))}" alt="" width="640" height="640"${i ? ' loading="lazy"' : ""}>` : `<span class="rv-nocover">♪</span>`}${certified(r) ? '<span class="rv-cert big">Certified Wicked</span>' : ""}</a>
 <div class="ftext"><p class="eyebrow">${feat.length ? "Featured review" : "New review"} · ${r.kind === "album" ? "Album" : "Song"}${r.genre ? " · " + esc(r.genre) : ""}</p>
 <h2><a href="/reviews/${esc(r.slug)}">${esc(r.title)}</a></h2><p class="fby">by ${esc(r.artist)}</p>
 <div class="fscores"><span class="fsc"><span class="rv-sl">Wackometer</span><span class="fnum">${r.score}</span>${pill(t, tierName(r))}</span><span class="fsc"><span class="rv-sl">The crowd</span>${c ? `<span class="fnum">${c.avg}</span>${pill(c.tier, TIERS[c.tier].n)}` : `<span class="hint">No votes yet.<br>Be the first.</span>`}</span></div>
@@ -314,7 +314,7 @@ ${hero.length ? `<section class="fhero" aria-roledescription="carousel" aria-lab
       : `<section class="fempty"><b>The first reviews drop soon.</b><p>Know an artist whose writing deserves more ears? <a href="#submit">Send them our way</a>.</p></section>`}
 ${CFG.front_latest && all.length ? row("rNew", "Latest reviews", "/reviews", all.slice(0, 12).map((r) => rowCard(r, crowd)).join("")) : ""}
 ${(() => { if (!CFG.front_wicked_list || !all.length) return ""; const k = new Date(all[0].published_at).toISOString().slice(0, 7), mo = ["January","February","March","April","May","June","July","August","September","October","November","December"][Number(k.slice(5)) - 1] + " " + k.slice(0, 4), top = all.filter((r) => new Date(r.published_at).toISOString().slice(0, 7) === k).sort((x, y) => x.score - y.score).slice(0, 4);
-  return `<a class="fwl" href="/lists/${k}"><span class="fwl-covers">${top.map((r) => r.cover_url ? `<img src="${esc(r.cover_url)}" alt="" width="56" height="56" loading="lazy">` : `<span class="rv-nocover">♪</span>`).join("")}</span><span class="fwl-t"><span class="eyebrow">📅 The Wicked list</span><b>The best songs we weighed in ${mo}</b></span><span class="fwl-go">See the list →</span></a>`; })()}
+  return `<a class="fwl" href="/lists/${k}"><span class="fwl-covers">${top.map((r) => coverOf(r) ? `<img src="${esc(coverOf(r))}" alt="" width="56" height="56" loading="lazy">` : `<span class="rv-nocover">♪</span>`).join("")}</span><span class="fwl-t"><span class="eyebrow">📅 The Wicked list</span><b>The best songs we weighed in ${mo}</b></span><span class="fwl-go">See the list →</span></a>`; })()}
 ${CFG.front_top10 ? `<section class="ftop10" aria-labelledby="rTop"><div class="frh"><h2 id="rTop">🔥 The Wackometer Top 10</h2><a href="https://open.spotify.com/playlist/${CFG.top10_playlist}" target="_blank" rel="noopener">Open in Spotify <span aria-hidden="true">↗</span></a></div><p class="hint">The ten most Wicked songs right now, in one playlist. Follow it and it updates as the scores do.</p>${playlistEmbed(CFG.top10_playlist, "Wackometer Top 10", 380)}</section>` : ""}
 ${CFG.front_genres ? await genreTilesHTML(DB, 8, true) : ""}
 <div class="ad-slot" hidden></div>
@@ -334,7 +334,7 @@ ${"" && split.length ? `<section class="fsplit" aria-labelledby="rSplit"><div cl
 // Every live review counts toward its artist. The artist's score is the plain average of their songs' scores,
 // so lower is better: 0 is as Wicked as it gets, 100 is all-out Wack.
 export async function artistTable(DB) {
-  const rows = (await DB.prepare("SELECT slug,artist,title,score,cover_url,artist_ig,artist_url,published_at FROM reviews WHERE status='live' ORDER BY published_at DESC LIMIT 5000").all()).results;
+  const rows = (await DB.prepare("SELECT slug,artist,title,score,cover_url,genre,artist_ig,artist_url,published_at FROM reviews WHERE status='live' ORDER BY published_at DESC LIMIT 5000").all()).results;
   const by = new Map();
   for (const r of rows) {
     const key = slugify(r.artist); if (!key) continue;
@@ -345,7 +345,7 @@ export async function artistTable(DB) {
   const list = [...by.values()].map((a) => {
     const sum = a.songs.reduce((s, r) => s + r.score, 0);
     const best = a.songs.reduce((b, r) => (r.score < b.score ? r : b), a.songs[0]);
-    return { ...a, n: a.songs.length, avg: Math.round(sum / a.songs.length), exact: sum / a.songs.length, best, cover: (a.songs.find((r) => r.cover_url) || {}).cover_url || "" };
+    return { ...a, n: a.songs.length, avg: Math.round(sum / a.songs.length), exact: sum / a.songs.length, best, cover: (a.songs.find((r) => r.cover_url) || {}).cover_url || coverOf(a.songs[0]) };
   });
   list.sort((x, y) => x.exact - y.exact || y.n - x.n || x.name.localeCompare(y.name));
   list.forEach((a, i) => (a.rank = i > 0 && list[i - 1].exact === a.exact && list[i - 1].n === a.n ? list[i - 1].rank : i + 1));
@@ -544,15 +544,17 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
   }
   // Same-origin copy of the cover so the share card can draw it.
   if ((m = path.match(/^\/api\/reviews\/([a-z0-9-]{1,80})\/cover$/)) && method === "GET") {
-    const r = await DB.prepare("SELECT cover_url FROM reviews WHERE slug=?").bind(m[1]).first();
-    const src = r && safeUrl(r.cover_url);
-    if (!src || !/^https:\/\/([a-z0-9-]+\.)*(scdn\.co|spotifycdn\.com|mzstatic\.com|ytimg\.com|wackometer\.com)\//i.test(src)) return bad("No cover.", 404);
+    const r = await DB.prepare("SELECT cover_url, genre FROM reviews WHERE slug=?").bind(m[1]).first();
+    if (!r) return bad("No cover.", 404);
+    const src = safeUrl(r.cover_url);
+    if (!src) return env.ASSETS.fetch(new Request(new URL(coverOf({ genre: r.genre }), url)));
+    if ( !/^https:\/\/([a-z0-9-]+\.)*(scdn\.co|spotifycdn\.com|mzstatic\.com|ytimg\.com|wackometer\.com)\//i.test(src)) return bad("No cover.", 404);
     const res = await fetch(src, { cf: { cacheTtl: 86400 } });
     if (!res.ok || !/^image\//.test(res.headers.get("content-type") || "")) return bad("No cover.", 404);
     return new Response(res.body, { headers: { "content-type": res.headers.get("content-type"), "cache-control": "public, max-age=86400" } });
   }
   if (path === "/api/reviews/latest" && method === "GET") {
-    return json((await DB.prepare("SELECT slug,title,artist,cover_url,score FROM reviews WHERE status='live' ORDER BY published_at DESC LIMIT 5").all()).results);
+    return json((await DB.prepare("SELECT slug,title,artist,cover_url,genre,score FROM reviews WHERE status='live' ORDER BY published_at DESC LIMIT 5").all()).results.map((r) => ({ ...r, cover_url: coverOf(r, BASE) })));
   }
   if (path === "/api/critics/apply" && method === "POST") {
     const f = (k, n) => String(body[k] ?? "").trim().slice(0, n);
@@ -921,8 +923,8 @@ const INK = "#1F2340", MUT = "#646A8C", WASH = "#F1F7D6", BILE = "#A8C42E";
 const tierLabel = (r) => (r.score < 20 ? "Certified Wicked" : TIERS_N[tierFor(r.score)]);
 const eBtn = (href, label, bg = BILE, fg = INK) => `<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td style="background:${bg};border:2px solid ${INK};border-bottom-width:5px;border-radius:999px"><a href="${href}" style="display:inline-block;padding:12px 24px;font-family:${EF};font-weight:700;font-size:16px;color:${fg};text-decoration:none">${label}</a></td></tr></table>`;
 const ePill = (r, big) => `<span style="display:inline-block;background:${TCOL[tierFor(r.score)]};color:${INK};border:2px solid ${INK};border-radius:999px;padding:${big ? "6px 16px" : "3px 11px"};font-family:${EF};font-weight:700;font-size:${big ? 18 : 14}px;white-space:nowrap">${r.score}<span${big ? "" : ' class="hide-m"'}> · ${esc(tierLabel(r).toUpperCase())}</span></span>`;
-const eCover = (base, r, size, radius) => r.cover_url
-  ? `<a href="${base}/reviews/${r.slug}"><img src="${esc(r.cover_url)}" width="${size}" alt="${esc(r.title)} cover" style="display:block;width:100%;max-width:${size}px;height:auto;border:2px solid ${INK};border-radius:${radius}px"></a>`
+const eCover = (base, r, size, radius) => coverOf(r, base)
+  ? `<a href="${base}/reviews/${r.slug}"><img src="${esc(coverOf(r, base))}" width="${size}" alt="${esc(r.title)} cover" style="display:block;width:100%;max-width:${size}px;height:auto;border:2px solid ${INK};border-radius:${radius}px"></a>`
   : `<a href="${base}/reviews/${r.slug}" style="display:block;background:${TCOL[tierFor(r.score)]};border:2px solid ${INK};border-radius:${radius}px;text-align:center;padding:${Math.round(size * 0.18)}px 0"><img src="${base}/email/crew-${tierFor(r.score)}.png" width="${Math.round(size * 0.5)}" alt="" style="display:inline-block;width:${Math.round(size * 0.5)}px;height:auto"></a>`;
 const eCard = (inner, bg = "#FFFFFF", pad = 24) => `<tr><td style="padding:0 0 22px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${bg};border:2px solid ${INK};border-bottom-width:7px;border-radius:28px"><tr><td class="cp" style="padding:${pad}px">${inner}</td></tr></table></td></tr>`;
 const eEyebrow = (t, bg = WASH) => `<span style="display:inline-block;background:${bg};border:2px solid ${INK};border-radius:999px;padding:4px 12px;font-family:${EF};font-weight:700;font-size:12px;letter-spacing:1px;color:${INK}">${t}</span>`;
@@ -951,7 +953,7 @@ function sideCard(base, r, label) {
 function alsoCard(base, rows) {
   return eCard(`<div style="font-family:${EF};font-weight:700;font-size:20px;color:${INK};padding-bottom:6px">Also on the meter</div>
 ${rows.map((r) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:2px solid #E4E7F4"><tr>
-<td width="56" style="padding:12px 12px 12px 0">${r.cover_url ? `<img src="${esc(r.cover_url)}" width="48" height="48" alt="" style="display:block;border:2px solid ${INK};border-radius:10px">` : `<img src="${base}/email/crew-${tierFor(r.score)}.png" width="48" height="48" alt="" style="display:block">`}</td>
+<td width="56" style="padding:12px 12px 12px 0">${coverOf(r) ? `<img src="${esc(coverOf(r, base))}" width="48" height="48" alt="" style="display:block;border:2px solid ${INK};border-radius:10px">` : `<img src="${base}/email/crew-${tierFor(r.score)}.png" width="48" height="48" alt="" style="display:block">`}</td>
 <td style="padding:12px 0"><a href="${base}/reviews/${r.slug}" style="font-family:${EF};font-weight:700;font-size:16px;color:${INK};text-decoration:none">${esc(r.title)}</a><div style="font-family:${EB};font-size:14px;color:${MUT}">${esc(r.artist)}</div></td>
 <td align="right" style="padding:12px 0">${ePill(r)}</td></tr></table>`).join("")}`, "#FFFFFF", 20);
 }
