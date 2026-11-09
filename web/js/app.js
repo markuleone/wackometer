@@ -579,6 +579,6 @@ try {
   if (qs0.get("deleted")) { show("weigh"); setTimeout(() => { $("quip").textContent = "Wendy: Your account is gone. Sad to see you go. The door's always open."; $("mchar").innerHTML = charSVG(1); }, 300); }
   const si = qs0.get("signin");
   if (si) { show("weigh"); if (si === "ok") { setTimeout(() => { $("quip").textContent = "Wendy: You're signed in! Your streak and profile are safe now."; $("mchar").innerHTML = charSVG(1); }, 300); } else { openLogin(); $("loginNote").textContent = "That link expired. Send a new one."; } }
-  if (qs0.get("paid")) { show("pro"); setTimeout(() => ($("demoNote").textContent = "Welcome to Wingman Pro. It can take a few seconds to switch on."), 600); history.replaceState(null, "", APP + "#pro"); }
+  if (qs0.get("paid")) { track("pro_paid"); show("pro"); setTimeout(() => ($("demoNote").textContent = "Welcome to Wingman Pro. It can take a few seconds to switch on."), 600); history.replaceState(null, "", APP + "#pro"); }
 }
 

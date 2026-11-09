@@ -5,7 +5,7 @@ import { handleSocial, profileMeta } from "./social.js";
 import { cleanLyrics, cleanIdentity } from "./moderation.js";
 import SEO_URLS from "./seo-urls.js";
 import { checkUnsubscribe } from "./notify.js";
-import { reviewsPage, badgeSVG, reviewApi, reviewUrls, frontPage, artistsPage, artistTable, getReviewedPage, criticsPage, activeCritics, subscribe, imageResponse } from "./reviews.js";
+import { reviewsPage, badgeSVG, reviewApi, reviewUrls, frontPage, artistsPage, artistTable, getReviewedPage, criticsPage, activeCritics, subscribe, imageResponse, listUnsubscribe } from "./reviews.js";
 import { analyze, tierOf, clamp, MID, TIERS, METRICS, words, dailyKey, dailyPrompt } from "../web/js/score.js";
 
 const json = (data, status = 200, headers = {}) =>
@@ -106,7 +106,7 @@ const REACTIONS = ["🔥", "😭", "💀", "🤢"];
 const HUMAN_PATHS = [/^\/api\/wall$/, /^\/api\/daily$/, /^\/api\/login$/, /^\/api\/profile$/, /^\/api\/report$/, /^\/api\/u\/[a-z0-9_.]+\/report$/, /^\/api\/waitlist$/, /^\/api\/reviews\/submit$/, /^\/api\/critics\/apply$/, /^\/api\/subscribe$/, /^\/api\/reviews\/[a-z0-9-]+\/vote$/];
 const BLOCKED_MSG = "That includes language we don't allow on Wackometer. Try different words.";
 const EVENT_TYPES = ["share_card", "save_card", "save_video", "copy_caption", "copy_daily", "copy_roast", "pen_share", "pen_start", "swap_used", "emoji_starter", "best_line", "storm_start", "storm_done", "wash", "humanize", "lesson_pass", "install", "waitlist"];
-EVENT_TYPES.push("view", "weigh", "weigh_example", "signup_sent", "signup_done", "wall_post", "roast", "wingman_msg", "daily_submit", "ai_locked", "pro_click", "review_vote", "review_share", "review_card", "review_badge", "review_submit", "hub_reviews", "hub_write", "hub_plugin", "submit_checkout", "submit_paid", "critic_apply", "subscribe");
+EVENT_TYPES.push("view", "weigh", "weigh_example", "signup_sent", "signup_done", "wall_post", "roast", "wingman_msg", "daily_submit", "ai_locked", "pro_click", "review_vote", "review_share", "review_card", "review_badge", "review_submit", "hub_reviews", "hub_write", "hub_plugin", "submit_checkout", "submit_paid", "critic_apply", "subscribe", "review_video", "pro_paid");
 // Prefixed counters: where visits come from, which page they land on, which tools get opened. Fixed lists only.
 const EVENT_PREFIXED = /^(src:(google|bing|duckduckgo|yahoo|instagram|tiktok|facebook|x|reddit|youtube|discord|linkedin|pinterest|snapchat|threads|whatsapp|chatgpt|perplexity|email|direct|other)|land:(home|write|artist|profile|rhymes|cliches|syllables|reviews|review)|tool:(home|weigh|community|storm|workshop|wingman|why|pro|lost|profile))$/;
 const cleanHandle = (h) => String(h || "").replace(/[^A-Za-z0-9_.\- ]/g, "").trim().slice(0, 20);
@@ -189,6 +189,7 @@ export default {
     }
     if (method !== "GET" && req.headers.get("origin") && new URL(req.headers.get("origin")).host !== url.host) return bad("Wrong origin", 403);
     if (path === "/api/unsubscribe") return unsubscribe(url, env, method);
+    if (path === "/api/list/unsubscribe") { await ensureSchema(env); return listUnsubscribe(env, url, method); }
 
     let s;
     // Anonymous counters don't need (or create) an account.
@@ -610,7 +611,7 @@ async function route(path, method, url, body, u, env, req) {
   // Ads (content pages only). The AdSense publisher ID is public: it sits in every page that shows ads.
   if (path === "/api/ads-config" && method === "GET") {
     const client = /^ca-pub-\d{10,20}$/.test(env.ADSENSE_CLIENT || "") ? env.ADSENSE_CLIENT : "";
-    return json({ client, slot: /^\d{6,14}$/.test(env.ADSENSE_SLOT || "") ? env.ADSENSE_SLOT : "", pro: !!isPro(u) });
+    return json({ client, slot: /^\d{6,14}$/.test(env.ADSENSE_SLOT || "") ? env.ADSENSE_SLOT : "", pro: !!isPro(u), pixel: /^\d{10,20}$/.test(env.META_PIXEL_ID || "") ? env.META_PIXEL_ID : "" });
   }
 
   if (path === "/api/subscribe" && method === "POST") return subscribe(env, body, u);

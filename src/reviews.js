@@ -226,7 +226,7 @@ ${r.submitted ? '<p class="hint rv-paid">💵 The artist sent this in through pa
 </div>
 <div class="ad-slot" hidden></div>
 <section class="rv-share" aria-labelledby="shareH"><h2 id="shareH">Pass it on</h2>
-<div class="row"><button class="btn bile" type="button" id="rvShare">Share this review</button><button class="btn" type="button" id="rvCard">Save story card</button></div>
+<div class="row"><button class="btn bile" type="button" id="rvShare">Share this review</button><button class="btn" type="button" id="rvCard">Save story card</button><button class="btn" type="button" id="rvVideo">🎬 Save video</button></div>
 <span class="hint" id="shareNote" role="status"></span>
 <details class="rv-badge"><summary>Are you ${esc(r.artist)}? Get your badge</summary>
 <p>Put this on your website or link-in-bio page. It links back to this review.</p>
@@ -600,6 +600,21 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
     if (!critic) return bad(u && u.email ? `You're signed in as ${u.email}, which isn't an admin or critic email. Ask Wackometer to add it to your critic profile.` : "Sign in first: admins and critics only.", 403);
     if (!["list", "lookup", "save", "upload", "me-save", "request"].includes(path.slice(19))) return bad("Only admins can do that.", 403);
   }
+  if (path === "/api/reviews-admin/newsletter" && method === "GET") return json(await weekly(env, url, u));
+  if (path === "/api/reviews-admin/newsletter" && method === "POST") {
+    if (!env.SENDGRID_API_KEY) return bad("Email sending isn't set up (SENDGRID_API_KEY).", 503);
+    const n = await weekly(env, url, u, { subject: String(body.subject || "").slice(0, 150), intro: String(body.intro || "").slice(0, 1500) });
+    if (!n.best) return bad("No live reviews yet, so there's nothing to send.");
+    if (body.test) { if (!u.email) return bad("Sign in first."); const r = await sendList(env, url, n, [u.email]); return r.ok ? json({ ok: true, sent: 1 }) : bad(r.error, 502); }
+    const wk = new Date().toISOString().slice(0, 10), last = await DB.prepare("SELECT v FROM settings WHERE k='wotw_last'").first();
+    if (last && Date.now() - Number(last.v) < 3 * 86400000 && !body.again) return bad("You already sent one in the last 3 days. Tick “Send again anyway” if you mean it.", 409);
+    const to = (await DB.prepare("SELECT email FROM subscribers WHERE unsubscribed=0").all()).results.map((r) => r.email);
+    if (!to.length) return bad("Nobody has signed up yet.");
+    const r = await sendList(env, url, n, to);
+    if (!r.ok) return bad(r.error, 502);
+    await DB.prepare("INSERT INTO settings (k,v) VALUES ('wotw_last',?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(String(Date.now())).run();
+    return json({ ok: true, sent: to.length, week: wk });
+  }
   const mine = (r) => !critic || !r || (r.reviewer || "").toLowerCase() === critic.name.toLowerCase() || (r.status === "draft" && !r.reviewer);
   if (path === "/api/reviews-admin/list" && method === "GET") {
     if (critic) {
@@ -772,6 +787,68 @@ export async function subscribe(env, body, u) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 200) return bad("That doesn't look like an email address.");
   await env.DB.prepare("INSERT INTO subscribers (email,source,user_id,created_at) VALUES (?,?,?,?) ON CONFLICT(email) DO UPDATE SET unsubscribed=0").bind(email, String(body.source || "").slice(0, 40) || null, u ? u.id : null, Date.now()).run();
   return json({ ok: true });
+}
+
+/* ---------- "Wicked of the week" email ---------- */
+async function listSecret(env) {
+  if (env.SESSION_SECRET) return env.SESSION_SECRET;
+  const row = await env.DB.prepare("SELECT v FROM settings WHERE k='session_secret'").first();
+  return row ? row.v : "wackometer-list";
+}
+async function listSig(env, email) {
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(await listSecret(env)), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode("list:" + email));
+  return [...new Uint8Array(sig)].slice(0, 16).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+// One-click unsubscribe from the weekly email (link in every email, and the List-Unsubscribe header).
+export async function listUnsubscribe(env, url, method) {
+  const email = String(url.searchParams.get("e") || "").toLowerCase(), sig = url.searchParams.get("s") || "";
+  const ok = email && sig === (await listSig(env, email));
+  if (ok) await env.DB.prepare("UPDATE subscribers SET unsubscribed=1 WHERE email=?").bind(email).run();
+  if (method === "POST") return json({ ok: !!ok });
+  return html(shell({ path: "/unsubscribe", title: "Unsubscribed · Wackometer", desc: "", noindex: true, body: `<article class="seoart"><h1>${ok ? "You're off the list." : "That link didn't work."}</h1><p>${ok ? "No more Wicked of the week emails. Changed your mind? Sign up again at the bottom of any review." : "Reply to any of our emails and we'll take you off by hand."}</p><p><a class="btn bile" href="/reviews">Back to reviews</a></p></article>` }), ok ? 200 : 400, "no-store");
+}
+// This week's picks: the best (lowest) and worst (highest) live review from the last 7 days, plus the rest.
+async function weekly(env, url, u, over = {}) {
+  const DB = env.DB, base = env.APP_URL || url.origin;
+  let rows = (await DB.prepare("SELECT * FROM reviews WHERE status='live' AND published_at>? ORDER BY score").bind(Date.now() - 7 * 86400000).all()).results;
+  const fresh = rows.length > 0;
+  if (!rows.length) rows = (await DB.prepare("SELECT * FROM reviews WHERE status='live' ORDER BY published_at DESC LIMIT 6").all()).results.sort((a, b) => a.score - b.score);
+  const best = rows[0] || null, worst = rows.length > 1 ? rows[rows.length - 1] : null, rest = rows.slice(1, rows.length > 1 ? -1 : 1);
+  const subs = await DB.prepare("SELECT COUNT(*) c FROM subscribers WHERE unsubscribed=0").first();
+  const subject = over.subject || (best ? `Wicked of the week: ${best.title} by ${best.artist}` : "Wicked of the week");
+  const intro = over.intro || (fresh ? "Here's what we weighed this week: the song that earned it and the one that got wrecked." : "Catch up on our latest reviews: the best of the bunch and the one that got wrecked.");
+  const e = esc, tn = (r) => (r.score < 20 ? "Certified Wicked" : TIERS_N[tierFor(r.score)]);
+  const card = (r, label) => `<tr><td style="padding:14px 0"><table role="presentation" width="100%" style="border:2px solid #1F2340;border-radius:18px;background:#FFFFFF"><tr>
+${r.cover_url ? `<td width="132" style="padding:14px"><a href="${base}/reviews/${r.slug}"><img src="${e(r.cover_url)}" width="118" height="118" alt="" style="border-radius:12px;display:block"></a></td>` : ""}
+<td style="padding:14px 14px 14px 0;font-family:Arial,sans-serif;color:#1F2340"><div style="font-size:12px;font-weight:bold;letter-spacing:1px;color:#646A8C">${label}</div>
+<div style="font-size:20px;font-weight:bold;margin:4px 0 2px">${e(r.title)}</div><div style="font-size:15px;color:#646A8C">${e(r.artist)}</div>
+<div style="margin:8px 0;font-size:15px"><b style="background:${TCOL[tierFor(r.score)]};color:#1F2340;border-radius:999px;padding:3px 10px">${r.score} · ${e(tn(r))}</b></div>
+<div style="font-size:15px;font-style:italic">“${e(r.verdict)}”</div><div style="margin-top:8px"><a href="${base}/reviews/${r.slug}" style="color:#5A6E0C;font-weight:bold">Read the review →</a></div></td></tr></table></td></tr>`;
+  const body = (unsub) => `<!doctype html><html><body style="margin:0;background:#F4F6EC"><table role="presentation" width="100%" style="background:#F4F6EC"><tr><td align="center" style="padding:24px 12px"><table role="presentation" width="100%" style="max-width:600px">
+<tr><td style="font-family:Arial,sans-serif;color:#1F2340;font-size:28px;font-weight:bold;padding-bottom:4px"><span style="color:#86A01A">W</span>ackometer</td></tr>
+<tr><td style="font-family:Arial,sans-serif;color:#1F2340;font-size:22px;font-weight:bold;padding:8px 0 4px">Wicked of the week</td></tr>
+<tr><td style="font-family:Arial,sans-serif;color:#1F2340;font-size:16px;line-height:1.5">${e(intro).replace(/\n/g, "<br>")}</td></tr>
+${best ? card(best, "THE WICKED ONE") : ""}${worst ? card(worst, "GOT WRECKED") : ""}
+${rest.length ? `<tr><td style="font-family:Arial,sans-serif;color:#1F2340;font-size:16px;padding-top:8px"><b>Also weighed:</b><br>${rest.map((r) => `<a href="${base}/reviews/${r.slug}" style="color:#1F2340">${e(r.title)} · ${e(r.artist)}</a> (${r.score})`).join("<br>")}</td></tr>` : ""}
+<tr><td style="font-family:Arial,sans-serif;font-size:15px;padding:18px 0"><a href="${base}/get-reviewed" style="display:inline-block;background:#A8C42E;color:#1F2340;padding:12px 20px;border-radius:999px;font-weight:bold;text-decoration:none">Make music? Get your song weighed</a></td></tr>
+<tr><td style="font-family:Arial,sans-serif;color:#646A8C;font-size:12px;line-height:1.5;padding-top:12px;border-top:1px solid #D9DCC8">You signed up for Wicked of the week at wackometer.com. <a href="${unsub}" style="color:#646A8C">Unsubscribe</a></td></tr>
+</table></td></tr></table></body></html>`;
+  const text = (unsub) => `Wicked of the week\n\n${intro}\n\n${[best && ["THE WICKED ONE", best], worst && ["GOT WRECKED", worst]].filter(Boolean).map(([l, r]) => `${l}: ${r.title} by ${r.artist}, ${r.score} (${tn(r)})\n"${r.verdict}"\n${base}/reviews/${r.slug}`).join("\n\n")}\n\nUnsubscribe: ${unsub}`;
+  return { subject, intro, best, worst, rest, subscribers: subs ? subs.c : 0, fresh, html: body("#"), _body: body, _text: text, canEmail: !!env.SENDGRID_API_KEY, testTo: u && u.email };
+}
+const TCOL = ["#3D8BFF", "#22C29B", "#A9A2DA", "#FF8A3D", "#A8C42E"];
+async function sendList(env, url, n, emails) {
+  const base = env.APP_URL || url.origin, fromRaw = env.EMAIL_FROM || "Wackometer <hello@wackometer.com>";
+  const fm = fromRaw.match(/^\s*(.*?)\s*<([^>]+)>\s*$/), from = fm ? { name: fm[1] || "Wackometer", email: fm[2] } : { email: fromRaw.trim() };
+  for (let i = 0; i < emails.length; i += 500) {
+    const batch = emails.slice(i, i + 500);
+    const pers = await Promise.all(batch.map(async (to) => { const unsub = `${base}/api/list/unsubscribe?e=${encodeURIComponent(to)}&s=${await listSig(env, to)}`; return { to: [{ email: to }], substitutions: { "-unsub-": unsub }, headers: { "List-Unsubscribe": `<${unsub}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } }; }));
+    const res = await fetch("https://api.sendgrid.com/v3/mail/send", { method: "POST", headers: { authorization: `Bearer ${env.SENDGRID_API_KEY}`, "content-type": "application/json" },
+      body: JSON.stringify({ personalizations: pers, from, subject: n.subject, content: [{ type: "text/plain", value: n._text("-unsub-") }, { type: "text/html", value: n._body("-unsub-") }], tracking_settings: { click_tracking: { enable: false, enable_text: false } } }) });
+    if (!res.ok) { const t = await res.text(); console.error("newsletter", res.status, t); return { ok: false, error: res.status === 403 ? "SendGrid refused the sender address. Verify hello@wackometer.com (or the wackometer.com domain) in SendGrid → Sender Authentication." : "SendGrid didn't accept the email. Try again in a minute." }; }
+  }
+  return { ok: true };
 }
 
 // Uploaded pictures.

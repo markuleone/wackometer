@@ -132,8 +132,14 @@ body{margin:0}[hidden]{display:none!important}
 <h2 id="appH">Critic applications <span class="hint" id="appCount"></span></h2>
 <div class="list" id="apps"></div>
 <h2 id="listH">Email list <span class="hint" id="subCount"></span></h2>
-<p class="hint">Signups from the “Wicked of the week” box at the bottom of every review page. Download them and send the Friday email from any newsletter tool (Mailchimp, Beehiiv, Kit all import a CSV).</p>
-<div class="row"><a class="btn" href="/api/reviews-admin/subscribers.csv" download>Download the list (CSV)</a></div>
+<p class="hint">Signups from the “Wicked of the week” box at the bottom of every review page. Send the weekly email right from here: it picks the best and worst song you published in the last 7 days.</p>
+<form class="ed" id="nlForm" autocomplete="off">
+  <label class="full">Subject<input id="nlSubject" maxlength="150"></label>
+  <label class="full">Intro <span class="hint">(a line or two in your voice)</span><textarea id="nlIntro" maxlength="1500"></textarea></label>
+  <div class="full row"><button class="btn" type="button" id="nlPrev">Update preview</button><button class="btn" type="button" id="nlTest">Send me a test</button><button class="btn bile" type="button" id="nlSend">Send to everyone</button><label class="chk"><input type="checkbox" id="nlAgain"> Send again anyway</label><a class="btn quiet" href="/api/reviews-admin/subscribers.csv" download>Download the list (CSV)</a></div>
+  <span class="full hint" id="nlNote" role="status"></span>
+  <iframe class="full" id="nlFrame" title="Email preview" style="width:100%;height:560px;border:2px solid var(--line);border-radius:14px;background:#fff"></iframe>
+</form>
 </div>
 <h2 id="allH">All reviews</h2>
 <div class="list" id="list"></div>
@@ -253,7 +259,7 @@ async function load() {
       $("heroEye").textContent = "Critic desk"; $("heroH").innerHTML = `Hey ${esc(DATA.me.name.split(" ")[0])}, <em>what are we weighing?</em>`;
       $("heroP").textContent = "Write and edit your reviews, pick up drafts from the queue, and keep your critic page fresh."; document.title = "Critic desk · Wackometer";
       $("fReviewer").readOnly = true; $("fReviewer").value = DATA.me.name; fillMe(DATA.me);
-    } else $("subCount").textContent = `(${DATA.subscribers || 0} signed up)`;
+    } else { $("subCount").textContent = `(${DATA.subscribers || 0} signed up)`; if (!$("nlSubject").value) nlLoad(); }
     renderList();
   }
   catch (e) { $("err").innerHTML = esc(e.message) + ' <a href="/write#weigh">Sign in on the main site</a> (top right, “Sign in”) with your admin or critic email, then come back.'; }
@@ -311,6 +317,27 @@ $("delBtn").onclick = async () => {
   if (!original || !confirm("Delete this review and its crowd votes? This can't be undone.")) return;
   await api("/api/reviews-admin/delete", { slug: original }); fill(null); load();
 };
+// "Wicked of the week" email
+async function nlLoad(keep) {
+  try {
+    const n = await api("/api/reviews-admin/newsletter");
+    if (!keep) { $("nlSubject").value = n.subject; $("nlIntro").value = n.intro; }
+    $("nlFrame").srcdoc = n.html; $("nlSend").textContent = `Send to everyone (${n.subscribers})`;
+    $("nlNote").textContent = !n.best ? "Publish a review first: the email needs at least one live review." : !n.canEmail ? "Email sending isn't set up yet." : n.fresh ? "" : "Nothing published in the last 7 days, so this uses your latest reviews.";
+  } catch (e) { $("nlNote").textContent = e.message; }
+}
+async function nlSend(test) {
+  if (!test && !confirm("Send this email to everyone on the list now?")) return;
+  $("nlNote").textContent = "Sending…";
+  try { const r = await api("/api/reviews-admin/newsletter", { subject: $("nlSubject").value, intro: $("nlIntro").value, test, again: $("nlAgain").checked }); $("nlNote").textContent = test ? "Test sent. Check your inbox (and spam)." : `Sent to ${r.sent} people ✓`; }
+  catch (e) { $("nlNote").textContent = e.message; }
+}
+$("nlPrev").onclick = async () => {
+  // Preview with your edits: rebuild locally from the server template by swapping the subject/intro text.
+  const n = await api("/api/reviews-admin/newsletter"); const esc2 = (t) => esc(t).replace(/\n/g, "<br>");
+  $("nlFrame").srcdoc = n.html.replace(esc2(n.intro), esc2($("nlIntro").value));
+};
+$("nlTest").onclick = () => nlSend(true); $("nlSend").onclick = () => nlSend(false);
 wireUpload("fCoverFile", "fCover", "note", showCover);
 wireUpload("cPhotoFile", "cPhoto", "cNote");
 wireUpload("mPhotoFile", "mPhoto", "mNote", showMeImg);

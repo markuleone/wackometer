@@ -83,11 +83,25 @@ function wrap(x, text, maxW, max) {
   if (out.length > max) { out.length = max; out[max - 1] = out[max - 1].replace(/\s*\S*$/, "") + "…"; }
   return out;
 }
-async function storyCard() {
+let ASSETS = null;
+async function storyAssets() {
+  if (ASSETS) return ASSETS;
   try { await document.fonts.load(`700 100px "Fredoka"`); } catch (e) {}
   const [cover, ch] = await Promise.all([R.cover ? loadImg(`/api/reviews/${R.slug}/cover`) : null, loadImg("data:image/svg+xml;charset=utf-8," + encodeURIComponent(charSVG(R.tier, 400)))]);
-  const c = document.createElement("canvas"); c.width = W; c.height = H; const x = c.getContext("2d");
+  return (ASSETS = { cover, ch });
+}
+const clamp01 = (v) => Math.max(0, Math.min(1, v)), easeOut = (v) => 1 - Math.pow(1 - clamp01(v), 3);
+async function storyCard() {
+  const a = await storyAssets();
+  const c = document.createElement("canvas"); c.width = W; c.height = H;
+  drawStory(c.getContext("2d"), a, 1);
+  return new Promise((r) => c.toBlob(r, "image/png"));
+}
+// The story card at animation progress p (0..1). p = 1 is the finished still.
+function drawStory(x, { cover, ch }, p) {
   const t = R.tier, col = TC[t];
+  const kCover = easeOut(p / 0.25), kText = easeOut((p - 0.18) / 0.2), kScore = easeOut((p - 0.32) / 0.38), kStamp = clamp01((p - 0.7) / 0.1), kVerdict = easeOut((p - 0.8) / 0.2);
+  x.globalAlpha = 1; x.textAlign = "left";
   x.fillStyle = "#FBFCFF"; x.fillRect(0, 0, W, H);
   x.fillStyle = t >= 3 ? "#EAF3C4" : "#E8F1FF"; x.fillRect(0, 0, W, 990);
   // logo
@@ -95,7 +109,8 @@ async function storyCard() {
   const wW = x.measureText("W").width, rest = "ackometer", rW = x.measureText(rest).width, sx = (W - wW - rW) / 2;
   x.save(); x.translate(sx + wW / 2, 170); x.rotate(-0.14); x.fillStyle = "#86A01A"; x.fillText("W", -wW / 2, 0); x.restore(); x.fillText(rest, sx + wW, 170);
   x.textAlign = "center"; x.font = `700 34px ${D}`; x.fillStyle = "#646A8C"; x.fillText("SONG REVIEW", W / 2, 240);
-  // cover
+  // cover (scales up into place)
+  x.save(); x.globalAlpha = kCover; const sc = 0.82 + 0.18 * kCover; x.translate(W / 2, 620); x.scale(sc, sc); x.translate(-W / 2, -620 + (1 - kCover) * 60);
   const cs = 640, cx = (W - cs) / 2, cy = 300;
   x.save(); x.shadowColor = "rgba(31,35,64,.25)"; x.shadowBlur = 40; x.shadowOffsetY = 16; x.fillStyle = "#1F2340"; x.beginPath(); x.roundRect(cx, cy, cs, cs, 36); x.fill(); x.restore();
   x.save(); x.beginPath(); x.roundRect(cx, cy, cs, cs, 36); x.clip();
@@ -106,6 +121,8 @@ async function storyCard() {
     const s = "CERTIFIED WICKED", sw = x.measureText(s).width + 70;
     x.fillStyle = "#1F2340"; x.beginPath(); x.roundRect(-sw / 2, -46, sw, 92, 46); x.fill(); x.fillStyle = "#BCD83C"; x.fillText(s, 0, 16); x.restore();
   }
+  x.restore();
+  x.globalAlpha = kText;
   // title + artist
   x.fillStyle = "#1F2340"; x.font = `700 76px ${D}`;
   const tl = wrap(x, R.title, W - 160, 2); tl.forEach((l, i) => x.fillText(l, W / 2, 1060 + i * 84));
@@ -115,16 +132,46 @@ async function storyCard() {
   const vt = tierLabel().toUpperCase(); let fs = 84; x.font = `700 ${fs}px ${D}`;
   while (x.measureText(vt).width > W - 420 && fs > 48) { fs -= 4; x.font = `700 ${fs}px ${D}`; }
   const vw = x.measureText(vt).width + 90, chS = 170, px = W / 2 + (chS + 20) / 2;
-  x.save(); x.translate(px, y + 40); x.rotate(-0.03); x.fillStyle = col; x.beginPath(); x.roundRect(-vw / 2, -62, vw, 124, 62); x.fill(); x.fillStyle = TEXT_ON[t]; x.fillText(vt, 0, fs * 0.36); x.restore();
-  if (ch) x.drawImage(ch, px - vw / 2 - chS - 20, y + 40 - chS / 2 - 10, chS, chS);
-  x.font = `600 38px ${B}`; x.fillStyle = "#646A8C"; x.fillText(`${R.score}/100 on the Wackometer`, W / 2, y + 160); y += 260;
+  x.globalAlpha = kStamp; const st = 1 + 0.6 * (1 - easeOut(kStamp));
+  x.save(); x.translate(px, y + 40); x.rotate(-0.03); x.scale(st, st); x.fillStyle = col; x.beginPath(); x.roundRect(-vw / 2, -62, vw, 124, 62); x.fill(); x.fillStyle = TEXT_ON[t]; x.fillText(vt, 0, fs * 0.36); x.restore();
+  if (ch) { const pop = easeOut(kStamp); x.save(); x.translate(px - vw / 2 - chS / 2 - 20, y + 30); x.scale(pop, pop); x.drawImage(ch, -chS / 2, -chS / 2, chS, chS); x.restore(); }
+  x.globalAlpha = kText; x.font = `600 38px ${B}`; x.fillStyle = "#646A8C"; x.fillText(`${Math.round(R.score * kScore)}/100 on the Wackometer`, W / 2, y + 160); y += 260;
+  x.globalAlpha = kVerdict;
   // verdict
   x.font = `italic 400 44px ${B}`; x.fillStyle = "#1F2340";
   wrap(x, `“${R.verdict}”`, W - 200, 3).forEach((l, i) => x.fillText(l, W / 2, y + i * 60));
-  x.font = `700 40px ${D}`; x.fillStyle = "#5A6E0C"; x.fillText("wackometer.com/reviews", W / 2, 1830);
+  x.globalAlpha = 1; x.font = `700 40px ${D}`; x.fillStyle = "#5A6E0C"; x.fillText("wackometer.com/reviews", W / 2, 1830);
   x.font = `600 30px ${B}`; x.fillStyle = "#646A8C"; x.fillText("Do you agree? Cast your vote.", W / 2, 1878);
-  return new Promise((r) => c.toBlob(r, "image/png"));
 }
+// 7-second vertical video of the card building itself, for TikTok, Reels and Shorts.
+if ($("rvVideo")) $("rvVideo").onclick = async () => {
+  const b = $("rvVideo"), note = $("shareNote");
+  const types = ["video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9", "video/webm"];
+  const type = window.MediaRecorder && types.find((t) => MediaRecorder.isTypeSupported(t));
+  if (!type) { note.textContent = "This browser can't record video. Try Chrome or Safari, or save the story card."; return; }
+  b.disabled = true; b.textContent = "🎬 Recording… (7s)";
+  try {
+    const a = await storyAssets();
+    const c = document.createElement("canvas"); c.width = 720; c.height = 1280; const x = c.getContext("2d");
+    const rec = new MediaRecorder(c.captureStream(30), { mimeType: type, videoBitsPerSecond: 5_000_000 }), chunks = [];
+    rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+    const stopped = new Promise((r) => (rec.onstop = r));
+    rec.start(250); const t0 = performance.now(), dur = 7000;
+    await new Promise((resolve) => { (function frame() {
+      const el = performance.now() - t0;
+      x.setTransform(720 / W, 0, 0, 1280 / H, 0, 0); drawStory(x, a, Math.min(1, el / 4200));
+      if (el < dur) requestAnimationFrame(frame); else resolve();
+    })(); });
+    rec.stop(); await stopped;
+    const ext = type.includes("mp4") ? "mp4" : "webm", blob = new Blob(chunks, { type: type.split(";")[0] }), name = `wackometer-${R.slug}.${ext}`;
+    const file = new File([blob], name, { type: blob.type }); track("review_video");
+    let shared = false;
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], text: shareText() }); shared = true; } catch (e) { if (e.name === "AbortError") shared = true; } }
+    if (!shared) { const l = document.createElement("a"); l.href = URL.createObjectURL(blob); l.download = name; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(l.href), 4000); }
+    note.textContent = ext === "mp4" ? `Video saved. Post it to TikTok, Reels or Shorts${R.ig ? ` and tag @${R.ig}` : ""}.` : "Video saved as .webm. TikTok and Instagram take it on desktop; on iPhone use Safari for .mp4.";
+  } catch (e) { note.textContent = "Couldn't record the video on this browser."; }
+  b.disabled = false; b.textContent = "🎬 Save video";
+};
 if ($("rvCard")) $("rvCard").onclick = async () => {
   const b = $("rvCard"), note = $("shareNote"); b.disabled = true; note.textContent = "Drawing your card…";
   try {

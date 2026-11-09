@@ -102,7 +102,21 @@ export function track(type) {
   if (IS_BOT) return;
   try { fetch("/api/event", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ type }), keepalive: true }); } catch (e) {}
   try { window.clarity && window.clarity("event", type); } catch (e) {}
+  // Meta Pixel (only when META_PIXEL_ID is set): the few events worth optimizing ads for.
+  const fb = PIXEL_EVENTS[type];
+  if (fb) { if (window.fbq) window.fbq("track", fb[0], fb[1]); else pixelQueue.push(fb); }
 }
+const PIXEL_EVENTS = { subscribe: ["Lead"], signup_done: ["CompleteRegistration"], submit_checkout: ["InitiateCheckout", { value: 10, currency: "USD" }], submit_paid: ["Purchase", { value: 10, currency: "USD" }], pro_click: ["InitiateCheckout", { value: 7.99, currency: "USD" }], pro_paid: ["Purchase", { value: 7.99, currency: "USD" }], critic_apply: ["SubmitApplication"] };
+const pixelQueue = [];
+// Loads Meta's pixel once per page when the site has one configured. Skipped for bots.
+if (!IS_BOT) fetch("/api/ads-config", { credentials: "same-origin" }).then((r) => r.json()).then((cfg) => {
+  if (!/^\d{10,20}$/.test(cfg.pixel || "") || window.fbq) return;
+  const f = (window.fbq = function () { f.callMethod ? f.callMethod.apply(f, arguments) : f.queue.push(arguments); });
+  window._fbq = f; f.push = f; f.loaded = true; f.version = "2.0"; f.queue = [];
+  const sc = document.createElement("script"); sc.async = true; sc.src = "https://connect.facebook.net/en_US/fbevents.js"; document.head.appendChild(sc);
+  f("init", cfg.pixel); f("track", "PageView");
+  pixelQueue.splice(0).forEach((e) => f("track", e[0], e[1]));
+}).catch(() => {});
 // Where a visit came from: utm_source wins, otherwise the referring site, otherwise "direct".
 const SOURCE_MAP = [["google", "google"], ["bing", "bing"], ["duckduckgo", "duckduckgo"], ["yahoo", "yahoo"], ["instagram", "instagram"], ["ig", "instagram"], ["tiktok", "tiktok"], ["tt", "tiktok"], ["facebook", "facebook"], ["fb", "facebook"], ["t.co", "x"], ["twitter", "x"], ["x.com", "x"], ["reddit", "reddit"], ["youtube", "youtube"], ["youtu.be", "youtube"], ["discord", "discord"], ["linkedin", "linkedin"], ["pinterest", "pinterest"], ["snapchat", "snapchat"], ["threads", "threads"], ["whatsapp", "whatsapp"], ["chatgpt", "chatgpt"], ["openai", "chatgpt"], ["perplexity", "perplexity"], ["email", "email"], ["newsletter", "email"], ["mail", "email"]];
 export function sourceOf() {
