@@ -22,6 +22,35 @@ export const slugify = (s) => String(s || "").toLowerCase().normalize("NFKD").re
 const certified = (r) => tierOf(r.score) === 0;
 const tierName = (r) => (certified(r) ? "Certified Wicked" : TIERS[tierOf(r.score)].n);
 
+
+/* ---------- covers: find the real one automatically ---------- */
+const norm = (x) => String(x || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\(.*?\)|\[.*?\]/g, " ").replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+async function lookupCover(r) {
+  const ua = { headers: { "user-agent": "Wackometer/1.0 (+https://wackometer.com)" } };
+  // A Spotify track/album link gives the exact cover.
+  const sp = spotifyEmbed(r.spotify_url || "");
+  if (sp) { try { const o = await (await fetch(`https://open.spotify.com/oembed?url=${encodeURIComponent(r.spotify_url)}`, ua)).json(); if (o.thumbnail_url) return { cover: o.thumbnail_url }; } catch (e) {} }
+  // Otherwise Apple's catalog, but only when the artist and title really match (a wrong cover is worse than none).
+  const artist = norm(String(r.artist || "").split(/,|&| x | feat\.?| ft\.?/i)[0]), title = norm(r.title);
+  if (!artist || !title) return null;
+  const album = r.kind === "album";
+  for (const term of [`${artist} ${title}`, `${title} ${artist}`]) {
+    try {
+      const res = await (await fetch(`https://itunes.apple.com/search?media=music&entity=${album ? "album" : "song"}&limit=10&term=${encodeURIComponent(term)}`, ua)).json();
+      const hit = (res.results || []).find((h) => norm(h.artistName).includes(artist.split(" ")[0]) && norm(album ? h.collectionName : h.trackName).startsWith(title.split(" ").slice(0, 3).join(" ")));
+      if (hit && hit.artworkUrl100) return { cover: String(hit.artworkUrl100).replace(/\/\d+x\d+bb\./, "/600x600bb."), apple_url: (album ? hit.collectionViewUrl : hit.trackViewUrl || "").split("?")[0] || null };
+    } catch (e) {}
+  }
+  return null;
+}
+// Fill in a missing cover once a day at most. Returns the review with the cover if one was found.
+export async function ensureCover(DB, r) {
+  if (!r || r.cover_url || (r.cover_checked && Date.now() - r.cover_checked < 86400000)) return r;
+  const f = await lookupCover(r);
+  await DB.prepare("UPDATE reviews SET cover_url=COALESCE(cover_url, ?), apple_url=COALESCE(apple_url, ?), cover_checked=? WHERE slug=?").bind(f ? f.cover : null, f ? f.apple_url || null : null, Date.now(), r.slug).run().catch(() => {});
+  return f ? { ...r, cover_url: f.cover, apple_url: r.apple_url || f.apple_url || null } : r;
+}
+
 /* ---------- links ---------- */
 export function spotifyEmbed(u) {
   const m = String(u || "").match(/open\.spotify\.com\/(?:intl-[a-z-]+\/)?(track|album|playlist|episode)\/([A-Za-z0-9]{22})/);
@@ -127,7 +156,7 @@ function card(r) {
   const t = tierOf(r.score);
   return `<a class="rv-card" href="/reviews/${esc(r.slug)}">
 <span class="rv-cover">${coverOf(r) ? `<img src="${esc(coverOf(r))}" alt="" loading="lazy" width="300" height="300">` : `<span class="rv-nocover" aria-hidden="true">♪</span>`}${certified(r) ? '<span class="rv-cert">Certified Wicked</span>' : ""}</span>
-<span class="rv-meta">${pill(t, `${TIERS[t].n} · ${r.score}`)}<span class="rv-kind">${kindLabel(r)}</span></span>
+<span class="rv-meta">${pill(t, `${TIERS[t].n} · ${r.score}`)}<span class="rv-kind">${kindLabel(r)}</span>${r.ai_made ? '<span class="ai-tag sm">🤖 AI</span>' : ""}</span>
 <b class="rv-ct">${esc(r.title)}</b><span class="rv-ca">${esc(r.artist)}</span>
 <span class="rv-cv">${esc(r.verdict)}</span></a>`;
 }
@@ -201,6 +230,7 @@ ${SUB}
   if (!r && OLD_GENRES[slug]) return new Response(null, { status: 301, headers: { location: `/reviews/${OLD_GENRES[slug]}` } });
   if (!r && GENRE_KEYS.includes(slug)) return genrePage(req, env, slug, async () => {});
   if (!r || (r.status !== "live" && url.searchParams.get("preview") !== "1")) return html(notFound(), 404, "no-store");
+  if (!r.cover_url) Object.assign(r, await ensureCover(DB, r));
   const draft = r.status !== "live";
   const crowd = await crowdOf(DB, slug);
   const t = tierOf(r.score);
@@ -213,7 +243,7 @@ ${SUB}
   const crowdLabel = crowd.n ? `${TIERS[crowd.tier].n} · ${crowd.avg}` : "No votes yet";
   const body = `${draft ? '<div class="warn"><b>Draft preview.</b><p>Only people with this link can see it. Publish it from <a href="/admin-reviews">the editor</a>.</p></div>' : ""}
 <article class="rv" data-slug="${esc(slug)}">
-<p class="eyebrow"><a href="/reviews">Song reviews</a> · ${kindLabel(r)}${r.genre ? " · " + esc(r.genre) : ""}</p>
+<p class="eyebrow"><a href="/reviews">Song reviews</a> · ${kindLabel(r)}${r.genre ? " · " + esc(r.genre) : ""}${r.ai_made ? ' · <span class="ai-tag">🤖 Made with AI</span>' : ""}</p>
 <div class="rv-hero">
 <div class="rv-art">${coverOf(r) ? `<img src="${esc(coverOf(r))}" alt="Cover art for ${esc(r.title)} by ${esc(r.artist)}" width="640" height="640">` : `<span class="rv-nocover" aria-hidden="true">♪</span>`}${certified(r) ? '<span class="rv-cert big">Certified Wicked</span>' : ""}</div>
 <div class="rv-head">
@@ -656,7 +686,8 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
       const requests = (await DB.prepare("SELECT id,artist,title,link,note,status,created_at,paid,amount,critic FROM review_requests WHERE status<>'pending' AND (critic IS NULL OR critic=?) ORDER BY status='done', paid DESC, created_at DESC LIMIT 300").bind(critic.slug).all()).results;
       return json({ role: "critic", me: critic, reviews, requests, critics: [critic], applications: [] });
     }
-    const reviews = (await DB.prepare("SELECT r.*, (SELECT COUNT(*) FROM review_votes v WHERE v.slug=r.slug) votes FROM reviews r ORDER BY updated_at DESC LIMIT 500").all()).results;
+    let reviews = (await DB.prepare("SELECT r.*, (SELECT COUNT(*) FROM review_votes v WHERE v.slug=r.slug) votes FROM reviews r ORDER BY updated_at DESC LIMIT 500").all()).results;
+    for (const r of reviews.filter((x) => !x.cover_url && !(x.cover_checked && Date.now() - x.cover_checked < 86400000)).slice(0, 15)) Object.assign(r, await ensureCover(DB, r));
     const critics = (await DB.prepare("SELECT * FROM critics ORDER BY active DESC, sort, name").all()).results;
     const requests = (await DB.prepare("SELECT * FROM review_requests WHERE status<>'pending' ORDER BY status='done', paid DESC, created_at DESC LIMIT 300").all()).results;
     const applications = (await DB.prepare("SELECT * FROM critic_applications ORDER BY status='new' DESC, created_at DESC LIMIT 200").all()).results;
@@ -744,6 +775,8 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
       if (r && !r.notified_at) notified = await tellArtist(env, DB, r, requestId, url);
     }
     if (body.listened) await DB.prepare("UPDATE reviews SET assist=0 WHERE slug=?").bind(slug).run();
+    await DB.prepare("UPDATE reviews SET ai_made=? WHERE slug=?").bind(body.ai_made ? 1 : 0, slug).run();
+    { const fresh = await DB.prepare("SELECT * FROM reviews WHERE slug=?").bind(slug).first(); if (fresh && !fresh.cover_url) await ensureCover(DB, { ...fresh, cover_checked: null }); }
     return json({ ok: true, slug, status, notified });
   }
   const wipe = (slug) => [DB.prepare("DELETE FROM reviews WHERE slug=?").bind(slug), DB.prepare("DELETE FROM review_votes WHERE slug=?").bind(slug),
