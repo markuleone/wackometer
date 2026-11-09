@@ -94,7 +94,7 @@ async function storyCard() {
   x.textBaseline = "alphabetic"; x.fillStyle = "#1F2340"; x.font = `700 84px ${D}`;
   const wW = x.measureText("W").width, rest = "ackometer", rW = x.measureText(rest).width, sx = (W - wW - rW) / 2;
   x.save(); x.translate(sx + wW / 2, 170); x.rotate(-0.14); x.fillStyle = "#86A01A"; x.fillText("W", -wW / 2, 0); x.restore(); x.fillText(rest, sx + wW, 170);
-  x.textAlign = "center"; x.font = `700 34px ${D}`; x.fillStyle = "#646A8C"; x.fillText("LYRIC REVIEW", W / 2, 240);
+  x.textAlign = "center"; x.font = `700 34px ${D}`; x.fillStyle = "#646A8C"; x.fillText("SONG REVIEW", W / 2, 240);
   // cover
   const cs = 640, cx = (W - cs) / 2, cy = 300;
   x.save(); x.shadowColor = "rgba(31,35,64,.25)"; x.shadowBlur = 40; x.shadowOffsetY = 16; x.fillStyle = "#1F2340"; x.beginPath(); x.roundRect(cx, cy, cs, cs, 36); x.fill(); x.restore();

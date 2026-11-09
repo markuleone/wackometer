@@ -1,4 +1,4 @@
-// Lyric reviews: we weigh the writing on released songs and albums, and the crowd weighs in too.
+// Song reviews: we weigh released songs and albums (lyrics, hook, vocals, production, replay), and the crowd weighs in too.
 //   /reviews              list of live reviews (filters: ?f=wicked | songs | albums)
 //   /reviews/<slug>       one review, rendered here so search engines and link previews get the full page
 //   /badge/<slug>.svg     embeddable badge for artists ("Certified Wicked on Wackometer")
@@ -78,7 +78,7 @@ ${siteHeader(active, q)}
 <main id="main">
 ${body}
 </main>
-<footer><p class="flinks">Wackometer · <a href="/reviews">Lyric reviews</a> · <a href="/get-reviewed">Get reviewed</a> · <a href="/critics">Become a critic</a> · <a href="/rhymes/">Fresh rhymes</a> · <a href="/cliches/">Cliché fixer</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a></p>${DBV}</footer>
+<footer><p class="flinks">Wackometer · <a href="/reviews">Song reviews</a> · <a href="/get-reviewed">Get reviewed</a> · <a href="/critics">Become a critic</a> · <a href="/rhymes/">Fresh rhymes</a> · <a href="/cliches/">Cliché fixer</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a></p>${DBV}</footer>
 </div>
 <div class="modal" id="humanModal" hidden role="dialog" aria-labelledby="humanH"><div class="mbox"><div class="mch" id="humanChar"></div><h3 id="humanH">Quick check: are you a human?</h3><p class="tag">Keeps bots out of the votes. You only do this once a month.</p><div id="turnstileBox"></div><span class="hint" id="humanNote"></span></div></div>
 </body>
@@ -95,6 +95,15 @@ function gaugeSVG(score) {
   }
   const na = Math.PI + (Math.max(0, Math.min(100, score)) / 100) * Math.PI;
   return `<svg class="rv-gauge" viewBox="0 0 220 118" aria-hidden="true">${seg.join("")}<line x1="${cx}" y1="${cy}" x2="${(cx + (r - 18) * Math.cos(na)).toFixed(1)}" y2="${(cy + (r - 18) * Math.sin(na)).toFixed(1)}" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><circle cx="${cx}" cy="${cy}" r="10" fill="currentColor"/></svg>`;
+}
+// The song breakdown: each part scored 0-100 like the overall (0 = Wicked). The overall is set by the critic, not averaged.
+export const PARTS = [["s_lyrics", "Lyrics"], ["s_melody", "Melody & hook"], ["s_vocals", "Vocals & delivery"], ["s_production", "Production"], ["s_replay", "Replay value"]];
+function breakdownHTML(r) {
+  const rated = PARTS.filter(([k]) => r[k] !== null && r[k] !== undefined);
+  if (!rated.length) return "";
+  return `<section class="rv-break" aria-labelledby="brkH"><h2 id="brkH">The breakdown</h2><ul>${rated.map(([k, label]) => { const v = r[k], t = tierOf(v);
+    return `<li><span class="bk-l">${label}</span><span class="bk-bar" aria-hidden="true"><i style="--w:${Math.max(4, 100 - v)}%;--tc:${TC[t]}"></i></span><span class="bk-v">${pill(t, `${TIERS[t].n} ${v}`)}</span></li>`; }).join("")}</ul>
+<p class="hint">Each part is scored from 0 (Wicked) to 100 (Wack). The overall Wackometer score is the critic's call on the whole song, not an average.</p></section>`;
 }
 const pill = (t, label) => `<span class="rv-pill" style="--tc:${TC[t]};--to:${TEXT_ON[t]}">${esc(label)}</span>`;
 
@@ -121,7 +130,7 @@ function submitHTML(critics = [], picked = "", more = true) {
 <form id="subForm" class="sub-grid">
 <div class="sub-left">
 <h2 id="subH">Want your music weighed?</h2>
-<p>Send us a song or album. We listen, then email you written feedback on the lyrics within 7 days. If we love the writing, it also gets a public review page, a share card and a badge for your links.</p>
+<p>Send us a song or album. We listen, then email you written feedback on your song within 7 days: lyrics, hook, vocals and production. If we love it, it also gets a public review page, a share card and a badge for your links.</p>
 <label>Artist name<input name="artist" required maxlength="80" autocomplete="off"></label>
 <label>Link to the song or album<input name="link" type="url" required maxlength="300" placeholder="Spotify, SoundCloud, Apple Music, YouTube…"></label>
 <label>Your email <span class="hint">(your feedback goes here)</span><input name="email" type="email" required maxlength="120" autocomplete="email"></label>
@@ -154,18 +163,18 @@ export async function reviewsPage(req, env, path, ensureSchema) {
     if (q) { where += " AND (lower(artist) LIKE ? OR lower(title) LIKE ? OR lower(coalesce(genre,'')) LIKE ?)"; const like = "%" + q.toLowerCase().replace(/[%_]/g, "") + "%"; binds.push(like, like, like); }
     const list = (await DB.prepare(`SELECT * FROM reviews WHERE status='live'${where} ORDER BY published_at DESC LIMIT 120`).bind(...binds).all()).results;
     const heads = { wicked: ["Certified Wicked", "The best writing we've reviewed. Every one of these scored under 20 on the Wackometer."], videos: ["Music videos", "Videos for songs we've reviewed. Watch, read the review, then cast your vote."], songs: ["Song reviews", "Single songs, weighed from Wicked to Wack."], albums: ["Album reviews", "Full albums, weighed from Wicked to Wack."] };
-    const [h1, lead] = q ? [`Results for “${esc(q)}”`, `${list.length} review${list.length === 1 ? "" : "s"} match. Don't see the artist? Send them our way below.`] : heads[f] || ["How wack are their lyrics?", "We weigh the writing on new songs and albums, from Wicked to Wack. Mostly artists you haven't heard of yet. You get a vote too."];
+    const [h1, lead] = q ? [`Results for “${esc(q)}”`, `${list.length} review${list.length === 1 ? "" : "s"} match. Don't see the artist? Send them our way below.`] : heads[f] || ["Wicked or wack?", "Reviews of new songs and albums, from the lyrics to the hook to the production, scored from Wicked to Wack. Mostly artists you haven't heard of yet. You get a vote too."];
     const chip = (k, label) => `<a class="rchip${f === k ? " on" : ""}" href="/reviews${k ? "?f=" + k : ""}"${f === k ? ' aria-current="page"' : ""}>${label}</a>`;
     const body = `<article class="seoart rv-index">
-<p class="eyebrow">Lyric reviews</p>
+<p class="eyebrow">Song reviews</p>
 <h1>${h1}</h1>
 <p class="lead">${lead}</p>
 <nav class="rchips" aria-label="Filter reviews">${chip("", "All")}${chip("wicked", "✨ Certified Wicked")}${chip("videos", "🎬 Music videos")}${chip("songs", "Songs")}${chip("albums", "Albums")}</nav>
 ${list.length ? `<div class="rv-grid">${list.map(card).join("")}</div><div class="ad-slot" hidden></div>` : `<div class="warn"><b>${f || q ? "Nothing here yet." : "The first reviews drop soon."}</b><p>${f || q ? `<a href="/reviews">See all reviews</a>, or send us your music below.` : "Know an artist whose writing deserves more ears? Send them our way below."}</p></div>`}
 ${SUB}
 </article>`;
-    const ld = { "@context": "https://schema.org", "@type": "CollectionPage", name: "Wackometer lyric reviews", url: `${BASE}/reviews`, hasPart: list.slice(0, 30).map((r) => ({ "@type": "Review", url: `${BASE}/reviews/${r.slug}`, name: `${r.artist}: ${r.title}` })) };
-    return html(shell({ active: q ? "" : f === "wicked" ? "wicked" : f === "videos" ? "videos" : "reviews", q, noindex: !!q, path: "/reviews" + (f ? "?f=" + f : ""), title: q ? `“${q}” · Wackometer reviews` : f === "videos" ? "Music videos with lyric reviews · Wackometer" : f === "wicked" ? "Certified Wicked songs and albums · Wackometer reviews" : "Lyric reviews: new songs and albums, Wicked to Wack · Wackometer", desc: "Honest reviews of the songwriting on new songs and albums, scored from Wicked to Wack, with a crowd score you can vote on. Indie artists first.", body, ld, data: JSON.stringify({ index: true }) }));
+    const ld = { "@context": "https://schema.org", "@type": "CollectionPage", name: "Wackometer song reviews", url: `${BASE}/reviews`, hasPart: list.slice(0, 30).map((r) => ({ "@type": "Review", url: `${BASE}/reviews/${r.slug}`, name: `${r.artist}: ${r.title}` })) };
+    return html(shell({ active: q ? "" : f === "wicked" ? "wicked" : f === "videos" ? "videos" : "reviews", q, noindex: !!q, path: "/reviews" + (f ? "?f=" + f : ""), title: q ? `“${q}” · Wackometer reviews` : f === "videos" ? "Music videos with lyric reviews · Wackometer" : f === "wicked" ? "Certified Wicked songs and albums · Wackometer reviews" : "Song reviews: new music, Wicked to Wack · Wackometer", desc: "Honest reviews of new songs and albums (lyrics, hook, vocals, production) scored from Wicked to Wack, with a crowd score you can vote on. Indie artists first.", body, ld, data: JSON.stringify({ index: true }) }));
   }
 
   const slug = decodeURIComponent(path.slice("/reviews/".length)).toLowerCase();
@@ -184,7 +193,7 @@ ${SUB}
   const crowdLabel = crowd.n ? `${TIERS[crowd.tier].n} · ${crowd.avg}` : "No votes yet";
   const body = `${draft ? '<div class="warn"><b>Draft preview.</b><p>Only people with this link can see it. Publish it from <a href="/admin-reviews">the editor</a>.</p></div>' : ""}
 <article class="rv" data-slug="${esc(slug)}">
-<p class="eyebrow"><a href="/reviews">Lyric reviews</a> · ${r.kind === "album" ? "Album" : "Song"}${r.genre ? " · " + esc(r.genre) : ""}</p>
+<p class="eyebrow"><a href="/reviews">Song reviews</a> · ${r.kind === "album" ? "Album" : "Song"}${r.genre ? " · " + esc(r.genre) : ""}</p>
 <div class="rv-hero">
 <div class="rv-art">${r.cover_url ? `<img src="${esc(r.cover_url)}" alt="Cover art for ${esc(r.title)} by ${esc(r.artist)}" width="640" height="640">` : `<span class="rv-nocover" aria-hidden="true">♪</span>`}${certified(r) ? '<span class="rv-cert big">Certified Wicked</span>' : ""}</div>
 <div class="rv-head">
@@ -198,8 +207,9 @@ ${SUB}
 <p class="rv-verdict">“${esc(r.verdict)}”</p>
 </div>
 </div>
-<section class="rv-vote" aria-labelledby="voteH"><h2 id="voteH">Your call: how are the lyrics?</h2>
-<div class="rv-tiers" role="group" aria-label="Vote on the lyrics">${TIERS.map((T, i) => `<button type="button" class="rv-t" data-t="${i}" style="--tc:${TC[i]};--to:${TEXT_ON[i]}" aria-pressed="false">${esc(T.n)}</button>`).join("")}</div>
+${breakdownHTML(r)}
+<section class="rv-vote" aria-labelledby="voteH"><h2 id="voteH">Your call: how's the song?</h2>
+<div class="rv-tiers" role="group" aria-label="Vote on the song">${TIERS.map((T, i) => `<button type="button" class="rv-t" data-t="${i}" style="--tc:${TC[i]};--to:${TEXT_ON[i]}" aria-pressed="false">${esc(T.n)}</button>`).join("")}</div>
 <span class="hint" id="voteNote" role="status"></span></section>
 ${sp ? `<div class="rv-listen"><iframe title="Listen to ${esc(r.title)} on Spotify" src="${esc(sp.src)}" width="100%" height="${sp.type === "track" ? 152 : 352}" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" style="border:0;border-radius:14px"></iframe></div>` : ""}
 ${yt ? `<div class="rv-listen yt" id="watch"><iframe title="Watch ${esc(r.title)} on YouTube" src="https://www.youtube-nocookie.com/embed/${yt}" loading="lazy" allow="encrypted-media; picture-in-picture; fullscreen" style="border:0"></iframe></div>` : ""}
@@ -228,11 +238,11 @@ ${SUB}
 </article>`;
   const item = { "@type": r.kind === "album" ? "MusicAlbum" : "MusicRecording", name: r.title, byArtist: { "@type": "MusicGroup", name: r.artist, ...(artistUrl ? { url: artistUrl } : {}) }, ...(r.cover_url ? { image: r.cover_url } : {}), ...(r.genre ? { genre: r.genre } : {}) };
   if (crowd.n >= 5) item.aggregateRating = { "@type": "AggregateRating", ratingValue: 100 - crowd.avg, bestRating: 100, worstRating: 0, ratingCount: crowd.n };
-  const ld = [{ "@context": "https://schema.org", "@type": "Review", name: `${r.title} by ${r.artist}: lyric review`, reviewBody: r.verdict, datePublished: date.toISOString().slice(0, 10), author: { "@type": "Organization", name: "Wackometer", url: BASE }, publisher: { "@type": "Organization", name: "Wackometer", url: BASE },
+  const ld = [{ "@context": "https://schema.org", "@type": "Review", name: `${r.title} by ${r.artist}: review`, reviewBody: r.verdict, datePublished: date.toISOString().slice(0, 10), author: { "@type": "Organization", name: "Wackometer", url: BASE }, publisher: { "@type": "Organization", name: "Wackometer", url: BASE },
       reviewRating: { "@type": "Rating", ratingValue: 100 - r.score, bestRating: 100, worstRating: 0, ratingExplanation: `${tierName(r)} on the Wackometer (${r.score}/100, lower is better)` }, itemReviewed: item },
-    { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [{ "@type": "ListItem", position: 1, name: "Lyric reviews", item: `${BASE}/reviews` }, { "@type": "ListItem", position: 2, name: `${r.artist}: ${r.title}`, item: `${BASE}/reviews/${slug}` }] }];
-  const title = `${r.title} by ${r.artist}: lyric review (${tierName(r)}) · Wackometer`;
-  const desc = `${tierName(r)} (${r.score}/100). ${r.verdict} Read the review of the songwriting on ${r.artist}'s ${r.kind === "album" ? "album" : "song"} “${r.title}” and cast your vote.`.slice(0, 300);
+    { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [{ "@type": "ListItem", position: 1, name: "Song reviews", item: `${BASE}/reviews` }, { "@type": "ListItem", position: 2, name: `${r.artist}: ${r.title}`, item: `${BASE}/reviews/${slug}` }] }];
+  const title = `${r.title} by ${r.artist} review: ${tierName(r)} · Wackometer`;
+  const desc = `${tierName(r)} (${r.score}/100). ${r.verdict} Read the review of ${r.artist}'s ${r.kind === "album" ? "album" : "song"} “${r.title}” and cast your vote.`.slice(0, 300);
   return html(shell({ active: "reviews", path: `/reviews/${slug}`, title, desc, image: r.cover_url || "", body, ld: draft ? null : ld, noindex: draft, data: JSON.stringify({ slug, artist: r.artist, title: r.title, kind: r.kind, score: r.score, tier: t, cert: certified(r), verdict: r.verdict, cover: !!r.cover_url, ig }) }), 200, draft ? "no-store" : "no-cache");
 }
 
@@ -282,7 +292,7 @@ export async function frontPage(req, env, ensureSchema) {
 <a class="btn bile" href="/reviews/${esc(r.slug)}">Read the review</a></div></article>`;
   };
   const body = `<div class="front">
-<div class="fintro"><h1>How wack are <em>their</em> lyrics?</h1><p>Reviews of the songwriting on new music, scored from Wicked to Wack. We weigh in, then you do.</p></div>
+<div class="fintro"><h1>Wicked or <em>wack</em>?</h1><p>Reviews of new music, from the lyrics to the hook to the production, scored from Wicked to Wack. We weigh in, then you do.</p></div>
 ${hero.length ? `<section class="fhero" aria-roledescription="carousel" aria-label="Featured reviews"><div class="fslides" id="fSlides">${hero.map(slide).join("")}</div>${hero.length > 1 ? `<div class="fdots" role="group" aria-label="Choose a featured review">${hero.map((r, i) => `<button type="button" data-i="${i}" aria-label="Show ${esc(r.title)}"${i ? "" : ' aria-current="true"'}></button>`).join("")}</div>` : ""}</section>`
       : `<section class="fempty"><b>The first reviews drop soon.</b><p>Know an artist whose writing deserves more ears? <a href="#submit">Send them our way</a>.</p></section>`}
 ${all.length ? row("rNew", "Latest reviews", "/reviews", all.slice(0, 12).map((r) => rowCard(r, crowd)).join("")) : ""}
@@ -302,7 +312,7 @@ ${SUB}
     { "@context": "https://schema.org", "@type": "Organization", name: "Wackometer", url: BASE + "/", logo: BASE + "/favicon.svg" }];
   // Old links to the tools (wackometer.com/#weigh etc.) go to their new home before anything renders.
   const head = `<script>if(/^#(${OLD_TOOL_HASH})$/.test(location.hash)||/[?&](paid|signin|unsubscribed|deleted)=/.test(location.search))location.replace("/write"+location.search+location.hash)</script>`;
-  return html(shell({ path: "/", title: "Wackometer · Lyric reviews of new music, from Wicked to Wack", desc: "Honest reviews of the songwriting on new songs, albums and music videos, scored from Wicked to Wack, with a crowd score you vote on. Plus free tools to weigh your own lyrics.", image: "", body, ld, head, data: JSON.stringify({ front: true }) }), 200, "no-cache");
+  return html(shell({ path: "/", title: "Wackometer · Song reviews of new music, from Wicked to Wack", desc: "Honest reviews of new songs, albums and music videos (lyrics, hook, vocals, production) scored from Wicked to Wack, with a crowd score you vote on. Plus free tools to weigh your own lyrics.", image: "", body, ld, head, data: JSON.stringify({ front: true }) }), 200, "no-cache");
 }
 
 /* ---------- artists: leaderboard (/artists) and one page per artist (/artists/<slug>) ---------- */
@@ -341,7 +351,7 @@ export async function artistsPage(req, env, path, ensureSchema) {
   if (path === "/artists") {
     const body = `<article class="seoart lb">
 <p class="eyebrow">Artist leaderboard</p>
-<h1>Who writes the best lyrics?</h1>
+<h1>Who makes the best songs?</h1>
 <p class="lead">Every song we weigh counts toward its artist. Their score is the average of all their songs, so <b>lower is better</b>: 0 is as Wicked as it gets, 100 is all-out Wack.</p>
 ${list.length ? `<ol class="lb-list">${leaderRows(list)}</ol>` : `<div class="warn"><b>The leaderboard fills up as reviews go live.</b><p><a href="/reviews">Read the reviews</a> so far.</p></div>`}
 <div class="ad-slot" hidden></div>
@@ -349,7 +359,7 @@ ${list.length ? `<ol class="lb-list">${leaderRows(list)}</ol>` : `<div class="wa
 ${SUB}
 </article>`;
     const ld = { "@context": "https://schema.org", "@type": "ItemList", name: "Wackometer artist leaderboard", itemListOrder: "https://schema.org/ItemListOrderAscending", numberOfItems: list.length, itemListElement: list.slice(0, 100).map((a, i) => ({ "@type": "ListItem", position: i + 1, url: `${BASE}/artists/${a.slug}`, name: a.name })) };
-    return html(shell({ active: "artists", path: "/artists", title: "Artist leaderboard: who writes the best lyrics? · Wackometer", desc: "Artists ranked by the average Wackometer score of their reviewed songs, from Wicked to Wack. Lower is better.", body, ld }));
+    return html(shell({ active: "artists", path: "/artists", title: "Artist leaderboard: who makes the best songs? · Wackometer", desc: "Artists ranked by the average Wackometer score of their reviewed songs, from Wicked to Wack. Lower is better.", body, ld }));
   }
   const slug = decodeURIComponent(path.slice("/artists/".length)).toLowerCase();
   const a = list.find((x) => x.slug === slug);
@@ -368,7 +378,7 @@ ${SUB}
 <p><a href="/artists">See the full leaderboard →</a></p>
 </article>`;
   const ld = { "@context": "https://schema.org", "@type": "MusicGroup", name: a.name, url: `${BASE}/artists/${a.slug}`, ...(ext ? { sameAs: [ext] } : {}), ...(a.cover ? { image: a.cover } : {}) };
-  return html(shell({ active: "artists", path: `/artists/${a.slug}`, title: `${a.name}: lyric reviews and score (${t === 0 ? "Wicked" : TIERS[t].n}, ${a.avg}/100) · Wackometer`, desc: `${a.name} averages ${a.avg}/100 on the Wackometer across ${a.n} reviewed song${a.n === 1 ? "" : "s"}, #${a.rank} on the artist leaderboard. Read every review.`, image: a.cover, body, ld, data: JSON.stringify({ artist: a.slug }) }));
+  return html(shell({ active: "artists", path: `/artists/${a.slug}`, title: `${a.name}: song reviews and score (${t === 0 ? "Wicked" : TIERS[t].n}, ${a.avg}/100) · Wackometer`, desc: `${a.name} averages ${a.avg}/100 on the Wackometer across ${a.n} reviewed song${a.n === 1 ? "" : "s"}, #${a.rank} on the artist leaderboard. Read every review.`, image: a.cover, body, ld, data: JSON.stringify({ artist: a.slug }) }));
 }
 
 /* ---------- critics (/critics, /critics/<slug>) and the Get reviewed page (/get-reviewed) ---------- */
@@ -395,7 +405,7 @@ const APPLY = `<section class="rv-submit apply" id="apply" aria-labelledby="appl
 <form id="applyForm" class="sub-grid">
 <div class="sub-left">
 <h2 id="applyH">Review for Wackometer</h2>
-<p>Write songs, rap, produce, or just can't stop reading lyric sheets? Apply to be a Wackometer critic. Critics review songs that come in, write honest feedback, and get credit on every review they write.</p>
+<p>Write songs, rap, produce, or just have ears people trust? Apply to be a Wackometer critic. Critics review songs that come in, write honest feedback, and get credit on every review they write.</p>
 <label>Your name<input name="name" required maxlength="80" autocomplete="name"></label>
 <label>Your email<input name="email" type="email" required maxlength="120" autocomplete="email"></label>
 <label>Where can we hear or read your stuff? <span class="hint">(Instagram, SoundCloud, Spotify, a site)</span><input name="link" maxlength="300" placeholder="@handle or a link"></label>
@@ -412,39 +422,39 @@ export async function getReviewedPage(req, env, ensureSchema) {
   const DB = env.DB, url = new URL(req.url), critics = await activeCritics(DB), counts = await criticCounts(DB);
   const picked = critics.some((c) => c.slug === url.searchParams.get("critic")) ? url.searchParams.get("critic") : "";
   const perks = [
-    ["🎧", "A guaranteed listen", "A real person plays your song start to finish and reads every word. No bots, no skimming."],
-    ["✍️", "Written feedback in 7 days", "What lands, what's wack and what to fix, in plain words, straight to your inbox."],
-    ["📄", "Your own review page", "If the writing makes the cut, it gets a permanent page with both scores, your player and your links, built to show up on Google."],
+    ["🎧", "A guaranteed listen", "A real person plays your song start to finish: the words, the hook, the vocals, the mix. No bots, no skimming."],
+    ["✍️", "Written feedback in 7 days", "What lands, what's wack and what to fix in your lyrics, hook, vocals and production, straight to your inbox."],
+    ["📄", "Your own review page", "If the song makes the cut, it gets a permanent page with both scores, your player and your links, built to show up on Google."],
     ["🏆", "A spot on the leaderboard", "Every reviewed song counts toward your artist page and your rank on the Top artists board."],
     ["✨", "A badge and a story card", "Certified Wicked? Get a badge for your website and link-in-bio and a ready-made card for your story."],
-    ["👥", "A crowd score", "Listeners vote on your lyrics too, so you see how the critic and the crowd compare."],
+    ["👥", "A crowd score", "Listeners vote on your song too, so you see how the critic and the crowd compare."],
   ];
   const body = `<article class="seoart gr">
 <div class="gr-hero">
 <p class="eyebrow">Get reviewed</p>
-<h1>Get your lyrics weighed by people who <em>write</em>.</h1>
-<p class="lead">Every song is reviewed by a Wackometer critic: songwriters and artists who read every word. <b>$10</b> gets you a guaranteed listen and real feedback on your writing.</p>
+<h1>Get your song weighed by people who <em>make</em> music.</h1>
+<p class="lead">Every song is reviewed by a Wackometer critic: songwriters, rappers and producers who hear everything. <b>$10</b> gets you a guaranteed listen and real feedback on your song.</p>
 <div class="row"><a class="btn bile" href="#submit">Send my song, $10</a><a class="btn" href="#apply">Review for us</a></div>
 </div>
 <section aria-labelledby="perksH"><h2 id="perksH">What you get</h2>
 <div class="gr-perks">${perks.map(([i, t, d], k) => `<div class="gr-perk${k > 1 ? " maybe" : ""}"><span class="gr-i" aria-hidden="true">${i}</span><b>${t}</b><p>${d}</p></div>`).join("")}</div>
-<p class="hint">The first two come with every submission. The rest happen when the writing earns them. Paying gets you heard, not a better score.</p></section>
+<p class="hint">The first two come with every submission. The rest happen when the song earns them. Paying gets you heard, not a better score.</p></section>
 <section aria-labelledby="critH"><h2 id="critH">Who reviews it</h2>
-<div class="gr-who"><span class="gr-i" aria-hidden="true">🎧</span><p>A <b>Wackometer critic</b>: a songwriter, rapper or producer whose taste we trust. They play your song start to finish, read every word, and score the writing from Wicked to Wack. Their name goes on any review they publish.</p></div></section>
+<div class="gr-who"><span class="gr-i" aria-hidden="true">🎧</span><p>A <b>Wackometer critic</b>: a songwriter, rapper or producer whose taste we trust. They play your song start to finish and score it from Wicked to Wack, with a breakdown for the lyrics, hook, vocals, production and replay value. Their name goes on any review they publish.</p></div></section>
 <section aria-labelledby="howH"><h2 id="howH">How it works</h2>
-<ol class="gr-steps"><li><b>Send it.</b> Your link and your email. Add a note if there's something we should know.</li><li><b>Pay $10.</b> Right here on the page: card, Apple Pay or Google Pay.</li><li><b>They listen.</b> Your critic reads every word and scores the writing from Wicked to Wack.</li><li><b>Feedback lands.</b> Within 7 days. If it's Wicked, your review page goes live and you get your badge.</li></ol></section>
+<ol class="gr-steps"><li><b>Send it.</b> Your link and your email. Add a note if there's something we should know.</li><li><b>Pay $10.</b> Right here on the page: card, Apple Pay or Google Pay.</li><li><b>They listen.</b> Your critic scores the song from Wicked to Wack, with a breakdown for each part.</li><li><b>Feedback lands.</b> Within 7 days. If it's Wicked, your review page goes live and you get your badge.</li></ol></section>
 ${submitHTML([], "", false)}
 <section aria-labelledby="faqH" class="gr-faq"><h2 id="faqH">Questions</h2>
 <details><summary>Does paying get me a better score?</summary><p>No. Paying gets you a guaranteed listen and written feedback. Scores are the critic's honest take, and reviews that came in through paid submissions say so on the page.</p></details>
-<details><summary>What if my song doesn't get a review page?</summary><p>You still get written feedback on your lyrics within 7 days. Public pages are for writing the critic loves, which is what makes the badge worth having.</p></details>
+<details><summary>What if my song doesn't get a review page?</summary><p>You still get written feedback on your song within 7 days. Public pages are for songs the critic loves, which is what makes the badge worth having.</p></details>
 <details><summary>Who are the critics?</summary><p>Songwriters, rappers and producers we trust to be honest and specific. Want in? <a href="#apply">Apply below</a>.</p></details>
-<details><summary>What kind of music?</summary><p>Any genre, as long as there are words. Songs, EPs and albums are all welcome. For an album, tell us your favorite tracks in the notes.</p></details>
+<details><summary>What kind of music?</summary><p>Any genre. Songs, EPs and albums are all welcome, and instrumentals too (they just skip the lyrics score). For an album, tell us your favorite tracks in the notes.</p></details>
 <details><summary>Something else?</summary><p>Email <a href="mailto:hello@wackometer.com">hello@wackometer.com</a>.</p></details>
 </section>
 ${APPLY}
 </article>`;
-  const ld = { "@context": "https://schema.org", "@type": "Service", name: "Get your lyrics reviewed", provider: { "@type": "Organization", name: "Wackometer", url: BASE }, url: `${BASE}/get-reviewed`, description: "A guaranteed listen and written feedback on your song lyrics within 7 days from a Wackometer critic.", offers: { "@type": "Offer", price: "10.00", priceCurrency: "USD" } };
-  return html(shell({ active: "submit", path: "/get-reviewed", title: "Get your lyrics reviewed · $10 · Wackometer", desc: "Reviewed by songwriters who read every word. $10 gets your song a guaranteed listen and written feedback on the lyrics within 7 days, plus a shot at a review page, the leaderboard and a Certified Wicked badge.", body, ld, data: JSON.stringify({ getReviewed: true }) }));
+  const ld = { "@context": "https://schema.org", "@type": "Service", name: "Get your song reviewed", provider: { "@type": "Organization", name: "Wackometer", url: BASE }, url: `${BASE}/get-reviewed`, description: "A guaranteed listen and written feedback on your song within 7 days from a Wackometer critic.", offers: { "@type": "Offer", price: "10.00", priceCurrency: "USD" } };
+  return html(shell({ active: "submit", path: "/get-reviewed", title: "Get your song reviewed · $10 · Wackometer", desc: "Reviewed by songwriters, rappers and producers. $10 gets your song a guaranteed listen and written feedback within 7 days, plus a shot at a review page, the leaderboard and a Certified Wicked badge.", body, ld, data: JSON.stringify({ getReviewed: true }) }));
 }
 
 export async function criticsPage(req, env, path, ensureSchema) {
@@ -452,9 +462,9 @@ export async function criticsPage(req, env, path, ensureSchema) {
   const DB = env.DB, critics = await activeCritics(DB), counts = await criticCounts(DB);
   if (path === "/critics") {
     const body = `<article class="seoart gr"><div class="gr-hero"><p class="eyebrow">Critics</p><h1>Become a Wackometer <em>critic</em>.</h1>
-<p class="lead">Every review on Wackometer is written by a real person with an ear for words. If that's you, review songs from new artists, write honest feedback, and get your name on every review you publish.</p></div>
+<p class="lead">Every review on Wackometer is written by a real person who makes or lives for music. If that's you, review songs from new artists, write honest feedback, and get your name on every review you publish.</p></div>
 ${APPLY}</article>`;
-    return html(shell({ active: "submit", path: "/critics", title: "Become a Wackometer critic: review song lyrics", desc: "Songwriter, rapper or producer with an ear for lyrics? Apply to review songs from new artists on Wackometer and get credit on every review.", body, data: JSON.stringify({ apply: true }) }));
+    return html(shell({ active: "submit", path: "/critics", title: "Become a Wackometer critic: review new songs", desc: "Songwriter, rapper or producer with ears people trust? Apply to review songs from new artists on Wackometer and get credit on every review.", body, data: JSON.stringify({ apply: true }) }));
   }
   const slug = decodeURIComponent(path.slice("/critics/".length)).toLowerCase();
   const c = critics.find((x) => x.slug === slug);
@@ -473,11 +483,11 @@ ${c.bio ? bodyHTML(c.bio) : ""}
 ${reviews.length ? `<section class="rv-more" aria-labelledby="crRevH"><h2 id="crRevH">Reviews by ${esc(c.name)}</h2><div class="rv-grid">${reviews.map(card).join("")}</div></section>` : ""}
 </article>`;
   const ld = { "@context": "https://schema.org", "@type": "Person", name: c.name, url: `${BASE}/critics/${c.slug}`, ...(c.tagline ? { jobTitle: c.tagline } : {}), ...(ig || link ? { sameAs: [link, ig ? `https://instagram.com/${ig}` : ""].filter(Boolean) } : {}) };
-  return html(shell({ active: "submit", path: `/critics/${c.slug}`, title: `${c.name}: lyric reviews · Wackometer critic`, desc: `${c.name}${c.tagline ? `, ${c.tagline},` : ""} reviews lyrics on Wackometer. Read their reviews.`, image: safeUrl(c.photo_url), body, ld }));
+  return html(shell({ active: "submit", path: `/critics/${c.slug}`, title: `${c.name}: song reviews · Wackometer critic`, desc: `${c.name}${c.tagline ? `, ${c.tagline},` : ""} reviews songs on Wackometer. Read their reviews.`, image: safeUrl(c.photo_url), body, ld }));
 }
 
 function notFound() {
-  return shell({ path: "/reviews", title: "Review not found · Wackometer", desc: "That review isn't here.", noindex: true, body: `<article class="seoart"><h1>That review isn't here.</h1><p class="lead">It may have moved or never existed. <a href="/reviews">See all lyric reviews</a>.</p></article>` });
+  return shell({ path: "/reviews", title: "Review not found · Wackometer", desc: "That review isn't here.", noindex: true, body: `<article class="seoart"><h1>That review isn't here.</h1><p class="lead">It may have moved or never existed. <a href="/reviews">See all song reviews</a>.</p></article>` });
 }
 
 /* ---------- badge ---------- */
@@ -623,13 +633,16 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
     const vals = [f("kind") === "album" ? "album" : "song", artist, title, f("genre", 60) || null, f("released", 40) || null, score, verdict, f("body", 12000) || null, best || null, f("standouts", 600) || null,
       safeUrl(f("cover_url", 500)) || null, safeUrl(f("spotify_url", 300)) || null, safeUrl(f("youtube_url", 300)) || null, safeUrl(f("apple_url", 300)) || null, safeUrl(f("artist_url", 300)) || null, igHandle(f("artist_ig", 80)) || null, f("reviewer", 60) || null, status, body.featured ? 1 : 0, body.submitted ? 1 : 0];
     const published = status === "live" ? (prev && prev.published_at) || t : (prev && prev.published_at) || null;
+    const parts = PARTS.map(([k]) => { const v = body[k]; if (v === "" || v === null || v === undefined) return null; const n = Math.round(Number(v)); return n >= 0 && n <= 100 ? n : null; });
     if (prev) {
       await DB.batch([
         DB.prepare("UPDATE reviews SET slug=?,kind=?,artist=?,title=?,genre=?,released=?,score=?,verdict=?,body=?,best_line=?,standouts=?,cover_url=?,spotify_url=?,youtube_url=?,apple_url=?,artist_url=?,artist_ig=?,reviewer=?,status=?,featured=?,submitted=?,updated_at=?,published_at=? WHERE slug=?").bind(slug, ...vals, t, published, prev.slug),
         DB.prepare("UPDATE review_votes SET slug=? WHERE slug=?").bind(slug, prev.slug),
+        DB.prepare(`UPDATE reviews SET ${PARTS.map(([k]) => k + "=?").join(",")} WHERE slug=?`).bind(...parts, slug),
       ]);
     } else {
       await DB.prepare("INSERT INTO reviews (slug,kind,artist,title,genre,released,score,verdict,body,best_line,standouts,cover_url,spotify_url,youtube_url,apple_url,artist_url,artist_ig,reviewer,status,featured,submitted,created_at,updated_at,published_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(slug, ...vals, t, t, published).run();
+      await DB.prepare(`UPDATE reviews SET ${PARTS.map(([k]) => k + "=?").join(",")} WHERE slug=?`).bind(...parts, slug).run();
     }
     return json({ ok: true, slug, status });
   }

@@ -1023,3 +1023,12 @@ a.rchip:hover{border-color:var(--ink)}
 .gr-who{display:flex;gap:14px;align-items:flex-start;background:var(--surface);border:2px solid var(--line);border-radius:20px;padding:16px 18px}.gr-who p{margin:0;max-width:80ch;line-height:1.6}
 .rv-submit.apply .sub-grid{grid-template-columns:1fr 1fr}
 @media (max-width:760px){.rv-submit.apply .sub-grid{grid-template-columns:1fr}}
+/* ===== song breakdown on reviews ===== */
+.rv-break{background:var(--surface);border:2px solid var(--line);border-radius:20px;padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+.rv-break h2{margin:0;font-size:20px}.rv-break>p{margin:0}
+.rv-break ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.rv-break li{display:grid;grid-template-columns:170px 1fr 150px;gap:14px;align-items:center}
+.bk-l{font-family:var(--display);font-weight:700}
+.bk-bar{height:14px;border-radius:999px;background:var(--line);overflow:hidden}.bk-bar i{display:block;height:100%;width:var(--w);background:var(--tc);border-radius:999px}
+.bk-v{text-align:right}
+@media (max-width:760px){.rv-break li{grid-template-columns:1fr auto;gap:4px 10px}.bk-bar{grid-column:1/-1;grid-row:2}}

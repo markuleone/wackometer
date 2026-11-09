@@ -1,5 +1,5 @@
 // One header for every page outside the writing tools: the front page, reviews, and the rhyme/cliché pages.
-// Reviews on the left, the two other things we do (weigh your lyrics, the plugin) as buttons on the right.
+// Song reviews on the left, the writing tools ("Weigh my lyrics") as a button on the right.
 // Used by the worker and by scripts/seo-pages.mjs at build time, so it must stay plain JS with no imports.
 export function siteHeader(active = "", q = "") {
   const a = (href, key, label) => `<a href="${href}"${active === key ? ' aria-current="page"' : ""}>${label}</a>`;

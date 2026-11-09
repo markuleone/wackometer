@@ -279,3 +279,5 @@ CREATE TABLE IF NOT EXISTS critic_applications (
   status      TEXT NOT NULL DEFAULT 'new',     -- new | accepted | passed
   created_at  INTEGER NOT NULL
 );
+
+-- full-song breakdown on reviews (migration): s_lyrics, s_melody, s_vocals, s_production, s_replay INTEGER, 0 = Wicked .. 100 = Wack, null = not rated

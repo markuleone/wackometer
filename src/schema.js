@@ -62,6 +62,12 @@ export const MIGRATIONS = [
   // critics: the people who write reviews; artists can pick one when they submit
   "CREATE TABLE IF NOT EXISTS critics ( slug TEXT PRIMARY KEY, name TEXT NOT NULL, tagline TEXT, bio TEXT, photo_url TEXT, genres TEXT, ig TEXT, link TEXT, active INTEGER NOT NULL DEFAULT 1, sort INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL )",
   "ALTER TABLE review_requests ADD COLUMN critic TEXT",
+  // full-song breakdown (0 = Wicked .. 100 = Wack); null = not rated
+  "ALTER TABLE reviews ADD COLUMN s_lyrics INTEGER",
+  "ALTER TABLE reviews ADD COLUMN s_melody INTEGER",
+  "ALTER TABLE reviews ADD COLUMN s_vocals INTEGER",
+  "ALTER TABLE reviews ADD COLUMN s_production INTEGER",
+  "ALTER TABLE reviews ADD COLUMN s_replay INTEGER",
   // First critics (Nov 2026). Runs once: the settings flag stops it from re-adding anyone removed later in the editor.
   "INSERT OR IGNORE INTO critics (slug,name,tagline,active,sort,created_at) SELECT 'aaron-pino','Aaron Pino',NULL,1,1,1762650000000 WHERE NOT EXISTS (SELECT 1 FROM settings WHERE k='seed_critics_1')",
   "INSERT OR IGNORE INTO critics (slug,name,tagline,active,sort,created_at) SELECT 'caleb-selga','Caleb Selga',NULL,1,2,1762650000000 WHERE NOT EXISTS (SELECT 1 FROM settings WHERE k='seed_critics_1')",

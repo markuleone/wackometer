@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Review editor · Wackometer</title><meta name="robots" content="noindex,nofollow"><link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/css/site.2274596f50.css">
+<link rel="stylesheet" href="/css/site.906c4f6b36.css">
 <style>
 body{margin:0}[hidden]{display:none!important}
 .doc{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
@@ -13,6 +13,8 @@ body{margin:0}[hidden]{display:none!important}
 .ed input,.ed select,.ed textarea{width:100%;background:var(--bg);border:2px solid var(--line);border-radius:12px;padding:9px 11px;font-weight:400;min-height:0}
 .ed textarea{min-height:90px}#fBody{min-height:260px;line-height:1.6}
 .ed .hint{font-weight:400}
+.brk{border:2px solid var(--line);border-radius:14px;padding:10px 12px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}.brk legend{font-weight:700;padding:0 6px}.brk label{font-size:13px}
+@media (max-width:760px){.brk{grid-template-columns:1fr 1fr}}
 .ed label.chk{flex-direction:row;align-items:center;gap:8px;align-self:end}.ed label.chk input{width:auto;accent-color:var(--bile-deep)}
 .scoreRow{display:flex;align-items:center;gap:14px}.scoreRow input[type=range]{flex:1;accent-color:var(--bile-deep);padding:0;border:0;background:none}
 #scoreOut{font-family:var(--display);font-weight:700;border-radius:999px;padding:4px 14px;min-width:150px;text-align:center}
@@ -42,8 +44,15 @@ body{margin:0}[hidden]{display:none!important}
 <label>Genre <span class="hint">(optional)</span><input id="fGenre" maxlength="60" placeholder="indie pop, trap, R&amp;B…"></label>
 <label>Released <span class="hint">(optional)</span><input id="fReleased" maxlength="40" placeholder="Oct 2026"></label>
 <label>Reviewed by <span class="hint">(pick a critic, or blank = Wackometer)</span><input id="fReviewer" maxlength="60" list="criticNames"><datalist id="criticNames"></datalist></label>
-<label class="full">Score <span class="hint">0 is Wicked, 100 is Wack. Under 20 earns “Certified Wicked”.</span>
+<label class="full">Overall score <span class="hint">The whole song, your call. 0 is Wicked, 100 is Wack. Under 20 earns “Certified Wicked”.</span>
 <span class="scoreRow"><input id="fScore" type="range" min="0" max="100" value="15"><span id="scoreOut"></span></span></label>
+<fieldset class="full brk"><legend>The breakdown <span class="hint">0 = Wicked, 100 = Wack. Leave a part blank to skip it (e.g. lyrics on an instrumental). The overall above is your call, not an average.</span></legend>
+<label>Lyrics<input type="number" min="0" max="100" id="fS_lyrics" placeholder="—"></label>
+<label>Melody &amp; hook<input type="number" min="0" max="100" id="fS_melody" placeholder="—"></label>
+<label>Vocals &amp; delivery<input type="number" min="0" max="100" id="fS_vocals" placeholder="—"></label>
+<label>Production<input type="number" min="0" max="100" id="fS_production" placeholder="—"></label>
+<label>Replay value<input type="number" min="0" max="100" id="fS_replay" placeholder="—"></label>
+</fieldset>
 <label class="full">One-line verdict <span class="hint">Shows on cards, link previews and the share card. One sentence.</span><input id="fVerdict" maxlength="220" required placeholder="Every verse is a photograph. The hook is the only thing you've heard before."></label>
 <label class="full">The review <span class="hint">Blank line = new paragraph. Start a line with “&gt; ” for a quote. **bold** works.</span><textarea id="fBody" maxlength="12000"></textarea></label>
 <label class="full">Best line <span class="hint">One short lyric quote, 25 words max. Never paste full lyrics (copyright).</span><input id="fBest" maxlength="160"></label>
@@ -96,7 +105,7 @@ async function api(path, body) {
 const r = await fetch(path, body ? { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : {});
 const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || "Something went wrong."); return d;
 }
-const F = { spotify_url: "fSpotify", artist: "fArtist", title: "fTitle", kind: "fKind", genre: "fGenre", released: "fReleased", reviewer: "fReviewer", score: "fScore", verdict: "fVerdict", body: "fBody", best_line: "fBest", standouts: "fStand", artist_ig: "fIg", artist_url: "fArtistUrl", apple_url: "fApple", youtube_url: "fYoutube", cover_url: "fCover", slug: "fSlug", status: "fStatus" };
+const F = { spotify_url: "fSpotify", artist: "fArtist", title: "fTitle", kind: "fKind", genre: "fGenre", released: "fReleased", reviewer: "fReviewer", s_lyrics: "fS_lyrics", s_melody: "fS_melody", s_vocals: "fS_vocals", s_production: "fS_production", s_replay: "fS_replay", score: "fScore", verdict: "fVerdict", body: "fBody", best_line: "fBest", standouts: "fStand", artist_ig: "fIg", artist_url: "fArtistUrl", apple_url: "fApple", youtube_url: "fYoutube", cover_url: "fCover", slug: "fSlug", status: "fStatus" };
 let DATA = { reviews: [], requests: [] }, original = null, startedFrom = null;
 function showScore() {
 const s = Number($("fScore").value), t = tierOf(s), o = $("scoreOut");
