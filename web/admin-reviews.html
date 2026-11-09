@@ -44,14 +44,66 @@ body{margin:0}[hidden]{display:none!important}
 .tell{background:var(--bile-wash);border:2px solid var(--ink);border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}.tell textarea{width:100%;min-height:120px;border:2px solid var(--line);border-radius:12px;padding:8px 10px;background:var(--surface);font:inherit}
 .ogbox{margin:0;display:flex;flex-direction:column;gap:6px}.ogbox img{width:100%;max-width:600px;border:2px solid var(--ink);border-radius:14px}
 #meImg{width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid var(--ink)}
+.desk{display:grid;grid-template-columns:minmax(300px,390px) minmax(0,1fr);gap:18px;align-items:start;scroll-margin-top:12px}
+.dlist{position:sticky;top:12px;max-height:calc(100vh - 24px);display:flex;flex-direction:column;gap:8px;background:var(--surface);border:2px solid var(--ink);box-shadow:0 5px 0 var(--ink);border-radius:22px;padding:12px;min-height:0}
+.dtabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:#F2F3F9;border-radius:14px;padding:4px}
+.dtabs button{border:0;background:none;border-radius:10px;padding:8px 4px;font-family:var(--display);font-weight:700;font-size:14px;cursor:pointer;color:var(--muted)}
+.dtabs button[aria-selected="true"]{background:#fff;color:var(--ink);box-shadow:0 1px 0 var(--line),0 2px 6px -3px rgba(31,35,64,.3)}
+.dtabs span{font-family:var(--body);font-weight:600;font-size:12px;color:var(--muted)}
+.dtools{display:flex;gap:6px}.dtools input{flex:1;min-width:0;border:2px solid var(--line);border-radius:12px;padding:7px 10px;font:inherit;font-size:14px}
+.btn.sm{padding:6px 11px;font-size:13px}
+.bulk{display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-height:32px}
+.selall{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;margin-right:auto}
+.bulk-acts{display:flex;flex-wrap:wrap;gap:4px}.bulk-acts button[disabled]{opacity:.45;cursor:default}
+.bulk-acts .danger{color:#B4401A}
+#bulkNote{margin:0;font-size:13px}#bulkNote:empty{display:none}
+.ditems{overflow-y:auto;min-height:120px;display:flex;flex-direction:column;gap:2px;margin:0 -4px;padding:0 4px}
+.dgrp{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:10px 4px 2px;font-weight:700}
+.di{display:grid;grid-template-columns:22px 40px minmax(0,1fr);gap:8px;align-items:center;padding:6px 6px;border-radius:12px;cursor:pointer;border:2px solid transparent}
+.di:hover{background:#F6F7FC}.di.on{background:var(--bile-wash);border-color:var(--bile)}
+.di input{width:17px;height:17px;accent-color:var(--bile-deep);margin:0;cursor:pointer}
+.di img,.di .ph{width:40px;height:40px;border-radius:8px;object-fit:cover;background:var(--bile-wash);display:grid;place-items:center;font-size:16px}
+.di .t{min-width:0;display:flex;flex-direction:column}
+.di .t b{font-family:var(--display);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.di .t small{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.di .pd{font-size:11px;font-weight:700;background:var(--bile);color:#1D2013;border-radius:999px;padding:0 6px;margin-left:4px}
+.dfoot{display:flex;flex-direction:column;gap:6px}.dfoot:empty{display:none}
+.dedit{min-width:0;display:flex;flex-direction:column;gap:10px}
+.dedit-top{display:flex;align-items:center;gap:12px}.dedit-top b{font-family:var(--display);font-size:20px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#backBtn{display:none}
+@media (max-width:900px){
+  .desk{grid-template-columns:1fr}
+  .dlist{position:static;max-height:none}.ditems{max-height:none;overflow:visible}
+  .desk:not(.editing) .dedit{display:none}
+  .desk.editing .dlist{display:none}
+  #backBtn{display:inline-flex}
+}
 </style>
 </head><body><div class="wrap seo">
 <!--SITE_HEADER-->
 <main id="main"><div class="doc">
 <div class="ed-hero"><p class="eyebrow" id="heroEye">Admin</p><h1 id="heroH">Review <em>editor</em></h1><p class="lead" id="heroP">Write reviews, work the queue, and manage critics.</p>
-<nav class="rchips" aria-label="Jump to"><a class="rchip" href="#ed">✍️ Write a review</a><a class="rchip" href="#queueH">📥 To review</a><a class="rchip admin-only" href="#critH">🎧 Critics</a><a class="rchip admin-only" href="#appH">📝 Applications</a><a class="rchip admin-only" href="#listH">💌 Email list</a><a class="rchip admin-only" href="#wlH">📅 Wicked lists</a><a class="rchip admin-only" href="#claimH">🎤 Artist claims</a><a class="rchip admin-only" href="#cmH">💬 Comments</a><a class="rchip critic-only" href="#meH" hidden>🙋 My critic page</a><a class="rchip" href="#allH">📚 All reviews</a></nav></div>
+<nav class="rchips" aria-label="Jump to"><a class="rchip" href="#desk" data-go="queue">📥 Queue</a><a class="rchip" href="#desk" data-go="drafts">📝 Drafts</a><a class="rchip" href="#desk" data-go="live">✅ Live</a><a class="rchip admin-only" href="#critH">🎧 Critics</a><a class="rchip admin-only" href="#appH">📝 Applications</a><a class="rchip admin-only" href="#listH">💌 Email list</a><a class="rchip admin-only" href="#wlH">📅 Wicked lists</a><a class="rchip admin-only" href="#claimH">🎤 Artist claims</a><a class="rchip admin-only" href="#cmH">💬 Comments</a><a class="rchip critic-only" href="#meH" hidden>🙋 My critic page</a></nav></div>
 <p class="hint" id="err"></p>
 <div id="app" hidden>
+<div class="desk" id="desk">
+<aside class="dlist" aria-label="Your reviews">
+  <div class="dtabs" role="tablist">
+    <button type="button" role="tab" data-tab="queue">📥 Queue <span id="tcQueue"></span></button>
+    <button type="button" role="tab" data-tab="drafts">📝 Drafts <span id="tcDrafts"></span></button>
+    <button type="button" role="tab" data-tab="live">✅ Live <span id="tcLive"></span></button>
+  </div>
+  <div class="dtools"><input type="search" id="dQ" placeholder="Search songs or artists" aria-label="Search"><button class="btn sm bile" type="button" id="newBtn2">+ New</button></div>
+  <div class="bulk" id="bulkBar">
+    <label class="selall"><input type="checkbox" id="selAll" aria-label="Select all"> <span id="selN">Select</span></label>
+    <span class="bulk-acts" id="bulkActs"></span>
+  </div>
+  <p class="hint" id="bulkNote" role="status"></p>
+  <div class="ditems" id="dItems"></div>
+  <div class="dfoot" id="dFoot"></div>
+</aside>
+<div class="dedit" id="dedit">
+  <div class="dedit-top"><button class="btn sm" type="button" id="backBtn">← Back to the list</button><b id="edTitle">New review</b></div>
 <form class="ed" id="ed" autocomplete="off">
   <label class="full">Spotify or YouTube link <span class="hint">Paste it and hit Fill in for the title and cover. No link? Type the artist and title below, then hit Fill in.</span>
     <span class="lookup"><input id="fSpotify" type="url" placeholder="https://open.spotify.com/track/…"><button class="btn" type="button" id="lookupBtn">Fill in</button></span></label>
@@ -95,6 +147,14 @@ body{margin:0}[hidden]{display:none!important}
   <div class="full tell" id="tell" hidden></div>
   <figure class="full ogbox" id="ogBox" hidden><figcaption class="hint">Link preview: what people see when this review is shared on iMessage, Instagram, X or Facebook. It updates every time you save.</figcaption><img id="ogPrev" alt="Link preview for this review"></figure>
 </form>
+</div>
+</div>
+<div hidden id="stash">
+<details class="qadd admin-only" id="qAdd"><summary>Add songs to the queue</summary>
+<textarea id="qLines" rows="5" placeholder="One per line: Title - Artist, or paste a link&#10;Lauren - Men I Trust&#10;https://open.spotify.com/track/..."></textarea>
+<div class="row"><button class="btn" type="button" id="qGo">Add to the list</button><span class="hint" id="qNote" role="status"></span></div></details>
+<div class="row admin-only" id="ogRow"><button class="btn sm" type="button" id="ogAll">Make link previews for all live reviews</button><span class="hint" id="ogAllNote" role="status"></span></div>
+</div>
 <section id="meSec" hidden>
 <h2 id="meH">My critic page</h2>
 <p class="hint">This is what artists and readers see at <a id="meLink" target="_blank"></a>. Your name is how your reviews are signed; ask Wackometer if it needs to change.</p>
@@ -109,12 +169,7 @@ body{margin:0}[hidden]{display:none!important}
   <div class="row full"><button class="btn bile" type="submit">Save my page</button><span class="hint" id="mNote" role="status"></span></div>
 </form>
 </section>
-<h2 id="queueH">To review <span class="hint" id="reqCount"></span></h2>
-<p class="hint">Songs you've queued plus artist submissions from the “Want your music weighed?” form. Tap Start a review, then Fill in to grab the cover.</p>
-<details class="qadd admin-only"><summary>Add songs to the list</summary>
-<textarea id="qLines" rows="5" placeholder="One per line: Title - Artist, or paste a link&#10;Lauren - Men I Trust&#10;https://open.spotify.com/track/..."></textarea>
-<div class="row"><button class="btn" type="button" id="qGo">Add to the list</button><span class="hint" id="qNote" role="status"></span></div></details>
-<div class="list" id="reqs"></div>
+
 <div class="admin-only">
 <h2 id="critH">Critics <span class="hint">(people artists can pick on the Get reviewed page)</span></h2>
 <details class="qadd" id="crBox"><summary id="crSum">Add a critic</summary>
@@ -155,9 +210,7 @@ body{margin:0}[hidden]{display:none!important}
 <p class="hint">Newest first. Slurs and links are blocked before they post; hide anything else that crosses a line.</p>
 <div class="list" id="cmAdmin"></div>
 </div>
-<h2 id="allH">All reviews</h2>
-<div class="row admin-only"><button class="btn" type="button" id="ogAll">Make link previews for all live reviews</button><span class="hint" id="ogAllNote" role="status"></span></div>
-<div class="list" id="list"></div>
+
 </div>
 </div></main></div>
 <script type="module" src="/js/critic.js"></script>
@@ -250,21 +303,74 @@ function renderApps() {
   }));
   $("apps").querySelectorAll("[data-pass]").forEach((b) => (b.onclick = async () => { await api("/api/reviews-admin/application", { id: b.dataset.pass, status: "passed" }); load(); }));
 }
-function renderList() {
-  renderCritics(); renderApps();
-  $("list").innerHTML = DATA.reviews.length ? DATA.reviews.map((r, i) => `<div class="it">${r.cover_url ? `<img src="${esc(r.cover_url)}" alt="">` : '<span class="ph"></span>'}
-    <span><b>${esc(r.title)}</b> · ${esc(r.artist)}<br><span class="hint">${!r.verdict ? "🎧 Needs a listen: not scored yet · " : r.assist ? `✍️ Claude starting draft (suggested ${r.score}) · listen before publishing · ` : `${r.score} ${TIERS[tierOf(r.score)]} · ${r.votes} crowd vote${r.votes === 1 ? "" : "s"} · `}${r.reviewer ? esc(r.reviewer) + " · " : ""}</span><span class="tag2 ${r.status}">${r.status}</span>${r.featured ? ' <span class="tag2">★ featured</span>' : ""}</span>
-    <span class="row"><a class="btn" href="/reviews/${esc(r.slug)}${r.status === "live" ? "" : "?preview=1"}" target="_blank">View</a><button class="btn" data-edit="${i}">Edit</button></span></div>`).join("") : '<p class="hint">No reviews yet. Write the first one above.</p>';
-  $("list").querySelectorAll("[data-edit]").forEach((b) => (b.onclick = () => { fill(DATA.reviews[Number(b.dataset.edit)]); window.scrollTo({ top: 0, behavior: "smooth" }); }));
-  const open = DATA.requests.filter((q) => q.status !== "done").length, paidOpen = DATA.requests.filter((q) => q.status !== "done" && q.paid).length;
-  $("reqCount").textContent = open ? `(${open} waiting${paidOpen ? `, ${paidOpen} paid: they're owed feedback within 7 days` : ""})` : "";
-  $("reqs").innerHTML = DATA.requests.length ? DATA.requests.map((q) => `<div class="req ${q.status}${q.paid ? " paid" : ""}">${q.critic ? `<span class="hint">For: <b>${esc(((DATA.critics || []).find((c) => c.slug === q.critic) || { name: q.critic }).name)}</b></span>` : ""}<b>${q.paid ? `<span class="tag2 live">💵 Paid $${((q.amount || 1000) / 100).toFixed(0)}</span> ` : ""}${q.title ? esc(q.title) + " · " : ""}${esc(q.artist)}</b><a href="${esc(q.link)}" target="_blank" rel="noopener">${/open\.spotify\.com\/search\//.test(q.link) ? "Find it on Spotify ↗" : esc(q.link)}</a>
-    ${q.note ? `<span>${esc(q.note)}</span>` : ""}<span class="hint">${q.email ? esc(q.email) + " · " : ""}${new Date(q.created_at).toLocaleDateString()}</span>
-    <span class="row"><button class="btn" data-req="${esc(q.id)}" data-s="${q.status === "done" ? "new" : "done"}">${q.status === "done" ? "Mark as new" : "Mark done"}</button><button class="btn" data-start="${esc(q.id)}">Start a review</button></span></div>`).join("") : '<p class="hint">No submissions yet.</p>';
-  $("reqs").querySelectorAll("[data-req]").forEach((b) => (b.onclick = async () => { await api("/api/reviews-admin/request", { id: b.dataset.req, status: b.dataset.s }); load(); }));
-  $("reqs").querySelectorAll("[data-start]").forEach((b) => (b.onclick = () => { const q = DATA.requests.find((x) => x.id === b.dataset.start); fill(null); $("fArtist").value = q.artist === "Unknown" ? "" : q.artist.replace(/…$/, ""); $("fTitle").value = (q.title || "").replace(/\s*\(.*?\)\s*$/, "").replace(/…$/, ""); startedFrom = q.id; if (q.critic) { const c = (DATA.critics || []).find((x) => x.slug === q.critic); if (c) $("fReviewer").value = c.name; } $("fSubmitted").checked = !!q.paid;
-      if (/open\.spotify\.com\/(intl-[a-z-]+\/)?(track|album)\//.test(q.link)) $("fSpotify").value = q.link; else if (/youtu/.test(q.link)) $("fYoutube").value = q.link;
-      $("note").textContent = `Started from your list${q.note ? ": " + q.note : "."}`; window.scrollTo({ top: 0, behavior: "smooth" }); }));
+let TAB = (() => { try { return localStorage.getItem("wk-desk-tab") || "queue"; } catch (e) { return "queue"; } })(), SEL = new Set(), CUR = null;
+const reqTitle = (q) => `${q.title ? q.title + " · " : ""}${q.artist}`;
+const critName = (slug) => ((DATA.critics || []).find((c) => c.slug === slug) || { name: slug }).name;
+function setTab(t) { TAB = t; SEL.clear(); try { localStorage.setItem("wk-desk-tab", t); } catch (e) {} renderDesk(); }
+function renderList() { renderCritics(); renderApps(); renderDesk(); }
+// Left panel: one list per tab, checkboxes for bulk changes, click a row to open it in the editor beside it.
+function renderDesk() {
+  const q = $("dQ").value.trim().toLowerCase(), hit = (t) => !q || t.toLowerCase().includes(q);
+  const drafts = DATA.reviews.filter((r) => r.status !== "live"), live = DATA.reviews.filter((r) => r.status === "live");
+  const waiting = DATA.requests.filter((x) => x.status !== "done");
+  $("tcQueue").textContent = waiting.length ? `(${waiting.length})` : ""; $("tcDrafts").textContent = drafts.length ? `(${drafts.length})` : ""; $("tcLive").textContent = live.length ? `(${live.length})` : "";
+  document.querySelectorAll(".dtabs [data-tab]").forEach((b) => b.setAttribute("aria-selected", b.dataset.tab === TAB));
+  let groups = [];
+  if (TAB === "queue") {
+    const rows = DATA.requests.filter((x) => hit(reqTitle(x)));
+    groups = [["Paid: owed feedback within 7 days", rows.filter((x) => x.status !== "done" && x.paid)], ["Waiting", rows.filter((x) => x.status !== "done" && !x.paid)], ["Done", rows.filter((x) => x.status === "done")]];
+    $("dItems").innerHTML = groups.filter(([, r]) => r.length).map(([g, r]) => `<p class="dgrp">${g} · ${r.length}</p>` + r.map((x) => `<div class="di${CUR === "q:" + x.id ? " on" : ""}" data-q="${esc(x.id)}"><input type="checkbox" data-sel="${esc(x.id)}"${SEL.has(x.id) ? " checked" : ""} aria-label="Select ${esc(reqTitle(x))}"><span class="ph">${x.paid ? "💵" : "🎵"}</span><span class="t"><b>${esc(reqTitle(x))}${x.paid ? '<span class="pd">Paid</span>' : ""}</b><small>${x.critic ? "For " + esc(critName(x.critic)) + " · " : ""}${new Date(x.created_at).toLocaleDateString()}${x.note ? " · " + esc(x.note) : ""}</small></span></div>`).join("")).join("") || '<p class="hint">Nothing in the queue. 🎉</p>';
+  } else {
+    const rows = (TAB === "live" ? live : drafts).filter((r) => hit(r.title + " " + r.artist + " " + (r.reviewer || "")));
+    groups = TAB === "live" ? [["Live", rows]] : [["Ready to publish", rows.filter((r) => r.verdict && !r.assist)], ["Claude starting drafts: listen first", rows.filter((r) => r.verdict && r.assist)], ["Needs writing", rows.filter((r) => !r.verdict)]];
+    $("dItems").innerHTML = groups.filter(([, r]) => r.length).map(([g, r]) => `<p class="dgrp">${g} · ${r.length}</p>` + r.map((x) => `<div class="di${CUR === x.slug ? " on" : ""}" data-r="${esc(x.slug)}"><input type="checkbox" data-sel="${esc(x.slug)}"${SEL.has(x.slug) ? " checked" : ""} aria-label="Select ${esc(x.title)}">${x.cover_url ? `<img src="${esc(x.cover_url)}" alt="" loading="lazy">` : '<span class="ph">🎧</span>'}<span class="t"><b>${esc(x.title)} <span style="font-weight:400">· ${esc(x.artist)}</span></b><small>${x.verdict ? `${x.score} ${TIERS[tierOf(x.score)]}` : "Not scored yet"}${x.kind === "album" ? " · Album" : ""}${x.reviewer ? " · " + esc(x.reviewer) : ""}${TAB === "live" ? ` · ${x.votes} vote${x.votes === 1 ? "" : "s"}` : ""}${x.featured ? " · ★ featured" : ""}</small></span></div>`).join("")).join("") || `<p class="hint">${TAB === "live" ? "Nothing live yet." : "No drafts."}</p>`;
+  }
+  // bulk actions for this tab
+  const admin = ROLE === "admin";
+  const acts = TAB === "queue" ? [["done", "Mark done"], ["new", "Mark new"], ...(admin ? [["delete", "Remove", "danger"]] : [])]
+    : TAB === "live" ? [["draft", "Move to drafts"], ["delete", "Delete", "danger"]] : [["live", "Make live", "bile"], ["delete", "Delete", "danger"]];
+  $("bulkActs").innerHTML = acts.map(([a, l, c]) => `<button type="button" class="btn sm ${c || ""}" data-bulk="${a}"${SEL.size ? "" : " disabled"}>${l}</button>`).join("");
+  const visible = [...$("dItems").querySelectorAll("[data-sel]")].map((i) => i.dataset.sel);
+  $("selAll").checked = visible.length > 0 && visible.every((v) => SEL.has(v)); $("selAll").indeterminate = SEL.size > 0 && !$("selAll").checked;
+  $("selN").textContent = SEL.size ? `${SEL.size} selected` : "Select all";
+  // footers: add-to-queue in the queue tab, link previews in the live tab
+  const foot = $("dFoot"); foot.innerHTML = ""; if (TAB === "queue" && admin) foot.append($("qAdd")); if (TAB === "live" && admin) foot.append($("ogRow"));
+  // wiring
+  $("dItems").querySelectorAll("[data-sel]").forEach((c) => { c.onclick = (e) => e.stopPropagation(); c.onchange = () => { c.checked ? SEL.add(c.dataset.sel) : SEL.delete(c.dataset.sel); renderDesk(); }; });
+  $("dItems").querySelectorAll("[data-r]").forEach((d) => (d.onclick = () => openReview(d.dataset.r)));
+  $("dItems").querySelectorAll("[data-q]").forEach((d) => (d.onclick = () => startFrom(d.dataset.q)));
+  $("bulkActs").querySelectorAll("[data-bulk]").forEach((b) => (b.onclick = () => bulk(b)));
+}
+// Keep the editor in view next to the list (desktop), or switch to it (phone).
+function showEditor() {
+  $("desk").classList.add("editing");
+  const top = $("desk").getBoundingClientRect().top;
+  if (top < -20 || top > innerHeight * 0.6) $("desk").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+function openReview(slug) {
+  const r = DATA.reviews.find((x) => x.slug === slug); if (!r) return;
+  CUR = slug; fill(r); startedFrom = null; $("edTitle").textContent = `${r.title} · ${r.artist}`; renderDesk(); showEditor();
+}
+function startFrom(id) {
+  const q = DATA.requests.find((x) => x.id === id); if (!q) return;
+  CUR = "q:" + id; fill(null); $("fArtist").value = q.artist === "Unknown" ? "" : q.artist.replace(/…$/, ""); $("fTitle").value = (q.title || "").replace(/\s*\(.*?\)\s*$/, "").replace(/…$/, ""); startedFrom = q.id;
+  if (q.critic) { const c = (DATA.critics || []).find((x) => x.slug === q.critic); if (c) $("fReviewer").value = c.name; } $("fSubmitted").checked = !!q.paid;
+  if (/open\.spotify\.com\/(intl-[a-z-]+\/)?(track|album)\//.test(q.link)) $("fSpotify").value = q.link; else if (/youtu/.test(q.link)) $("fYoutube").value = q.link;
+  $("note").innerHTML = `Started from the queue${q.note ? ": " + esc(q.note) : "."} ${q.link ? `<a href="${esc(q.link)}" target="_blank" rel="noopener">${/open\.spotify\.com\/search\//.test(q.link) ? "Find it on Spotify ↗" : "Open their link ↗"}</a>` : ""}`;
+  $("edTitle").textContent = `New review: ${reqTitle(q)}`; renderDesk(); showEditor();
+}
+async function bulk(b) {
+  const a = b.dataset.bulk, ids = [...SEL];
+  if ((a === "delete" || a === "live") && !b.dataset.sure) { b.dataset.sure = 1; b.textContent = a === "delete" ? `Tap again to delete ${ids.length}` : `Tap again to publish ${ids.length}`; return; }
+  $("bulkActs").querySelectorAll("button").forEach((x) => (x.disabled = true)); $("bulkNote").textContent = "Working…";
+  try {
+    const d = TAB === "queue" ? await api("/api/reviews-admin/requests-bulk", { ids, action: a }) : await api("/api/reviews-admin/bulk", { slugs: ids, action: a });
+    const verb = { live: "Made live", draft: "Moved to drafts", delete: TAB === "queue" ? "Removed" : "Deleted", done: "Marked done", new: "Marked new" }[a];
+    const nameOf = (k) => { const r = DATA.reviews.find((x) => x.slug === k.slug) || DATA.requests.find((x) => x.id === k.id); return k.name || (r ? (r.slug ? r.title : reqTitle(r)) : k.slug || k.id); };
+    $("bulkNote").innerHTML = `${verb}: ${d.done.length}.${d.notified && d.notified.length ? ` Emailed ${d.notified.length} artist${d.notified.length === 1 ? "" : "s"}.` : ""}${d.skipped.length ? ` Skipped ${d.skipped.length}: ${d.skipped.map((k) => `<b>${esc(nameOf(k))}</b> (${esc(k.reason)})`).join(", ")}.` : ""}`;
+    if (a === "delete" && (ids.includes(CUR) || ids.includes(String(CUR).slice(2)))) { CUR = null; fill(null); $("edTitle").textContent = "New review"; }
+    SEL.clear(); await load();
+  } catch (e) { $("bulkNote").textContent = e.message; renderDesk(); }
 }
 async function load() {
   try {
@@ -292,7 +398,13 @@ $("crForm").onsubmit = async (e) => {
   } catch (err) { $("cNote").textContent = err.message; }
 };
 $("cDel").onclick = async () => { if (!crOriginal || !confirm("Remove this critic? Their reviews stay up.")) return; await api("/api/reviews-admin/critic-delete", { slug: crOriginal }); fillCritic(null); load(); };
-$("newBtn").onclick = () => { fill(null); startedFrom = null; };
+$("newBtn").onclick = () => { fill(null); startedFrom = null; CUR = null; $("edTitle").textContent = "New review"; renderDesk(); };
+$("newBtn2").onclick = () => { $("newBtn").onclick(); showEditor(); $("fSpotify").focus(); };
+$("backBtn").onclick = () => { $("desk").classList.remove("editing"); const on = $("dItems").querySelector(".di.on"); (on || $("desk")).scrollIntoView({ block: "center" }); };
+document.querySelectorAll(".dtabs [data-tab]").forEach((b) => (b.onclick = () => setTab(b.dataset.tab)));
+$("dQ").oninput = () => renderDesk();
+$("selAll").onchange = () => { const v = [...$("dItems").querySelectorAll("[data-sel]")].map((i) => i.dataset.sel); if ($("selAll").checked) v.forEach((x) => SEL.add(x)); else v.forEach((x) => SEL.delete(x)); renderDesk(); };
+document.querySelectorAll("[data-go]").forEach((a) => (a.onclick = (e) => { e.preventDefault(); setTab(a.dataset.go); $("desk").classList.remove("editing"); $("desk").scrollIntoView({ behavior: "smooth" }); }));
 $("qGo").onclick = async () => {
   try { const r = await api("/api/reviews-admin/queue", { lines: $("qLines").value }); $("qLines").value = ""; $("qNote").textContent = `Added ${r.added}.`; load(); }
   catch (e) { $("qNote").textContent = e.message; }
@@ -324,7 +436,7 @@ $("ed").onsubmit = async (e) => {
   try {
     const r = await api("/api/reviews-admin/save", body);
     if (r.status === "live") startedFrom = null;
-    await load(); const saved = DATA.reviews.find((x) => x.slug === r.slug); fill(saved);
+    CUR = r.slug; await load(); const saved = DATA.reviews.find((x) => x.slug === r.slug); fill(saved); if (saved) $("edTitle").textContent = `${saved.title} · ${saved.artist}`;
     if (saved && window.wkOG) window.wkOG.saveOG(saved).then((d) => { $("ogPrev").src = d; $("ogBox").hidden = false; }).catch(() => {});
     $("note").innerHTML = r.status === "live" ? `Live at <a href="/reviews/${esc(r.slug)}" target="_blank">wackometer.com/reviews/${esc(r.slug)}</a>` : `Saved as a draft. <a href="/reviews/${esc(r.slug)}?preview=1" target="_blank">Preview it</a>`;
     if (saved && r.status === "live") showTell(saved, r.notified);
@@ -333,7 +445,7 @@ $("ed").onsubmit = async (e) => {
 };
 $("delBtn").onclick = async () => {
   if (!original || !confirm("Delete this review and its crowd votes? This can't be undone.")) return;
-  await api("/api/reviews-admin/delete", { slug: original }); fill(null); load();
+  await api("/api/reviews-admin/delete", { slug: original }); fill(null); CUR = null; $("edTitle").textContent = "New review"; load();
 };
 // "Wicked of the week" email
 async function nlLoad(keep) {

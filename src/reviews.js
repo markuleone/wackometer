@@ -741,10 +741,60 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
     if (body.listened) await DB.prepare("UPDATE reviews SET assist=0 WHERE slug=?").bind(slug).run();
     return json({ ok: true, slug, status, notified });
   }
+  const wipe = (slug) => [DB.prepare("DELETE FROM reviews WHERE slug=?").bind(slug), DB.prepare("DELETE FROM review_votes WHERE slug=?").bind(slug),
+    DB.prepare("DELETE FROM review_reactions WHERE slug=?").bind(slug), DB.prepare("DELETE FROM review_comments WHERE slug=?").bind(slug), DB.prepare("DELETE FROM review_stats WHERE slug=?").bind(slug)];
   if (path === "/api/reviews-admin/delete" && method === "POST") {
     const slug = slugify(body.slug);
-    await DB.batch([DB.prepare("DELETE FROM reviews WHERE slug=?").bind(slug), DB.prepare("DELETE FROM review_votes WHERE slug=?").bind(slug)]);
+    const r = await DB.prepare("SELECT slug, reviewer, status FROM reviews WHERE slug=?").bind(slug).first();
+    if (r && !mine(r)) return bad("That review belongs to another critic.", 403);
+    await DB.batch(wipe(slug));
     return json({ ok: true });
+  }
+  // Several reviews at once: make live, move to drafts, or delete. Anything that isn't ready is skipped with a reason.
+  if (path === "/api/reviews-admin/bulk" && method === "POST") {
+    const action = String(body.action || "");
+    if (!["live", "draft", "delete"].includes(action)) return bad("Pick make live, move to drafts or delete.");
+    const slugs = [...new Set((Array.isArray(body.slugs) ? body.slugs : []).map((x) => slugify(String(x))).filter(Boolean))].slice(0, 200);
+    if (!slugs.length) return bad("Tick at least one review.");
+    const done = [], skipped = [], notified = [], t = Date.now();
+    for (const slug of slugs) {
+      const r = await DB.prepare("SELECT * FROM reviews WHERE slug=?").bind(slug).first();
+      if (!r) { skipped.push({ slug, reason: "not found" }); continue; }
+      const name = `${r.title} · ${r.artist}`;
+      if (!mine(r)) { skipped.push({ slug, name, reason: "belongs to another critic" }); continue; }
+      if (action === "delete") { await DB.batch(wipe(slug)); done.push(slug); continue; }
+      if (action === "draft") { await DB.prepare("UPDATE reviews SET status='draft', updated_at=? WHERE slug=?").bind(t, slug).run(); done.push(slug); continue; }
+      if (r.status === "live") { done.push(slug); continue; }
+      if (!r.verdict) { skipped.push({ slug, name, reason: "no verdict or score yet" }); continue; }
+      if (r.assist) { skipped.push({ slug, name, reason: "Claude starting draft: open it, listen, and tick “I listened” to publish" }); continue; }
+      const reviewer = critic ? critic.name : r.reviewer;
+      await DB.prepare("UPDATE reviews SET status='live', reviewer=?, published_at=COALESCE(published_at, ?), updated_at=? WHERE slug=?").bind(reviewer || null, t, t, slug).run();
+      done.push(slug);
+      if (r.request_id) {
+        await DB.prepare("UPDATE review_requests SET status='done' WHERE id=?").bind(r.request_id).run();
+        if (!r.notified_at) { const fresh = await DB.prepare("SELECT * FROM reviews WHERE slug=?").bind(slug).first(); const n = await tellArtist(env, DB, fresh, r.request_id, url).catch(() => null); if (n) notified.push(slug); }
+      }
+    }
+    return json({ ok: true, done, skipped, notified });
+  }
+  // Several queue items at once: mark done, mark new, or remove from the list.
+  if (path === "/api/reviews-admin/requests-bulk" && method === "POST") {
+    const action = String(body.action || "");
+    if (!["done", "new", "delete"].includes(action)) return bad("Pick mark done, mark new or remove.");
+    const ids = [...new Set((Array.isArray(body.ids) ? body.ids : []).map((x) => String(x).slice(0, 60)).filter(Boolean))].slice(0, 300);
+    const done = [], skipped = [];
+    for (const id of ids) {
+      const q = await DB.prepare("SELECT id, critic, paid, status FROM review_requests WHERE id=?").bind(id).first();
+      if (!q) { skipped.push({ id, reason: "not found" }); continue; }
+      if (critic && q.critic && q.critic !== critic.slug) { skipped.push({ id, reason: "for another critic" }); continue; }
+      if (action === "delete") {
+        if (critic) { skipped.push({ id, reason: "only admins can remove submissions" }); continue; }
+        if (q.paid && q.status !== "done") { skipped.push({ id, reason: "paid and not reviewed yet" }); continue; }
+        await DB.prepare("DELETE FROM review_requests WHERE id=?").bind(id).run();
+      } else await DB.prepare("UPDATE review_requests SET status=? WHERE id=?").bind(action, id).run();
+      done.push(id);
+    }
+    return json({ ok: true, done, skipped });
   }
   // Quick add: one song per line, "Title - Artist" or a link.
   if (path === "/api/reviews-admin/queue" && method === "POST") {
