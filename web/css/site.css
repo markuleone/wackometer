@@ -608,7 +608,7 @@ select{border:2px solid var(--line);border-radius:12px;padding:8px 10px;backgrou
 /* search landing pages */
 #mainNav a{white-space:nowrap;padding:6px 11px;flex:none;border-radius:999px;font-family:var(--display);font-weight:600;font-size:15px;color:var(--muted);text-decoration:none}
 #mainNav a:hover{color:var(--ink)}
-.seoart{display:flex;flex-direction:column;gap:10px;max-width:820px}
+.seoart{display:flex;flex-direction:column;gap:10px}
 .seoart h1{font-family:var(--display);font-size:clamp(28px,4.5vw,42px);line-height:1.1;margin:6px 0 0;letter-spacing:-.02em}
 .seoart h2{margin:14px 0 0;font-size:22px}.seoart h3{margin:4px 0 0;font-size:15px;color:var(--muted)}
 .seoart .lead{font-size:17px;color:var(--muted);margin:0}
@@ -620,7 +620,7 @@ a.rchip:hover{border-color:var(--ink)}
 .rchip.lazy{border-color:var(--bile);background:var(--bile-wash)}
 .warn{background:var(--bile-wash);border:2px solid var(--bile);border-radius:16px;padding:12px 14px}.warn p{margin:4px 0 0}
 .swaps li{font-size:17px;margin:4px 0}
-.cta{margin-top:18px;background:var(--surface);border:2px solid var(--ink);box-shadow:0 5px 0 var(--ink);border-radius:24px;padding:18px;display:flex;flex-direction:column;gap:8px;align-items:flex-start;max-width:820px}
+.cta{margin-top:18px;background:var(--surface);border:2px solid var(--ink);box-shadow:0 5px 0 var(--ink);border-radius:24px;padding:18px;display:flex;flex-direction:column;gap:8px;align-items:flex-start}
 .cta b{font-family:var(--display);font-size:22px}.cta p{margin:0;color:var(--muted)}
 .scout{display:flex;flex-direction:column;gap:2px}
 .scl{display:flex;gap:12px;align-items:baseline}.scl b{font-family:var(--display);min-width:2.2em;text-align:right;color:var(--t0)}
@@ -763,8 +763,7 @@ a.rchip:hover{border-color:var(--ink)}
 @media (min-width:821px) and (max-height:700px){.hero p{display:none}.member .ch{max-width:52px}}
 @media (min-width:821px) and (max-height:780px) and (min-height:701px){.member .ch{max-width:8vh}.hero-copy{padding-bottom:12px}}
 /* ===== lyric reviews (/reviews) ===== */
-.rv,.rv-index{display:flex;flex-direction:column;gap:18px;max-width:980px}
-.rv-index{max-width:1100px}
+.rv,.rv-index{display:flex;flex-direction:column;gap:18px}
 .rchip.on{background:var(--ink);color:var(--bg)!important;border-color:var(--ink)}
 .rv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:18px}
 .rv-card{display:flex;flex-direction:column;gap:6px;text-decoration:none;color:var(--ink)!important;background:var(--surface);border:2px solid var(--ink);box-shadow:0 4px 0 var(--ink);border-radius:20px;padding:10px 10px 14px;transition:transform .12s,box-shadow .12s}
@@ -822,7 +821,7 @@ a.rchip:hover{border-color:var(--ink)}
 .rv-badge textarea{min-height:70px;font:13px/1.4 ui-monospace,Menlo,monospace;padding:8px 10px;border-radius:10px}
 .rv-badge .btn{align-self:flex-start}
 .rv-more{display:flex;flex-direction:column;gap:12px}.rv-more>p{margin:0}
-.rv-submit{background:var(--surface);border:2px solid var(--ink);box-shadow:0 5px 0 var(--ink);border-radius:24px;padding:18px;display:flex;flex-direction:column;gap:8px;max-width:820px}
+.rv-submit{background:var(--surface);border:2px solid var(--ink);box-shadow:0 5px 0 var(--ink);border-radius:24px;padding:18px;display:flex;flex-direction:column;gap:8px}
 .rv-submit p{margin:0}
 .rv-form{display:flex;flex-direction:column;gap:12px;margin-top:6px}
 .rv-form label{display:flex;flex-direction:column;gap:4px;font-weight:600;font-size:14px}
@@ -933,7 +932,7 @@ a.rchip:hover{border-color:var(--ink)}
 }
 @media (max-width:760px){.rtop .rb-p{display:none}}
 /* ===== artist leaderboard + artist pages ===== */
-.lb{display:flex;flex-direction:column;gap:16px;max-width:900px}
+.lb{display:flex;flex-direction:column;gap:16px}
 .lb-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
 .lb-row{display:grid;grid-template-columns:44px 56px 1fr auto;gap:14px;align-items:center;background:var(--surface);border:2px solid var(--line);border-radius:18px;padding:8px 14px 8px 10px}
 .lb-row.top{border-color:var(--ink);box-shadow:0 3px 0 var(--ink)}
@@ -976,7 +975,7 @@ a.rchip:hover{border-color:var(--ink)}
 .sub-done{display:flex;flex-direction:column;gap:8px;align-items:flex-start;background:var(--bile-wash);border:2px solid var(--bile);border-radius:20px;padding:20px}
 .sub-done b{font-family:var(--display);font-size:26px}.sub-done p{margin:0}
 @media (max-width:760px){.rv-submit .sub-grid{grid-template-columns:1fr;gap:18px}.paycard .price,.seoart .paycard .price{font-size:96px}}
-.rv-submit{max-width:1200px}.front .rv-submit{max-width:none}
+
 /* ===== ad spaces (hidden until an ad account is connected) ===== */
 .ad-slot{margin:10px 0;padding:8px 8px 10px;border:1px solid var(--line);border-radius:16px;background:var(--surface);text-align:center;min-height:120px}
 .ad-slot.is-note{min-height:0;border:0;padding:0;background:none}
@@ -985,7 +984,7 @@ a.rchip:hover{border-color:var(--ink)}
 .adnote button{border:0;background:none;font-size:22px;line-height:1;cursor:pointer;color:var(--muted);padding:4px 8px}
 .adnote a{color:var(--bile-ink);font-weight:600}
 /* ===== get reviewed + critics ===== */
-.gr{display:flex;flex-direction:column;gap:30px;max-width:1200px}
+.gr{display:flex;flex-direction:column;gap:30px}
 .gr section{display:flex;flex-direction:column;gap:12px}.gr section>h2{margin:0;font-size:28px}
 .gr-hero{display:flex;flex-direction:column;gap:12px;background:var(--bile-wash);border:2px solid var(--ink);box-shadow:0 6px 0 var(--ink);border-radius:28px;padding:clamp(20px,4vw,40px)}
 .gr-hero h1{margin:0;font-size:clamp(32px,5vw,58px);line-height:1;letter-spacing:-.02em;max-width:18ch}.gr-hero h1 em{font-style:normal;color:var(--bile-ink);display:inline-block;transform:rotate(-3deg)}
@@ -1019,3 +1018,5 @@ a.rchip:hover{border-color:var(--ink)}
 .paycard .pay-top .price{font-size:clamp(76px,7vw,104px)}
 .paycard{padding:18px 22px}
 @media (max-width:760px){.paycard .pay-top .price{font-size:84px}}
+/* every page fills the same width as the header; only running text keeps a readable line length */
+.seoart>p,.seoart .lead,.rv .lead,.gr .lead,.fintro p{max-width:72ch}
