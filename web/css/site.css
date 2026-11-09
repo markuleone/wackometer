@@ -1348,3 +1348,9 @@ header.top .rsearch{margin-left:auto}
 .lp{font-family:var(--display);font-weight:600;font-size:14px;text-decoration:none;color:var(--ink)!important;border:2px solid var(--ink);border-radius:999px;padding:5px 12px;background:#fff;box-shadow:0 2px 0 var(--ink)}
 .lp:hover{background:var(--bile-wash)}
 .lp.find{border-color:var(--line);box-shadow:none;color:var(--muted)!important;font-weight:500;font-size:13px}
+
+/* header W+ and account: one fixed size on every page, button or link, before and after sign-in */
+header .util .ubtn{box-sizing:border-box;height:34px;min-width:34px;min-height:34px;padding:0 12px;display:inline-flex;align-items:center;justify-content:center;gap:4px;line-height:1;font-family:var(--display);font-weight:600;font-size:13px;white-space:nowrap;border-width:2px;margin:0}
+header .util .albl{display:inline-block;max-width:14ch;min-width:5.2ch;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
+@media (max-width:760px){header .util .ubtn{height:38px;min-height:38px;min-width:38px;padding:0 10px}}
+@media (max-width:480px){header .util .albl{display:none}}

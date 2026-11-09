@@ -436,6 +436,7 @@ function renderAccount() {
   const b = $("acctBtn");
   const label = S.ME && S.ME.username ? "@" + S.ME.username : S.ME && S.ME.email ? S.ME.email.split("@")[0] : "Sign in";
   b.innerHTML = `<span aria-hidden="true">👤</span><span class="albl"> ${esc(label)}</span>`; b.setAttribute("aria-label", label === "Sign in" ? "Sign in" : "Account: " + label);
+  try { if (label === "Sign in") localStorage.removeItem("wk-acct"); else localStorage.setItem("wk-acct", label); } catch (e) {} // other pages show it before they load
 }
 function loginStep(code) { $("loginForm").hidden = code; $("loginCode").hidden = !code; $("loginNote").textContent = ""; }
 function openLogin() {

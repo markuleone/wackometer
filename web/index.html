@@ -40,7 +40,7 @@
     <form class="rsearch" action="/reviews" role="search"><input type="search" name="q" placeholder="Search artists and songs" aria-label="Search reviews" maxlength="80"></form>
     <div class="util">
       <button class="ubtn pro" id="proBtn" data-v="pro" title="Wingman Pro">W+</button>
-      <button class="ubtn" id="acctBtn" aria-label="Sign in"><span aria-hidden="true">👤</span><span class="albl"> Sign in</span></button>
+      <button class="ubtn" id="acctBtn" aria-label="Sign in"><span aria-hidden="true">👤</span><span class="albl"> Sign in</span></button><script>try{var k=localStorage.getItem("wk-acct"),b=document.getElementById("acctBtn");if(k&&b){b.querySelector(".albl").textContent=" "+k;b.setAttribute("aria-label","Account: "+k)}}catch(e){}</script>
       <button class="ubtn ic" id="installBtn" hidden aria-label="Install the app" title="Install the app">📲</button>
     </div>
   </header>

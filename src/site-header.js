@@ -11,6 +11,7 @@ export function siteHeader(active = "reviews", q = "") {
 <nav class="rnav wnav" aria-label="Main">${NAV.map(([href, key, icon, label]) => `<a href="${href}" data-hub="nav_${key}"${active === key || (key === "write" && WRITE_KEYS.includes(active)) || (key === "reviews" && ![...WRITE_KEYS, "submit", "none"].includes(active)) ? ' aria-current="page"' : ""}><span class="ni" aria-hidden="true">${icon}</span> ${label}</a>`).join("")}</nav>
 <form class="rsearch" action="/reviews" role="search"><input type="search" name="q" value="${qv}" placeholder="Search artists and songs" aria-label="Search reviews" maxlength="80"></form>
 <div class="util"><a class="ubtn pro" href="/write#pro" title="Wingman Pro" data-hub="nav_pro">W+</a><a class="ubtn" id="acctLink" href="/write?account=1" aria-label="Sign in"><span aria-hidden="true">👤</span><span class="albl"> Sign in</span></a></div>
+<script>try{var k=localStorage.getItem("wk-acct"),b=document.getElementById("acctLink");if(k&&b){b.querySelector(".albl").textContent=" "+k;b.setAttribute("aria-label","Account: "+k)}}catch(e){}</script>
 </header>`;
 }
 const COLS = [
