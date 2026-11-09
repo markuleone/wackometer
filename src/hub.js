@@ -9,6 +9,7 @@
 //   the thank-you email a paid submitter gets right after paying
 import { shell, html, json, bad, esc, card, pill, safeUrl, igHandle, BASE, TC, tierName, ctaHTML as submitHTML, emailShell, eCard, eBtn, emailHeadline, slugify, artistTable } from "./reviews.js";
 import { TIERS, tierOf } from "../web/js/score.js";
+import { CFG } from "./settings.js";
 import { containsSlur, containsProfanity } from "./moderation.js";
 
 /* ---------- genres: free-text genres on reviews fall into a few buckets (a song can be in more than one) ---------- */
@@ -68,7 +69,7 @@ export async function listsPage(req, env, path, ensureSchema) {
 <p class="eyebrow">The Wicked list</p>
 <h1><span class="cm cm-h1" data-tier="0" aria-hidden="true"></span>The best songs we weighed, month by month</h1>
 <p class="lead">Every month we rank the songs we reviewed, most Wicked first. Pick a month, or a genre inside it.</p>
-<section class="ftop10" aria-labelledby="wlTop"><h2 id="wlTop">🔥 Listen to the Top 10</h2>${playlistEmbed(TOP10_PLAYLIST, "Wackometer Top 10", 232)}</section>
+<section class="ftop10" aria-labelledby="wlTop"><h2 id="wlTop">🔥 Listen to the Top 10</h2>${playlistEmbed(CFG.top10_playlist || TOP10_PLAYLIST, "Wackometer Top 10", 232)}</section>
 ${keys.length ? `<ul class="wl-months">${keys.map((k) => { const top = rank(months[k]).slice(0, 3); const gs = monthGenres(months[k]);
   return `<li class="wl-month"><a class="wl-mlink" href="/lists/${k}"><span class="wl-covers">${top.map((r) => r.cover_url ? `<img src="${esc(r.cover_url)}" alt="" width="64" height="64" loading="lazy">` : `<span class="rv-nocover">♪</span>`).join("")}</span><b>${monthName(k)}</b><span class="hint">${months[k].length} song${months[k].length === 1 ? "" : "s"} · #1: ${esc(top[0].title)}</span></a>
 ${gs.length ? `<span class="rchips">${gs.map(([g, n]) => `<a class="rchip" href="/lists/${k}/${g}">${esc(genreName(g))} <span class="hint">${n}</span></a>`).join("")}</span>` : ""}</li>`; }).join("")}</ul>` : `<div class="warn"><b>The first list drops when the reviews do.</b><p><a href="/reviews">Read the reviews</a> so far.</p></div>`}
@@ -144,7 +145,7 @@ export async function genrePage(req, env, g, ensureSchema) {
 <p class="eyebrow"><a href="/reviews">Song reviews</a> · <a href="/genres">Genres</a></p>
 <section class="ghero" style="--gbg:${GENRE_INFO[g].bg};--gtint:${GENRE_INFO[g].tint}"><img src="/brand/genres/${g}.jpg" alt="${esc(name)}: Wacko as a ${esc(name)} fan" width="640" height="640">
 <div class="ghero-t"><h1>${esc(name)}</h1><p class="lead">${esc(GENRE_INFO[g].blurb)} ${rows.length ? `${rows.length} review${rows.length === 1 ? "" : "s"} so far, scored from Wicked to Wack.` : "Reviews land here as they go live."}</p>
-${playlistEmbed(GENRE_INFO[g].playlist, esc(name), 232)}</div></section>
+${playlistEmbed(CFG["playlist_" + g] || GENRE_INFO[g].playlist, esc(name), 232)}</div></section>
 <nav class="rchips" aria-label="Genres"><a class="rchip" href="/reviews">All</a>${GENRE_KEYS.map((k) => { const c = counts.find(([x]) => x === k); return `<a class="rchip${k === g ? " on" : ""}" href="/reviews/${k}"${k === g ? ' aria-current="page"' : ""}>${esc(genreName(k))}${c ? ` <span class="hint">${c[1]}</span>` : ""}</a>`; }).join("")}</nav>
 ${best.length >= 3 ? `<section aria-labelledby="gbH"><h2 id="gbH">The best ${esc(name)} we've heard</h2><ol class="wl-list">${best.map(listItem).join("")}</ol></section>` : ""}
 ${rows.length ? `<h2>Latest ${esc(name)} reviews</h2><div class="rv-grid">${rows.slice(0, 120).map(card).join("")}</div>` : ""}

@@ -95,6 +95,28 @@ body{margin:0}[hidden]{display:none!important}
 .fun-step span{font-size:13px;color:var(--ink)}
 .fun-arrow{text-align:center;font-size:12px;color:var(--muted);font-weight:600}
 @media (max-width:1280px){.ovgrid{grid-template-columns:1fr}.rail{position:static;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}}
+.plgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:14px}
+.pl .ph h3{display:flex;align-items:center;gap:8px}.pl .ph img{width:34px;height:34px;border-radius:8px}
+.pl ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.pl li{display:grid;grid-template-columns:22px 40px minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);font-size:14px}
+.pl li .k{color:var(--muted);font-variant-numeric:tabular-nums;text-align:right}
+.pl li img,.pl li .nc{width:40px;height:40px;border-radius:8px;object-fit:cover;background:#F0F1F8;display:grid;place-items:center}
+.pl li .t{min-width:0}.pl li .t b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pl li .t small{color:var(--muted)}
+.pl li .warn2{display:block;color:var(--orange-ink);font-size:12px;font-weight:600}
+.pl li .ops{display:flex;gap:2px}.pl li .ops button{border:1px solid var(--line);background:#fff;border-radius:8px;width:28px;height:28px;cursor:pointer;font-size:13px}
+.pl select{font:inherit;font-size:14px;border:1px solid var(--line);border-radius:10px;padding:6px 8px;max-width:100%}
+.setgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px 22px}
+.setgrid label{display:flex;flex-direction:column;gap:5px;font-weight:600;font-size:14px}
+.setgrid label small{font-weight:400;color:var(--muted)}
+.setgrid input[type=text],.setgrid input[type=number],.setgrid input[type=url]{font:inherit;font-weight:400;border:2px solid var(--line);border-radius:12px;padding:8px 12px}
+.setgrid .chk{flex-direction:row;align-items:center;gap:8px}
+.sbox{font:inherit;font-size:14px;border:1px solid var(--line);border-radius:10px;padding:6px 10px}
+.thumb{width:36px;height:36px;border-radius:8px;object-fit:cover;vertical-align:middle;margin-right:8px;background:#F0F1F8}
+.tbl td a{color:var(--ink)}
+.cols svg{display:block;width:100%}
+.logrow{display:grid;grid-template-columns:150px minmax(0,1fr);gap:4px 14px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+.logrow small{color:var(--muted)}.logrow code{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+@media (max-width:640px){.logrow{grid-template-columns:1fr}.plgrid{grid-template-columns:1fr}}
 .tgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
 .bar{display:grid;grid-template-columns:minmax(80px,120px) 1fr 46px;gap:8px;align-items:center;font-size:14px;margin:5px 0}
 .bar i{display:block;height:10px;border-radius:0 4px 4px 0;background:#2F7BEB}
@@ -131,10 +153,18 @@ body{margin:0}[hidden]{display:none!important}
 <div class="adm">
 <nav class="aside" aria-label="Back office">
   <a href="#overview" data-s="overview">📊 Overview</a>
-  <a href="#reviews" data-s="reviews">🎧 Reviews &amp; money <span class="ct" id="ctRev" hidden></span></a>
+  <a href="#money" data-s="money">💵 Revenue</a>
+  <a href="#reviews" data-s="reviews">📥 Review queue <span class="ct" id="ctRev" hidden></span></a>
+  <a href="#performance" data-s="performance">📈 Review performance</a>
+  <a href="#critics" data-s="critics">🎧 Critics</a>
+  <a href="#playlists" data-s="playlists">🎶 Playlists</a>
+  <a href="#email" data-s="email">💌 Email</a>
+  <a href="#seo" data-s="seo">🔎 SEO</a>
   <a href="#people" data-s="people">🙋 People</a>
   <a href="#moderation" data-s="moderation">🚩 Moderation <span class="ct" id="ctMod" hidden></span></a>
   <a href="#team" data-s="team">🔑 Team &amp; access</a>
+  <a href="#log" data-s="log">🧾 Activity log</a>
+  <a href="#settings" data-s="settings">⚙️ Settings</a>
   <a href="#house" data-s="house">🧹 Housekeeping</a>
   <hr><a href="/admin-reviews">✍️ Review desk →</a>
   <div class="who" id="who"></div>
@@ -219,6 +249,71 @@ body{margin:0}[hidden]{display:none!important}
     <div class="panel2"><h3>Critics with review desk access</h3><div class="list" id="critList"></div><p class="hint">Add or remove a critic's email from <a href="/admin-reviews#critH">Critics</a> in the review desk.</p></div>
   </section>
 
+
+  <!-- REVENUE -->
+  <section class="asec" id="s-money" hidden>
+    <div class="cards2" id="revCards"></div>
+    <div class="panel2"><div class="ph"><h3>Income by month</h3><button class="btn sm quiet" type="button" id="revFresh">Refresh from Stripe</button></div><div class="legend" id="revLegend"></div><div id="revChart"></div><p class="hint" id="revNote"></p></div>
+    <div class="tgrid"><div class="panel2"><h3>Recent payments</h3><div class="list" id="revRecent"></div></div>
+    <div class="panel2"><h3>Cancellations and refunds</h3><div id="revLoss"></div></div></div>
+  </section>
+
+  <!-- REVIEW PERFORMANCE -->
+  <section class="asec" id="s-performance" hidden>
+    <div class="cards2" id="perfCards"></div>
+    <div class="panel2"><div class="ph"><h3>Every live review</h3><div class="filters"><select id="perfSort" aria-label="Sort by"><option value="view">Most views</option><option value="share">Most shares</option><option value="listen">Most listens</option><option value="votes">Most votes</option><option value="engage">Most engagement</option><option value="score">Highest score</option><option value="new">Newest</option></select><input type="search" id="perfQ" placeholder="Find a song or artist" class="sbox"></div></div>
+    <p class="hint">Views, listens and shares are for the dates above. Votes, reactions and comments are all-time. Counting started on November 9, 2026.</p>
+    <div class="tscroll"><table class="tbl" id="perfTbl"></table></div></div>
+  </section>
+
+  <!-- CRITICS -->
+  <section class="asec" id="s-critics" hidden>
+    <div class="panel2"><div class="ph"><h3>Critic leaderboard</h3><a class="btn sm" href="/admin-reviews#critH">Edit critics →</a></div>
+    <p class="hint"><b>Turnaround</b> is days from a paid submission to the review going live. <b>Crowd agrees</b> is how often voters land within a tier of the critic (reviews with 3+ votes).</p>
+    <div class="tscroll"><table class="tbl" id="critTbl"></table></div></div>
+  </section>
+
+  <!-- PLAYLISTS -->
+  <section class="asec" id="s-playlists" hidden>
+    <div class="panel2"><h3>How this works</h3><p class="hint">Each list starts with the best-scored reviews that fit it. Reorder, add or drop songs, then save. <b>Copy Spotify links</b> copies every track link; in the Spotify desktop app, open the playlist, click the track list and paste (Ctrl/⌘+V) to add them all. Songs without a Spotify track link need one added in the review desk first.</p></div>
+    <div class="plgrid" id="plLists"></div>
+  </section>
+
+  <!-- EMAIL -->
+  <section class="asec" id="s-email" hidden>
+    <div class="cards2" id="emCards"></div>
+    <div class="tgrid">
+      <div class="panel2"><h3>Sign-ups by week</h3><div id="emGrowth"></div></div>
+      <div class="panel2"><h3>Where subscribers signed up</h3><div id="emSrc"></div></div>
+    </div>
+    <div class="panel2"><div class="ph"><h3>Opens and clicks (SendGrid, by week)</h3><a class="btn sm" href="/admin-reviews#listH">Write this week's email →</a></div><div id="emStats"></div></div>
+    <div class="panel2"><h3>Sends</h3><div class="list" id="emSends"></div></div>
+  </section>
+
+  <!-- SEO -->
+  <section class="asec" id="s-seo" hidden>
+    <div class="cards2" id="seoCards"></div>
+    <div class="panel2"><h3>Visits from search, by day</h3><div class="legend" id="seoLegend"></div><div id="seoChart"></div></div>
+    <div class="tgrid">
+      <div class="panel2"><h3>Top pages people find from search</h3><div id="seoPages"></div></div>
+      <div class="panel2"><h3>Search traffic by section</h3><div id="seoSections"></div></div>
+    </div>
+    <div class="panel2"><h3>Google Search Console</h3><p class="hint">This page counts the visits that arrive from search engines. Search Console adds what people typed, impressions and your position in Google. To set it up, add wackometer.com as a property in <a href="https://search.google.com/search-console" target="_blank" rel="noopener">Search Console</a> (Cloudflare can verify it through DNS), then submit <code>https://wackometer.com/sitemap.xml</code>. Once it's set up, ask Claude to connect it here.</p></div>
+  </section>
+
+  <!-- ACTIVITY LOG -->
+  <section class="asec" id="s-log" hidden>
+    <div class="panel2"><form class="rowx" id="logForm"><input type="search" id="logQ" placeholder="Filter by person, page or detail"><button class="btn sm" type="submit">Filter</button></form>
+    <div class="list" id="logList"></div></div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="asec" id="s-settings" hidden>
+    <form class="panel2" id="setForm"><div class="ph"><h3>Site settings</h3><span class="hint" id="setWho"></span></div>
+    <div id="setFields" class="setgrid"></div>
+    <div class="rowx"><button class="btn bile" type="submit" id="setSave">Save changes</button><span class="hint" id="setNote" role="status"></span></div></form>
+  </section>
+
   <!-- HOUSEKEEPING -->
   <section class="asec" id="s-house" hidden>
     <div class="panel2"><h3>Clean up</h3><div class="rowx"><button class="btn sm" id="cleanBtn">Remove empty visitor records</button><span class="hint" id="cleanNote">Deletes records older than an hour that never posted, voted, wrote or signed in.</span></div></div>
@@ -282,14 +377,15 @@ async function loadSeries(){const w=window_();const need=Math.min(800,span(w.fro
   if(SERIES&&fetchedDays>=need)return;SERIES=await api("/api/admin/series?days="+need);fetchedDays=need}
 
 /* ---------- section routing ---------- */
-const SECS={overview:["Overview","How Wackometer is doing."],reviews:["Reviews & money","The review queue, paid submissions and Pro."],people:["People","Look someone up, gift Pro or credits."],moderation:["Moderation","Reports from the Wall and profiles."],team:["Team & access","Who can open the back office."],house:["Housekeeping","Tidy-up jobs and the plugin waitlist."]};
+const SECS={overview:["Overview","How Wackometer is doing."],money:["Revenue","Wingman Pro and paid reviews, month by month."],reviews:["Review queue","Waiting submissions, paid first."],performance:["Review performance","Which reviews people read, play and share."],critics:["Critics","Who's reviewing, how fast, and whether the crowd agrees."],playlists:["Playlists","Build the Top 10 and genre playlists from the best scores."],email:["Email","The Wicked of the week list and how it's doing."],seo:["SEO","Visits that start from Google and other search."],log:["Activity log","Every change made in the back office."],settings:["Settings","Prices, front page sections, playlists and the announcement bar."],people:["People","Look someone up, gift Pro or credits."],moderation:["Moderation","Reports from the Wall and profiles."],team:["Team & access","Who can open the back office."],house:["Housekeeping","Tidy-up jobs and the plugin waitlist."]};
 function show(){const k=(location.hash.slice(1)||"overview").replace("traffic","overview");const s=SECS[k]?k:"overview";
   Object.keys(SECS).forEach(x=>$("s-"+x).hidden=x!==s);
   document.querySelectorAll(".aside a[data-s]").forEach(a=>a.toggleAttribute("aria-current",a.dataset.s===s));
   $("secTitle").textContent=SECS[s][0];$("secSub").textContent=SECS[s][1];
-  $("rangeBar").hidden=s!=="overview";
+  $("rangeBar").hidden=!["overview","performance","seo"].includes(s);
   if(s==="people"&&!$("pplTbl").innerHTML)people("");
   if(s==="team")team();
+  if(LOADERS[s])LOADERS[s]();
   if(s==="overview")drawAll()}
 addEventListener("hashchange",show);
 
@@ -444,9 +540,117 @@ async function team(){try{TEAM=await api("/api/admin/team")}catch(e){$("teamList
   $("critList").innerHTML=TEAM.critics.length?TEAM.critics.map(c=>`<div class="it"><span class="grow">${esc(c.name)}<br><small>${esc(c.email)}</small></span><span class="pill2">${c.active?"Critic":"Inactive"}</span></div>`).join(""):`<p class="hint">No critic emails yet.</p>`}
 $("teamForm").onsubmit=async e=>{e.preventDefault();try{await api("/api/admin/team",{email:$("teamEmail").value,action:"add"});$("teamEmail").value="";$("teamNote").textContent="Added. They can sign in at /admin with that email.";team()}catch(e){$("teamNote").textContent=e.message}};
 
+
+/* ---------- shared: column chart (stacked) ---------- */
+function cols(labels,series,o={}){const W=900,H=o.h||240,L=52,R=10,T=10,B=30,iw=W-L-R,ih=H-T-B,n=labels.length;if(!n)return `<p class="empty">No data yet.</p>`;
+  const tot=labels.map((_,i)=>series.reduce((a,s)=>a+(s.vals[i]||0),0));if(!tot.some(v=>v))return `<p class="empty">${o.empty||"Nothing yet for these dates."}</p>`;
+  const max=niceMax(Math.max(...tot)),y=v=>T+ih-v/max*ih,band=iw/n,bw=Math.max(3,Math.min(46,band*.66)),f=v=>o.money?money(v):fmt(v);
+  let g="";for(let k=0;k<=4;k++){const v=max*k/4,yy=y(v);g+=`<line x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}" stroke="${k?"#EEF0F7":"#C9CDE0"}"/><text x="${L-8}" y="${yy+4}" text-anchor="end" font-size="12" fill="#646A8C">${o.money?"$"+fmt(Math.round(v/100)):fmt(Math.round(v*10)/10)}</text>`}
+  const every=Math.max(1,Math.ceil(n/8));let bars="";labels.forEach((lb,i)=>{let base=0;const x=L+band*i+band/2-bw/2;const top=series.map((s,j)=>s.vals[i]?j:-1).filter(j=>j>=0).pop();
+    series.forEach((s,j)=>{const v=s.vals[i]||0;if(!v)return;const y1=y(base+v),y0=y(base);base+=v;const r=j===top?Math.min(4,bw/2):0;bars+=`<path d="M${x},${y0} V${y1+r} Q${x},${y1} ${x+r},${y1} H${x+bw-r} Q${x+bw},${y1} ${x+bw},${y1+r} V${y0} Z" fill="${s.color}" stroke="#fff" stroke-width="2"/>`});
+    bars+=`<rect x="${L+band*i}" y="${T}" width="${band}" height="${ih}" fill="transparent"><title>${esc(o.lab?o.lab(lb):lb)}\n${series.map(s=>`${s.name}: ${f(s.vals[i]||0)}`).join("\n")}${series.length>1?`\nTotal: ${f(tot[i])}`:""}</title></rect>`;
+    if(i%every===0||(i===n-1&&i%every>=every/2))bars+=`<text x="${L+band*i+band/2}" y="${H-9}" text-anchor="middle" font-size="12" fill="#646A8C">${esc(o.lab?o.lab(lb):lb)}</text>`});
+  return `<div class="cols"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(series.map(s=>s.name).join(", "))}">${g}${bars}</svg></div>`}
+const legend=series=>series.map(s=>`<button type="button" aria-pressed="true" tabindex="-1"><i style="background:${s.color}"></i><span>${esc(s.name)}</span>${s.total!=null?`<b>${s.total}</b>`:""}</button>`).join("");
+const mini=(v,l)=>`<div class="mini"><div class="n">${v}</div><div class="l">${l}</div></div>`;
+const monLab=m=>new Date(m+"-01T00:00:00Z").toLocaleDateString(undefined,{month:"short",year:"2-digit",timeZone:"UTC"});
+const rangeQ=()=>{const w=window_();return `from=${w.from}&to=${w.to}`};
+const LOADERS={};
+
+/* ---------- revenue ---------- */
+LOADERS.money=async(fresh)=>{$("revNote").textContent="Loading from Stripe…";let d;try{d=await api("/api/admin/revenue"+(fresh?"?fresh=1":""))}catch(e){$("revNote").textContent=e.message;return}
+  const months=[];const t=new Date();for(let i=11;i>=0;i--){const x=new Date(Date.UTC(t.getUTCFullYear(),t.getUTCMonth()-i,1));months.push(x.toISOString().slice(0,7))}
+  const M=k=>months.map(m=>(d.months[m]||{})[k]||0),pro=M("pro"),rev=M("reviews"),tm=pro[11]+rev[11],lm=pro[10]+rev[10],yr=pro.concat(rev).reduce((a,b)=>a+b,0);
+  $("revCards").innerHTML=mini(money(d.mrr),"Pro monthly recurring")+mini(fmt(d.subs.monthly+d.subs.yearly),`Pro members (${d.subs.monthly} monthly · ${d.subs.yearly} yearly)`)+mini(money(tm),"This month")+mini(money(lm),"Last month")+mini(money(yr),"Last 12 months")+mini(money(d.refunds.cents),`Refunded (${d.refunds.n})`);
+  const S=[{name:"Wingman Pro",color:"#2F7BEB",vals:pro,total:money(pro.reduce((a,b)=>a+b,0))},{name:"Song reviews",color:"#E5702A",vals:rev,total:money(rev.reduce((a,b)=>a+b,0))}];
+  $("revLegend").innerHTML=legend(S);$("revChart").innerHTML=cols(months,S,{money:true,lab:monLab,empty:"No income in the last 12 months yet."});
+  $("revNote").textContent=(d.note?d.note+" ":"")+`Updated ${new Date(d._at).toLocaleTimeString([], {hour:"numeric",minute:"2-digit"})}. Amounts before Stripe fees. Only Wackometer prices count (the Stripe account is shared).`;
+  $("revRecent").innerHTML=d.recent.length?d.recent.map(r=>`<div class="it"><span class="grow"><b>${esc(r.kind)}</b><br><small>${esc(r.who||"")} · ${new Date(r.at).toLocaleDateString()}</small></span><b>${money(r.cents)}</b></div>`).join(""):`<p class="hint">No payments yet.</p>`;
+  const cm=Object.entries(d.cancels).sort().reverse();
+  $("revLoss").innerHTML=`<p><b>${fmt(cm.reduce((a,b)=>a+b[1],0))}</b> Pro cancellations in the last 12 months · <b>${money(d.refunds.cents)}</b> refunded</p>`+(cm.length?`<div class="list">${cm.map(([m,c])=>`<div class="it"><span class="grow">${monLab(m)}</span><span>${c} cancelled${d.refunds.byMonth[m]?` · ${money(d.refunds.byMonth[m])} refunded`:""}</span></div>`).join("")}</div>`:`<p class="hint">No cancellations. 🎉</p>`)};
+$("revFresh").onclick=()=>LOADERS.money(true);
+
+/* ---------- review performance ---------- */
+let PERF=null;
+LOADERS.performance=async()=>{try{PERF=await api("/api/admin/review-stats?"+rangeQ())}catch(e){$("perfTbl").innerHTML=`<tr><td>${esc(e.message)}</td></tr>`;return}perfDraw()};
+const shares=r=>(r.share||0)+(r.card||0)+(r.video||0)+(r.badge||0);
+function perfDraw(){if(!PERF)return;const R=PERF.reviews,sum=k=>R.reduce((a,r)=>a+(k==="shares"?shares(r.range):(r.range[k]||0)),0);
+  const v=sum("view"),l=sum("listen");
+  $("perfCards").innerHTML=mini(fmt(R.length),"Live reviews")+mini(fmt(v),"Review views")+mini(fmt(l),"Listens")+mini(v?Math.round(l/v*100)+"%":"–","Listen rate")+mini(fmt(sum("shares")),"Shares")+mini(fmt(R.reduce((a,r)=>a+r.votes,0)),"Crowd votes (all time)");
+  const q=$("perfQ").value.toLowerCase(),k=$("perfSort").value,val=r=>k==="score"?r.score:k==="new"?r.published_at:k==="votes"?r.votes:k==="share"?shares(r.range):k==="engage"?r.votes+r.reactions+r.comments+shares(r.range):(r.range[k]||0);
+  const rows=R.filter(r=>!q||(r.artist+" "+r.title).toLowerCase().includes(q)).sort((a,b)=>val(b)-val(a));
+  $("perfTbl").innerHTML=`<thead><tr><th>Review</th><th>Score</th><th>Views</th><th>Listens</th><th>Shares</th><th>Votes</th><th>Crowd</th><th>Reactions</th><th>Comments</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r.cover_url?`<img class="thumb" src="${esc(r.cover_url)}" alt="" loading="lazy">`:`<span class="thumb" style="display:inline-block"></span>`}<a href="/reviews/${esc(r.slug)}" target="_blank" rel="noopener"><b>${esc(r.title)}</b></a> <small class="hint">${esc(r.artist)}</small></td><td>${r.score}</td><td>${fmt(r.range.view||0)}</td><td>${fmt(r.range.listen||0)}</td><td>${fmt(shares(r.range))}</td><td>${fmt(r.votes)}</td><td>${r.crowd==null?"·":r.crowd}</td><td>${fmt(r.reactions)}</td><td>${fmt(r.comments)}</td></tr>`).join("")}</tbody>`}
+$("perfSort").onchange=perfDraw;$("perfQ").oninput=perfDraw;
+
+/* ---------- critics ---------- */
+LOADERS.critics=async()=>{let d;try{d=await api("/api/admin/critics")}catch(e){$("critTbl").innerHTML=`<tr><td>${esc(e.message)}</td></tr>`;return}
+  const rows=d.critics.sort((a,b)=>b.live-a.live);
+  $("critTbl").innerHTML=rows.length?`<thead><tr><th>Critic</th><th>Live reviews</th><th>Last 30 days</th><th>Drafts</th><th>Avg score</th><th>Turnaround</th><th>Paid reviews</th><th>Crowd agrees</th><th>Waiting for them</th></tr></thead><tbody>${rows.map((c,i)=>`<tr><td>${i<3&&c.live?["🥇","🥈","🥉"][i]+" ":""}${c.photo?`<img class="thumb" src="${esc(c.photo)}" alt="" loading="lazy">`:""}<a href="/critics/${esc(c.slug)}" target="_blank" rel="noopener"><b>${esc(c.name)}</b></a>${c.active?"":` <span class="pill2">Inactive</span>`}</td><td>${c.live}</td><td>${c.month}</td><td>${c.drafts}</td><td>${c.avg??"·"}</td><td>${c.turnaround==null?"·":c.turnaround+" days"}</td><td>${c.paid}</td><td>${c.agree==null?`<small class="hint">needs votes</small>`:c.agree+"%"}</td><td>${c.queue||"·"}</td></tr>`).join("")}</tbody>`:`<tbody><tr><td class="hint">No critics yet.</td></tr></tbody>`};
+
+/* ---------- playlists ---------- */
+let PL=null;
+LOADERS.playlists=async()=>{try{PL=await api("/api/admin/playlists")}catch(e){$("plLists").innerHTML=`<p class="hint">${esc(e.message)}</p>`;return}
+  PL.lists.forEach(l=>{const bySlug=Object.fromEntries(l.pool.map(r=>[r.slug,r]));l.cur=(l.saved?l.saved.slugs:l.pool.slice(0,l.size).map(r=>r.slug)).filter(x=>bySlug[x]);l.by=bySlug});plDraw()};
+function plDraw(){$("plLists").innerHTML=PL.lists.map((l,li)=>{const art=l.key==="top10"?"":`<img src="/brand/genres/${l.key}-sm.jpg" alt="">`;const missing=l.cur.filter(x=>!l.by[x].track).length;
+  return `<div class="panel2 pl"><div class="ph"><h3>${art}${esc(l.name)}</h3><a class="btn sm quiet" href="https://open.spotify.com/playlist/${esc(l.playlist)}" target="_blank" rel="noopener">Open in Spotify ↗</a></div>
+  <p class="hint">${l.cur.length} song${l.cur.length===1?"":"s"}${l.saved?` · saved ${new Date(l.saved.at).toLocaleDateString()}`:" · suggested from the scores, not saved yet"}${missing?` · <span style="color:var(--orange-ink)">${missing} without a Spotify track link</span>`:""}</p>
+  <ol>${l.cur.map((sl,i)=>{const r=l.by[sl];return `<li><span class="k">${i+1}</span>${r.cover?`<img src="${esc(r.cover)}" alt="" loading="lazy">`:`<span class="nc">♪</span>`}<span class="t"><b>${esc(r.title)}</b><small>${esc(r.artist)} · ${r.score}</small>${r.track?"":`<span class="warn2">No Spotify track link</span>`}</span><span class="ops"><button type="button" data-pl="${li}" data-i="${i}" data-op="up" aria-label="Move up">↑</button><button type="button" data-pl="${li}" data-i="${i}" data-op="down" aria-label="Move down">↓</button><button type="button" data-pl="${li}" data-i="${i}" data-op="rm" aria-label="Remove">✕</button></span></li>`}).join("")||`<li><span></span><span></span><span class="hint">No reviews in this genre yet.</span><span></span></li>`}</ol>
+  <select data-add="${li}" aria-label="Add a song"><option value="">+ Add a song…</option>${l.pool.filter(r=>!l.cur.includes(r.slug)).map(r=>`<option value="${esc(r.slug)}">${esc(r.title)} · ${esc(r.artist)} (${r.score})</option>`).join("")}</select>
+  <div class="rowx"><button class="btn sm bile" type="button" data-save="${li}">Save</button><button class="btn sm" type="button" data-copy="${li}">Copy Spotify links</button><button class="btn sm quiet" type="button" data-reset="${li}">Back to suggestions</button><span class="hint" id="plNote${li}" role="status"></span></div></div>`}).join("");
+  document.querySelectorAll("[data-op]").forEach(b=>b.onclick=()=>{const l=PL.lists[b.dataset.pl],i=+b.dataset.i,c=l.cur;if(b.dataset.op==="rm")c.splice(i,1);else{const j=b.dataset.op==="up"?i-1:i+1;if(j<0||j>=c.length)return;[c[i],c[j]]=[c[j],c[i]]}plDraw()});
+  document.querySelectorAll("[data-add]").forEach(sel=>sel.onchange=()=>{if(!sel.value)return;PL.lists[sel.dataset.add].cur.push(sel.value);plDraw()});
+  document.querySelectorAll("[data-reset]").forEach(b=>b.onclick=()=>{const l=PL.lists[b.dataset.reset];l.cur=l.pool.slice(0,l.size).map(r=>r.slug);plDraw()});
+  document.querySelectorAll("[data-save]").forEach(b=>b.onclick=async()=>{const l=PL.lists[b.dataset.save];try{await api("/api/admin/playlists",{key:l.key,slugs:l.cur});l.saved={slugs:l.cur.slice(),at:Date.now()};plDraw();$("plNote"+b.dataset.save).textContent="Saved."}catch(e){$("plNote"+b.dataset.save).textContent=e.message}});
+  document.querySelectorAll("[data-copy]").forEach(b=>b.onclick=async()=>{const l=PL.lists[b.dataset.copy],links=l.cur.map(x=>l.by[x]).filter(r=>r.track).map(r=>r.spotify.split("?")[0]);const note=$("plNote"+b.dataset.copy);
+    if(!links.length){note.textContent="None of these have a Spotify track link yet.";return}try{await navigator.clipboard.writeText(links.join("\n"));note.textContent=`Copied ${links.length} link${links.length===1?"":"s"}. Paste into the playlist in Spotify.`}catch(e){note.textContent="Your browser blocked copying. Try again."}})}
+
+/* ---------- email ---------- */
+LOADERS.email=async()=>{let d;try{d=await api("/api/admin/email")}catch(e){$("emStats").innerHTML=`<p class="hint">${esc(e.message)}</p>`;return}
+  const sg=d.sendgrid||{},rows=(sg.list&&sg.list.some(w=>w.requests))?sg.list:(sg.all||[]),tot=k=>rows.reduce((a,w)=>a+(w[k]||0),0),dl=tot("delivered");
+  $("emCards").innerHTML=mini(fmt(d.subs.active||0),"On the list")+mini(fmt(d.subs.gone||0),"Unsubscribed")+mini(d.lastSent?new Date(d.lastSent).toLocaleDateString():"Never","Last Wicked of the week")+mini(dl?Math.round(tot("unique_opens")/dl*100)+"%":"–","Open rate (120 days)")+mini(dl?Math.round(tot("unique_clicks")/dl*100)+"%":"–","Click rate (120 days)");
+  const wk={};(d.growth||[]).forEach(g=>{const dt=new Date(g.day+"T00:00:00Z");const mon=addD(g.day,-((dt.getUTCDay()+6)%7));wk[mon]=(wk[mon]||0)+g.c});const weeks=[];const today=iso(new Date());for(let i=16;i>=0;i--){const d0=addD(today,-7*i),dt=new Date(d0+"T00:00:00Z");weeks.push(addD(d0,-((dt.getUTCDay()+6)%7)))}
+  $("emGrowth").innerHTML=cols(weeks,[{name:"New subscribers",color:"#14A383",vals:weeks.map(w=>wk[w]||0)}],{lab:shortDate,empty:"No sign-ups yet."});
+  $("emSrc").innerHTML=bars((d.sources||[]).map(x=>[x.source,x.c]));
+  $("emStats").innerHTML=sg.error?`<p class="hint">${esc(sg.error)}</p>`:rows.length?`<div class="tscroll"><table class="tbl"><thead><tr><th>Week of</th><th>Sent</th><th>Delivered</th><th>Opened</th><th>Open rate</th><th>Clicked</th><th>Click rate</th><th>Unsubscribed</th><th>Spam reports</th></tr></thead><tbody>${rows.slice().reverse().filter(w=>w.requests).map(w=>`<tr><td>${shortDate(w.date)}</td><td>${fmt(w.requests)}</td><td>${fmt(w.delivered)}</td><td>${fmt(w.unique_opens)}</td><td>${w.delivered?Math.round(w.unique_opens/w.delivered*100)+"%":"–"}</td><td>${fmt(w.unique_clicks)}</td><td>${w.delivered?Math.round(w.unique_clicks/w.delivered*100)+"%":"–"}</td><td>${fmt(w.unsubscribes)}</td><td>${fmt(w.spam_reports)}</td></tr>`).join("")||`<tr><td class="hint">No email sent in the last 120 days.</td></tr>`}</tbody></table></div><p class="hint">${sg.list&&sg.list.some(w=>w.requests)?"Wicked of the week emails only.":"All Wackometer email, including sign-in codes. Newsletter-only numbers start with the next send."}</p>`:`<p class="hint">No email yet.</p>`;
+  $("emSends").innerHTML=(d.sends||[]).length?d.sends.map(x=>`<div class="it"><span class="grow"><b>${esc(x.subject||x.kind)}</b><br><small>${new Date(x.at).toLocaleString()}${x.by_email?" · "+esc(x.by_email):""}</small></span><span>${fmt(x.recipients)} people</span></div>`).join(""):`<p class="hint">Sends show up here from now on.</p>`};
+
+/* ---------- SEO ---------- */
+const SEARCH=["google","bing","duckduckgo","yahoo","chatgpt","perplexity"],SE_COL={google:"#2F7BEB",bing:"#14A383",duckduckgo:"#E5702A",yahoo:"#7A6FD0",chatgpt:"#D9488F",perplexity:"#6E8A0F"};
+LOADERS.seo=async()=>{let d;try{d=await api("/api/admin/seo?"+rangeQ())}catch(e){$("seoPages").innerHTML=`<p class="hint">${esc(e.message)}</p>`;return}
+  const fromSearch=d.pages.filter(p=>SEARCH.includes(p.src)),tot=fromSearch.reduce((a,p)=>a+p.c,0),by=s=>fromSearch.filter(p=>p.src===s).reduce((a,p)=>a+p.c,0),pages=new Set(fromSearch.map(p=>p.path));
+  $("seoCards").innerHTML=mini(fmt(tot),"Visits from search")+mini(fmt(by("google")),"From Google")+mini(fmt(by("bing")+by("duckduckgo")+by("yahoo")),"Bing, DuckDuckGo, Yahoo")+mini(fmt(by("chatgpt")+by("perplexity")),"From AI answers")+mini(fmt(pages.size),"Pages found from search");
+  const w=window_(),days=daysIn(w.from,w.to),srcs=SEARCH.filter(s=>d.daily.some(x=>x.src===s));
+  const S=srcs.map(s=>({name:s[0].toUpperCase()+s.slice(1).replace("gpt","GPT"),color:SE_COL[s],vals:days.map(dd=>(d.daily.find(x=>x.day===dd&&x.src===s)||{}).c||0)}));
+  $("seoLegend").innerHTML=legend(S);$("seoChart").innerHTML=cols(days,S.length?S:[{name:"Search",color:"#2F7BEB",vals:days.map(()=>0)}],{lab:shortDate,empty:"No search visits counted yet. Counting started on November 9, 2026."});
+  const pm={};fromSearch.forEach(p=>pm[p.path]=(pm[p.path]||0)+p.c);
+  $("seoPages").innerHTML=Object.keys(pm).length?bars(Object.entries(pm).sort((a,b)=>b[1]-a[1]).slice(0,8)):`<p class="hint">Nothing yet for these dates.</p>`;
+  const sec=p=>p==="/"?"Front page":p.startsWith("/rhymes")?"Rhymes":p.startsWith("/cliches")?"Cliché book":p.startsWith("/syllable")?"Syllable counter":p.startsWith("/lists")?"Wicked lists":p.startsWith("/genres")||/^\/reviews\/(walternative|windie|wrythme-and-blues|wrock-and-wroll|wrap)$/.test(p)?"Genres":p.startsWith("/reviews")?"Reviews":p.startsWith("/artists")?"Artists":p.startsWith("/critics")?"Critics":"Other";
+  const sm={};Object.entries(pm).forEach(([p,c])=>sm[sec(p)]=(sm[sec(p)]||0)+c);
+  $("seoSections").innerHTML=Object.keys(sm).length?bars(Object.entries(sm).sort((a,b)=>b[1]-a[1])):`<p class="hint">Nothing yet for these dates.</p>`};
+
+/* ---------- activity log ---------- */
+const ACT={"/api/admin/team":"Changed who has access","/api/admin/people":"Gave Pro or credits","/api/admin/settings":"Changed site settings","/api/admin/playlists":"Saved a playlist","/api/admin/post":"Moderated a Wall post","/api/admin/cleanup":"Cleaned up visitor records","/api/admin/user":"Reset a profile","/api/reviews-admin/save":"Saved a review","/api/reviews-admin/delete":"Deleted a review","/api/reviews-admin/upload":"Uploaded a picture","/api/reviews-admin/newsletter":"Sent Wicked of the week","/api/reviews-admin/critic":"Edited a critic","/api/reviews-admin/og":"Made a link preview","/api/reviews-admin/me-save":"Edited their critic page","/api/reviews-admin/request":"Updated a submission","/api/reviews-admin/tell":"Emailed an artist","/api/hub-admin/list-intro":"Edited a Wicked list","/api/hub-admin/claim":"Handled an artist claim","/api/hub-admin/profile":"Edited an artist profile","/api/hub-admin/comment":"Moderated a comment"};
+LOADERS.log=async()=>{let d;try{d=await api("/api/admin/log?q="+encodeURIComponent($("logQ").value.trim()))}catch(e){$("logList").innerHTML=`<p class="hint">${esc(e.message)}</p>`;return}
+  $("logList").innerHTML=d.log.length?d.log.map(x=>{let det="";try{det=Object.entries(JSON.parse(x.detail||"{}")).map(([k,v])=>`${k}: ${v}`).join(" · ")}catch(e){}
+    return `<div class="logrow"><small>${new Date(x.at).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}</small><span><b>${esc(ACT[x.path]||x.path.replace(/^\/api\//,""))}</b> <small>by ${esc(x.email||"?")}</small>${det?`<br><code>${esc(det)}</code>`:""}</span></div>`}).join(""):`<p class="hint">Nothing logged yet. Changes made in the back office show up here from now on.</p>`};
+$("logForm").onsubmit=e=>{e.preventDefault();LOADERS.log()};
+
+/* ---------- settings ---------- */
+let SET=null;
+LOADERS.settings=async()=>{try{SET=await api("/api/admin/settings")}catch(e){$("setFields").innerHTML=`<p class="hint">${esc(e.message)}</p>`;return}const own=SET.role==="owner";
+  $("setWho").textContent=own?"Changes go live within a minute.":"Only an owner can change these.";
+  $("setFields").innerHTML=SET.defs.map(f=>{const id="set_"+f.key,dis=own?"":" disabled";
+    if(f.type==="bool")return `<label class="chk"><input type="checkbox" id="${id}"${f.value?" checked":""}${dis}> ${esc(f.label)}</label>`;
+    const val=f.type==="int"?f.value:f.type==="spotify"&&f.value?"https://open.spotify.com/playlist/"+f.value:f.value;
+    return `<label for="${id}">${esc(f.label)}${f.type==="int"?` <small>now ${money(f.value)}</small>`:""}<input id="${id}" type="${f.type==="int"?"number":"text"}" value="${esc(val??"")}"${f.type==="int"?' min="100" max="100000" step="50"':""}${dis}>${f.help?`<small>${esc(f.help)}</small>`:""}</label>`}).join("");
+  $("setSave").hidden=!own};
+$("setForm").onsubmit=async e=>{e.preventDefault();const ch={};SET.defs.forEach(f=>{const el=$("set_"+f.key);const v=f.type==="bool"?el.checked:el.value;const cur=f.type==="bool"?f.value:f.type==="spotify"&&f.value?"https://open.spotify.com/playlist/"+f.value:String(f.value??"");if(String(v)!==String(cur))ch[f.key]=v});
+  if(!Object.keys(ch).length){$("setNote").textContent="Nothing changed.";return}$("setSave").disabled=true;
+  try{const d=await api("/api/admin/settings",{settings:ch});$("setNote").textContent=`Saved ${d.saved} change${d.saved===1?"":"s"}.`;LOADERS.settings()}catch(e){$("setNote").textContent=e.message}$("setSave").disabled=false};
+
 /* ---------- boot ---------- */
 async function loadOV(){OV=await api("/api/admin/overview")}
-function renderData(){if(!SERIES)return;syncRange();kpis();traffic();chart()}
+function renderData(){if(!SERIES)return;syncRange();kpis();traffic();chart();const k=(location.hash.slice(1)||"overview");if(k==="performance"||k==="seo")LOADERS[k]()}
 function drawAll(){if(SERIES)chart()}
 (async()=>{syncChartCtl();syncRange();show();
   try{const me=await api("/api/me").catch(()=>null);if(me&&(me.me||me).email)$("who").textContent="Signed in as "+(me.me||me).email;

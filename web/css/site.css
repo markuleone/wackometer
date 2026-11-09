@@ -1267,3 +1267,4 @@ header.rtop + .wrap{padding-top:28px}
 @media (max-width:700px){.ghero{grid-template-columns:1fr}.ghero img{max-width:280px;margin:0 auto}}
 .ftop10{display:flex;flex-direction:column;gap:8px}
 nav.rchips{background:none;border:0;padding:0;box-shadow:none;border-radius:0}
+.announce{margin:10px 0 0;background:var(--sun);border:2px solid var(--ink);border-radius:14px;padding:8px 14px;font-weight:700;text-align:center}.announce a{color:var(--ink);text-decoration:none}

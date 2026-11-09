@@ -13,7 +13,18 @@ if (!IS_BOT && !sessionStorage.getItem("wk-v")) {
   try { sessionStorage.setItem("wk-v", "1"); } catch (e) {}
   const src = sourceOf();
   track("view"); track(R.front ? "land:home" : R.index ? "land:reviews" : R.artist ? "land:artist" : "land:review"); if (src) track("src:" + src);
+  if (src) try { fetch("/api/landing", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ path: location.pathname, src }), keepalive: true }); } catch (e) {}
 }
+// Per-review counters for the back office (no account, nothing personal).
+function rstat(t) {
+  if (IS_BOT || !R.slug || R.index || R.front) return;
+  try { fetch("/api/rstat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ slug: R.slug, t }), keepalive: true }); } catch (e) {}
+}
+try { if (R.slug && !sessionStorage.getItem("wk-rv-" + R.slug)) { sessionStorage.setItem("wk-rv-" + R.slug, "1"); rstat("view"); } } catch (e) { rstat("view"); }
+document.querySelectorAll(".rv-links a").forEach((a) => a.addEventListener("click", () => rstat("listen")));
+// A tap into the Spotify or YouTube player counts as a listen (the page loses focus to the player's frame).
+let listened = false;
+window.addEventListener("blur", () => { if (!listened && document.activeElement && document.activeElement.tagName === "IFRAME" && document.activeElement.closest(".rv-listen")) { listened = true; rstat("listen"); } });
 
 // The crew member for this tier, next to the score.
 document.querySelectorAll(".rv-char,.fp-char,.cm").forEach((el) => (el.innerHTML = charSVG(Number(el.dataset.tier) || 0)));
@@ -51,7 +62,7 @@ if (R.slug) {
     document.querySelectorAll(".rv-t").forEach((x) => (x.disabled = true));
     try {
       const c = await api(`/api/reviews/${R.slug}/vote`, { body: { tier: t } });
-      renderCrowd(c); track("review_vote");
+      renderCrowd(c); track("review_vote"); rstat("vote");
       const agree = t === R.tier ? "Same call as us." : Math.abs(t - R.tier) === 1 ? "Close to our call." : "Bold. You and the meter disagree.";
       note.textContent = `You said ${TIERS[t].n}. ${agree}`;
     } catch (e) { note.textContent = e.message; }
@@ -67,11 +78,11 @@ const shareText = () => {
 };
 if ($("rvShare")) $("rvShare").onclick = async () => {
   const url = location.origin + location.pathname, note = $("shareNote");
-  track("review_share");
+  track("review_share"); rstat("share");
   if (navigator.share) { try { await navigator.share({ title: document.title, text: shareText(), url }); return; } catch (e) { if (e.name === "AbortError") return; } }
   try { await navigator.clipboard.writeText(`${shareText()} ${url}`); note.textContent = "Link copied. Paste it anywhere."; } catch (e) { note.textContent = url; }
 };
-if ($("badgeCopy")) $("badgeCopy").onclick = () => { copyText($("badgeCode").value, $("badgeCopy"), "Copy the code"); track("review_badge"); };
+if ($("badgeCopy")) $("badgeCopy").onclick = () => { copyText($("badgeCode").value, $("badgeCopy"), "Copy the code"); track("review_badge"); rstat("badge"); };
 
 /* ---------- story card (1080x1920, for Instagram and TikTok stories) ---------- */
 const W = 1080, H = 1920, D = '"Fredoka",system-ui,sans-serif', B = 'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif';
@@ -165,7 +176,7 @@ if ($("rvVideo")) $("rvVideo").onclick = async () => {
     })(); });
     rec.stop(); await stopped;
     const ext = type.includes("mp4") ? "mp4" : "webm", blob = new Blob(chunks, { type: type.split(";")[0] }), name = `wackometer-${R.slug}.${ext}`;
-    const file = new File([blob], name, { type: blob.type }); track("review_video");
+    const file = new File([blob], name, { type: blob.type }); track("review_video"); rstat("video");
     let shared = false;
     if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], text: shareText() }); shared = true; } catch (e) { if (e.name === "AbortError") shared = true; } }
     if (!shared) { const l = document.createElement("a"); l.href = URL.createObjectURL(blob); l.download = name; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(l.href), 4000); }
@@ -176,7 +187,7 @@ if ($("rvVideo")) $("rvVideo").onclick = async () => {
 if ($("rvCard")) $("rvCard").onclick = async () => {
   const b = $("rvCard"), note = $("shareNote"); b.disabled = true; note.textContent = "Drawing your card…";
   try {
-    const blob = await storyCard(); track("review_card");
+    const blob = await storyCard(); track("review_card"); rstat("card");
     const name = `wackometer-${R.slug}.png`, file = new File([blob], name, { type: "image/png" });
     if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], text: shareText() }); note.textContent = ""; b.disabled = false; return; } catch (e) { if (e.name === "AbortError") { note.textContent = ""; b.disabled = false; return; } } }
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
@@ -288,13 +299,13 @@ if (rxBox && R.slug) {
   api(`/api/reviews/${R.slug}/social`).then(renderSocial).catch(() => {});
   document.querySelectorAll(".rx-b").forEach((b) => (b.onclick = async () => {
     b.disabled = true;
-    try { renderSocial(await api(`/api/reviews/${R.slug}/react`, { body: { emoji: b.dataset.rx } })); track("review_react"); } catch (e) {}
+    try { renderSocial(await api(`/api/reviews/${R.slug}/react`, { body: { emoji: b.dataset.rx } })); track("review_react"); rstat("react"); } catch (e) {}
     b.disabled = false;
   }));
   const cf = $("cmForm");
   if (cf) cf.onsubmit = async (e) => {
     e.preventDefault(); const btn = cf.querySelector("button"), note = $("cmNote"); btn.disabled = true; note.textContent = "";
-    try { renderSocial(await api(`/api/reviews/${R.slug}/comment`, { body: { body: $("cmBody").value, name: $("cmName").value } })); $("cmBody").value = ""; note.textContent = "Posted."; track("review_comment"); try { localStorage.setItem("wk-cmname", $("cmName").value); } catch (e2) {} }
+    try { renderSocial(await api(`/api/reviews/${R.slug}/comment`, { body: { body: $("cmBody").value, name: $("cmName").value } })); $("cmBody").value = ""; rstat("comment"); note.textContent = "Posted."; track("review_comment"); try { localStorage.setItem("wk-cmname", $("cmName").value); } catch (e2) {} }
     catch (err) { note.textContent = err.message; }
     btn.disabled = false;
   };

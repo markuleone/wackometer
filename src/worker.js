@@ -5,7 +5,8 @@ import { handleSocial, profileMeta } from "./social.js";
 import { cleanLyrics, cleanIdentity } from "./moderation.js";
 import SEO_URLS from "./seo-urls.js";
 import { checkUnsubscribe } from "./notify.js";
-import { roleOf, isCriticEmail, gatePage, adminDashApi } from "./admin.js";
+import { roleOf, isCriticEmail, gatePage, adminDashApi, publicCounter, logAction } from "./admin.js";
+import { refreshSettings } from "./settings.js";
 import { listsPage, artistBadge, hubApi, hubUrls, thankSubmitter, genresIndex } from "./hub.js";
 import { reviewsPage, badgeSVG, reviewApi, reviewUrls, frontPage, artistsPage, artistTable, getReviewedPage, criticsPage, activeCritics, subscribe, imageResponse, listUnsubscribe } from "./reviews.js";
 import { analyze, tierOf, clamp, MID, TIERS, METRICS, words, dailyKey, dailyPrompt } from "../web/js/score.js";
@@ -165,6 +166,7 @@ export default {
     const url = new URL(req.url);
     const path = url.pathname.replace(/\/+$/, "");
     const method = req.method;
+    await refreshSettings(env.DB);
 
     // Stripe calls this directly; no session cookie.
     if (path === "/api/stripe/webhook" && method === "POST") { await ensureSchema(env); return stripeWebhook(req, env); }
@@ -208,6 +210,7 @@ export default {
     if (path === "/api/unsubscribe") return unsubscribe(url, env, method);
     if (path === "/api/list/unsubscribe") { await ensureSchema(env); return listUnsubscribe(env, url, method); }
 
+    if ((path === "/api/rstat" || path === "/api/landing") && method === "POST") { try { await ensureSchema(env); return await publicCounter(path, await req.json().catch(() => ({})), env); } catch (e) { return bad("Counter failed.", 500); } }
     let s;
     // Anonymous counters don't need (or create) an account.
     const needUser = method !== "GET" && path !== "/api/event";
@@ -225,6 +228,8 @@ export default {
     try { res = await route(path, method, url, body, u, env, req); }
     catch (e) { console.error(e); res = bad("Something broke on our side. Try again in a moment.", 500); }
     if (s.setCookie && !res.headers.has("set-cookie")) res.headers.append("set-cookie", s.setCookie);
+    // Back office changes go in the activity log.
+    if (method === "POST" && res.status < 400 && /^\/api\/(admin|reviews-admin|hub-admin)\//.test(path) && u.email) ctx.waitUntil(logAction(env, u, path, body));
     return res;
   },
 };

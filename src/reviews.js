@@ -8,6 +8,7 @@ import { adsenseTag } from "./ads-tag.js";
 import { TIERS, tierOf, MID } from "../web/js/score.js";
 import META from "./build-meta.js";
 import { siteHeader, siteFooterLinks } from "./site-header.js";
+import { CFG, money } from "./settings.js";
 import { GENRE_KEYS, OLD_GENRES, TOP10_PLAYLIST, playlistEmbed, genrePage, genreCounts, genreTilesHTML, reviewSocialHTML, artistProfile, artistLinksHTML, artistExtrasHTML, thankSubmitter } from "./hub.js";
 
 const BASE = "https://wackometer.com";
@@ -77,7 +78,7 @@ ${adsenseTag()}
 <body${data ? ` data-review="${esc(data)}"` : ""}>
 <a class="skip" href="#main">Skip to content</a>
 <div class="wrap seo">
-${siteHeader(active, q)}
+${siteHeader(active, q)}${CFG.announce ? `<p class="announce">${CFG.announce_link ? `<a href="${esc(CFG.announce_link)}">${esc(CFG.announce)} <span aria-hidden="true">→</span></a>` : esc(CFG.announce)}</p>` : ""}
 <main id="main">
 ${body}
 </main>
@@ -131,7 +132,7 @@ function card(r) {
 // The two things we ask readers to do, as one calm pair of cards (the full payment form lives on /get-reviewed).
 export function ctaHTML() {
   return `<section class="fpromo fcta" aria-label="Get involved">
-<a class="fp fp-get" href="/get-reviewed" data-hub="submit"><span class="fp-char" data-tier="1" aria-hidden="true"></span><span class="hey">🎧 Make music?</span><b>Get your song weighed.</b><span>A real person plays it start to finish and sends you written feedback within 7 days. $10.</span><span class="fpgo">Get reviewed <span aria-hidden="true">→</span></span></a>
+<a class="fp fp-get" href="/get-reviewed" data-hub="submit"><span class="fp-char" data-tier="1" aria-hidden="true"></span><span class="hey">🎧 Make music?</span><b>Get your song weighed.</b><span>A real person plays it start to finish and sends you written feedback within 7 days. ${money(CFG.review_price_cents)}.</span><span class="fpgo">Get reviewed <span aria-hidden="true">→</span></span></a>
 <a class="fp fp-weigh" href="/write#weigh" data-hub="write"><span class="fp-char" data-tier="4" aria-hidden="true"></span><span class="hey">✍️ For writers · Free</span><b>How wack are <em>your</em> lyrics?</b><span>Paste a verse. The Wackometer scores it in a second, circles the clichés and shows you how to fix them.</span><span class="fpgo">Weigh my lyrics <span aria-hidden="true">→</span></span></a>
 </section>`;
 }
@@ -152,10 +153,10 @@ ${more ? '<a class="sub-more" href="/get-reviewed">What you get and who reviews 
 </div>
 <div class="paycard" role="group" aria-labelledby="payH">
 <div class="pay-top"><h3 id="payH" class="price" aria-label="10 dollars"><span class="cur" aria-hidden="true">$</span><span aria-hidden="true" id="priceNum">10</span><span class="spark" aria-hidden="true">✦</span></h3>
-<div><p class="per"><span class="was" id="priceWas" hidden>$10</span><span id="priceTag">one song or album · one-time</span></p>
+<div><p class="per"><span class="was" id="priceWas" hidden>${money(CFG.review_price_cents)}</span><span id="priceTag">one song or album · one-time</span></p>
 <ul class="perks"><li>A guaranteed listen</li><li>Written feedback in 7 days</li><li>A shot at Certified Wicked</li></ul></div></div>
 <div id="payEl" class="payel"><span class="hint">Loading the card form…</span></div>
-<button class="btn bile paybtn" type="submit" id="payBtn">Pay $10 &amp; send it</button>
+<button class="btn bile paybtn" type="submit" id="payBtn">Pay ${money(CFG.review_price_cents)} &amp; send it</button>
 <span class="hint paynote" id="subNote" role="status">🔒 Secure payment by Stripe. Paying gets you heard, not a better score.</span>
 <a class="pro-deal" id="proDeal" href="/write#pro"><span class="cm cm-xs" data-tier="5" aria-hidden="true"></span>Wingman Pro members pay <b>$7</b> →</a>
 </div>
@@ -311,13 +312,13 @@ export async function frontPage(req, env, ensureSchema) {
 <div class="fintro"><img class="fwacko" src="/brand/wacko.svg" alt="" width="88" height="100"><h1>Wicked or <em>wack</em>?</h1><p>Reviews of new music, from the lyrics to the hook to the production, scored from Wicked to Wack. We weigh in, then you do.</p></div>
 ${hero.length ? `<section class="fhero" aria-roledescription="carousel" aria-label="Featured reviews"><div class="fslides" id="fSlides">${hero.map(slide).join("")}</div>${hero.length > 1 ? `<div class="fdots" role="group" aria-label="Choose a featured review">${hero.map((r, i) => `<button type="button" data-i="${i}" aria-label="Show ${esc(r.title)}"${i ? "" : ' aria-current="true"'}></button>`).join("")}</div>` : ""}</section>`
       : `<section class="fempty"><b>The first reviews drop soon.</b><p>Know an artist whose writing deserves more ears? <a href="#submit">Send them our way</a>.</p></section>`}
-${all.length ? row("rNew", "Latest reviews", "/reviews", all.slice(0, 12).map((r) => rowCard(r, crowd)).join("")) : ""}
-${(() => { if (!all.length) return ""; const k = new Date(all[0].published_at).toISOString().slice(0, 7), mo = ["January","February","March","April","May","June","July","August","September","October","November","December"][Number(k.slice(5)) - 1] + " " + k.slice(0, 4), top = all.filter((r) => new Date(r.published_at).toISOString().slice(0, 7) === k).sort((x, y) => x.score - y.score).slice(0, 4);
+${CFG.front_latest && all.length ? row("rNew", "Latest reviews", "/reviews", all.slice(0, 12).map((r) => rowCard(r, crowd)).join("")) : ""}
+${(() => { if (!CFG.front_wicked_list || !all.length) return ""; const k = new Date(all[0].published_at).toISOString().slice(0, 7), mo = ["January","February","March","April","May","June","July","August","September","October","November","December"][Number(k.slice(5)) - 1] + " " + k.slice(0, 4), top = all.filter((r) => new Date(r.published_at).toISOString().slice(0, 7) === k).sort((x, y) => x.score - y.score).slice(0, 4);
   return `<a class="fwl" href="/lists/${k}"><span class="fwl-covers">${top.map((r) => r.cover_url ? `<img src="${esc(r.cover_url)}" alt="" width="56" height="56" loading="lazy">` : `<span class="rv-nocover">♪</span>`).join("")}</span><span class="fwl-t"><span class="eyebrow">📅 The Wicked list</span><b>The best songs we weighed in ${mo}</b></span><span class="fwl-go">See the list →</span></a>`; })()}
-<section class="ftop10" aria-labelledby="rTop"><div class="frh"><h2 id="rTop">🔥 The Wackometer Top 10</h2><a href="https://open.spotify.com/playlist/${TOP10_PLAYLIST}" target="_blank" rel="noopener">Open in Spotify <span aria-hidden="true">↗</span></a></div><p class="hint">The ten most Wicked songs right now, in one playlist. Follow it and it updates as the scores do.</p>${playlistEmbed(TOP10_PLAYLIST, "Wackometer Top 10", 380)}</section>
-${await genreTilesHTML(DB, 8, true)}
+${CFG.front_top10 ? `<section class="ftop10" aria-labelledby="rTop"><div class="frh"><h2 id="rTop">🔥 The Wackometer Top 10</h2><a href="https://open.spotify.com/playlist/${CFG.top10_playlist}" target="_blank" rel="noopener">Open in Spotify <span aria-hidden="true">↗</span></a></div><p class="hint">The ten most Wicked songs right now, in one playlist. Follow it and it updates as the scores do.</p>${playlistEmbed(CFG.top10_playlist, "Wackometer Top 10", 380)}</section>` : ""}
+${CFG.front_genres ? await genreTilesHTML(DB, 8, true) : ""}
 <div class="ad-slot" hidden></div>
-${artists.length ? `<section class="flb" aria-labelledby="rLb"><div class="frh"><h2 id="rLb">🏆 Top artists</h2><a href="/artists">Full leaderboard <span aria-hidden="true">→</span></a></div><p class="hint">Each artist's score is the average of every song we've weighed. Lower is better.</p><ol class="lb-list">${leaderRows(artists.slice(0, 5))}</ol></section>` : ""}
+${CFG.front_artists && artists.length ? `<section class="flb" aria-labelledby="rLb"><div class="frh"><h2 id="rLb">🏆 Top artists</h2><a href="/artists">Full leaderboard <span aria-hidden="true">→</span></a></div><p class="hint">Each artist's score is the average of every song we've weighed. Lower is better.</p><ol class="lb-list">${leaderRows(artists.slice(0, 5))}</ol></section>` : ""}
 ${ctaHTML()}
 <div class="ad-slot" hidden></div>
 ${"" && split.length ? `<section class="fsplit" aria-labelledby="rSplit"><div class="frh"><h2 id="rSplit">⚔️ Critics vs. the crowd</h2></div><p class="hint">Where the voters and the Wackometer don't agree. Pick a side.</p><ol>${split.map(({ r, c }) => `<li><a href="/reviews/${esc(r.slug)}"><b>${esc(r.title)}</b> <span class="rv-ca">${esc(r.artist)}</span></a><span class="fvs">We said ${pill(tierOf(r.score), `${TIERS[tierOf(r.score)].n} ${r.score}`)} Crowd said ${pill(c.tier, `${TIERS[c.tier].n} ${c.avg}`)}</span></li>`).join("")}</ol></section>` : ""}
@@ -450,8 +451,8 @@ export async function getReviewedPage(req, env, ensureSchema) {
 <div class="gr-hero"><span class="cm cm-hero" data-tier="1" aria-hidden="true"></span>
 <p class="eyebrow">Get reviewed</p>
 <h1>Get your song weighed by people who <em>make</em> music.</h1>
-<p class="lead">Every song is reviewed by a Wackometer critic: songwriters, rappers and producers who hear everything. <b>$10</b> gets you a guaranteed listen and real feedback on your song.</p>
-<div class="row"><a class="btn bile" href="#submit">Send my song, $10</a><a class="btn" href="#apply">Review for us</a></div>
+<p class="lead">Every song is reviewed by a Wackometer critic: songwriters, rappers and producers who hear everything. <b>${money(CFG.review_price_cents)}</b> gets you a guaranteed listen and real feedback on your song.</p>
+<div class="row"><a class="btn bile" href="#submit">Send my song, ${money(CFG.review_price_cents)}</a><a class="btn" href="#apply">Review for us</a></div>
 </div>
 <section aria-labelledby="perksH"><h2 id="perksH">What you get</h2>
 <div class="gr-perks">${perks.map(([i, t, d], k) => `<div class="gr-perk${k > 1 ? " maybe" : ""}"><span class="gr-i" aria-hidden="true">${i}</span><b>${t}</b><p>${d}</p></div>`).join("")}</div>
@@ -459,12 +460,12 @@ export async function getReviewedPage(req, env, ensureSchema) {
 <section aria-labelledby="critH"><h2 id="critH">Who reviews it</h2>
 <div class="gr-who"><span class="gr-i" aria-hidden="true">🎧</span><p>A <b>Wackometer critic</b>: a songwriter, rapper or producer whose taste we trust. They play your song start to finish and score it from Wicked to Wack, with a breakdown for the lyrics, hook, vocals, production and replay value. Their name goes on any review they publish.</p></div></section>
 <section aria-labelledby="howH"><h2 id="howH">How it works</h2>
-<ol class="gr-steps"><li><b>Send it.</b> Your link and your email. Add a note if there's something we should know.</li><li><b>Pay $10.</b> Right here on the page: card, Apple Pay or Google Pay.</li><li><b>They listen.</b> Your critic scores the song from Wicked to Wack, with a breakdown for each part.</li><li><b>Feedback lands.</b> Within 7 days. If it's Wicked, your review page goes live and you get your badge.</li></ol></section>
+<ol class="gr-steps"><li><b>Send it.</b> Your link and your email. Add a note if there's something we should know.</li><li><b>Pay ${money(CFG.review_price_cents)}.</b> Right here on the page: card, Apple Pay or Google Pay.</li><li><b>They listen.</b> Your critic scores the song from Wicked to Wack, with a breakdown for each part.</li><li><b>Feedback lands.</b> Within 7 days. If it's Wicked, your review page goes live and you get your badge.</li></ol></section>
 ${submitHTML([], "", false)}
 <section aria-labelledby="faqH" class="gr-faq"><h2 id="faqH">Questions</h2>
 <details><summary>Does paying get me a better score?</summary><p>No. Paying gets you a guaranteed listen and written feedback. Scores are the critic's honest take, and reviews that came in through paid submissions say so on the page.</p></details>
 <details><summary>What if my song doesn't get a review page?</summary><p>You still get written feedback on your song within 7 days. Public pages are for songs the critic loves, which is what makes the badge worth having.</p></details>
-<details><summary>Is there a discount?</summary><p>Yes: <a href="/write#pro">Wingman Pro</a> members pay $7 per song instead of $10, on top of everything else Pro includes.</p></details>
+<details><summary>Is there a discount?</summary><p>Yes: <a href="/write#pro">Wingman Pro</a> members pay ${money(CFG.review_price_pro_cents)} per song instead of ${money(CFG.review_price_cents)}, on top of everything else Pro includes.</p></details>
 <details><summary>Who are the critics?</summary><p>Songwriters, rappers and producers we trust to be honest and specific. Want in? <a href="#apply">Apply below</a>.</p></details>
 <details><summary>What kind of music?</summary><p>Any genre. Songs, EPs and albums are all welcome, and instrumentals too (they just skip the lyrics score). For an album, tell us your favorite tracks in the notes.</p></details>
 <details><summary>Something else?</summary><p>Email <a href="mailto:hello@wackometer.com">hello@wackometer.com</a>.</p></details>
@@ -472,7 +473,7 @@ ${submitHTML([], "", false)}
 ${APPLY}
 </article>`;
   const ld = { "@context": "https://schema.org", "@type": "Service", name: "Get your song reviewed", provider: { "@type": "Organization", name: "Wackometer", url: BASE }, url: `${BASE}/get-reviewed`, description: "A guaranteed listen and written feedback on your song within 7 days from a Wackometer critic.", offers: { "@type": "Offer", price: "10.00", priceCurrency: "USD" } };
-  return html(shell({ active: "submit", path: "/get-reviewed", title: "Get your song reviewed · $10 · Wackometer", desc: "Reviewed by songwriters, rappers and producers. $10 gets your song a guaranteed listen and written feedback within 7 days, plus a shot at a review page, the leaderboard and a Certified Wicked badge.", body, ld, data: JSON.stringify({ getReviewed: true }) }));
+  return html(shell({ active: "submit", path: "/get-reviewed", title: `Get your song reviewed · ${money(CFG.review_price_cents)} · Wackometer`, desc: `Reviewed by songwriters, rappers and producers. ${money(CFG.review_price_cents)} gets your song a guaranteed listen and written feedback within 7 days, plus a shot at a review page, the leaderboard and a Certified Wicked badge.`, body, ld, data: JSON.stringify({ getReviewed: true }) }));
 }
 
 export async function criticsPage(req, env, path, ensureSchema) {
@@ -497,7 +498,7 @@ ${APPLY}</article>`;
 <div class="cr-genres">${genreChips(c.genres)}</div>
 ${c.bio ? bodyHTML(c.bio) : ""}
 <p class="hint">${reviews.length} review${reviews.length === 1 ? "" : "s"}${avg !== null ? ` · gives an average of ${avg} (${TIERS[tierOf(avg)].n})` : ""}${ig ? ` · <a href="https://instagram.com/${esc(ig)}" target="_blank" rel="noopener">@${esc(ig)} ↗</a>` : ""}${link ? ` · <a href="${esc(link)}" target="_blank" rel="noopener">Website ↗</a>` : ""}</p>
-<a class="btn bile" href="/get-reviewed">Get your music reviewed, $10</a></div></div>
+<a class="btn bile" href="/get-reviewed">Get your music reviewed, ${money(CFG.review_price_cents)}</a></div></div>
 ${reviews.length ? `<section class="rv-more" aria-labelledby="crRevH"><h2 id="crRevH">Reviews by ${esc(c.name)}</h2><div class="rv-grid">${reviews.map(card).join("")}</div></section>` : ""}
 </article>`;
   const ld = { "@context": "https://schema.org", "@type": "Person", name: c.name, url: `${BASE}/critics/${c.slug}`, ...(c.tagline ? { jobTitle: c.tagline } : {}), ...(ig || link ? { sameAs: [link, ig ? `https://instagram.com/${ig}` : ""].filter(Boolean) } : {}) };
@@ -578,7 +579,7 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
     // Saved as "pending" until Stripe confirms the payment, so unpaid ones never reach the queue.
     // The page's card form then confirms this PaymentIntent in place (no redirect to a checkout page).
     const pro = !!(u && u.pro_until && u.pro_until > Date.now());
-    const id = newId(), cents = pro ? Number(env.SUBMIT_PRICE_PRO_CENTS) || 700 : Number(env.SUBMIT_PRICE_CENTS) || 1000;
+    const id = newId(), cents = pro ? CFG.review_price_pro_cents : CFG.review_price_cents;
     await DB.prepare("INSERT INTO review_requests (id,artist,link,email,note,user_id,critic,status,created_at) VALUES (?,?,?,?,?,?,?,'pending',?)").bind(id, artist, link, email, note || null, u.id, critic ? critic.slug : null, Date.now()).run();
     const pi = await stripe(env, "payment_intents", {
       amount: cents, currency: "usd", payment_method_types: ["card", "link", "cashapp"], receipt_email: email,
@@ -590,8 +591,8 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
   }
   // What the card form needs to load. The publishable key is public by design.
   if (path === "/api/reviews/pay-config" && method === "GET") {
-    const pro = !!(u && u.pro_until && u.pro_until > Date.now()), full = Number(env.SUBMIT_PRICE_CENTS) || 1000;
-    return json({ pk: env.STRIPE_SECRET_KEY && env.STRIPE_PUBLISHABLE_KEY ? env.STRIPE_PUBLISHABLE_KEY : "", cents: pro ? Number(env.SUBMIT_PRICE_PRO_CENTS) || 700 : full, full, pro });
+    const pro = !!(u && u.pro_until && u.pro_until > Date.now()), full = CFG.review_price_cents;
+    return json({ pk: env.STRIPE_SECRET_KEY && env.STRIPE_PUBLISHABLE_KEY ? env.STRIPE_PUBLISHABLE_KEY : "", cents: pro ? CFG.review_price_pro_cents : full, full, pro });
   }
   // Right after paying, the page asks us to check with Stripe so the song joins the queue immediately (the webhook does the same).
   if (path === "/api/reviews/submit/confirm" && method === "POST") {
@@ -628,6 +629,7 @@ export async function reviewApi(path, method, url, body, u, env, admin, newId, s
     const r = await sendList(env, url, n, to);
     if (!r.ok) return bad(r.error, 502);
     await DB.prepare("INSERT INTO settings (k,v) VALUES ('wotw_last',?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(String(Date.now())).run();
+    await DB.prepare("INSERT INTO email_log (at,kind,subject,recipients,by_email) VALUES (?,?,?,?,?)").bind(Date.now(), "Wicked of the week", n.subject, to.length, u.email || null).run().catch(() => {});
     return json({ ok: true, sent: to.length, week: wk });
   }
   const mine = (r) => !critic || !r || (r.reviewer || "").toLowerCase() === critic.name.toLowerCase() || (r.status === "draft" && !r.reviewer);
@@ -906,7 +908,7 @@ ${rows.map((r) => `<table role="presentation" width="100%" cellpadding="0" cells
 function promoCard(base) {
   return eCard(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
 <td valign="middle"><div style="font-family:${EF};font-weight:700;font-size:24px;line-height:1.15;color:#FFFFFF">Make music?<br><span style="color:#BCD83C">Get your song weighed.</span></div>
-<div style="font-family:${EB};font-size:15px;line-height:1.5;color:#C9CCEB;padding:8px 0 16px">A real person plays it start to finish, scores the lyrics, hook, vocals, production and replay value, and writes it up. $10.</div>
+<div style="font-family:${EB};font-size:15px;line-height:1.5;color:#C9CCEB;padding:8px 0 16px">A real person plays it start to finish, scores the lyrics, hook, vocals, production and replay value, and writes it up. ${money(CFG.review_price_cents)}.</div>
 ${eBtn(`${base}/get-reviewed`, "Submit a song", "#BCD83C")}</td>
 <td width="110" valign="middle" align="right" class="hide-m"><img src="${base}/email/crew-1.png" width="100" height="100" alt="" style="display:block"></td></tr></table>`, INK);
 }
@@ -941,7 +943,7 @@ async function sendList(env, url, n, emails) {
     const batch = emails.slice(i, i + 500);
     const pers = await Promise.all(batch.map(async (to) => { const unsub = `${base}/api/list/unsubscribe?e=${encodeURIComponent(to)}&s=${await listSig(env, to)}`; return { to: [{ email: to }], substitutions: { "-unsub-": unsub }, headers: { "List-Unsubscribe": `<${unsub}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } }; }));
     const res = await fetch("https://api.sendgrid.com/v3/mail/send", { method: "POST", headers: { authorization: `Bearer ${env.SENDGRID_API_KEY}`, "content-type": "application/json" },
-      body: JSON.stringify({ personalizations: pers, from, subject: n.subject, content: [{ type: "text/plain", value: n._text("-unsub-") }, { type: "text/html", value: n._body("-unsub-") }], tracking_settings: { click_tracking: { enable: false, enable_text: false } } }) });
+      body: JSON.stringify({ personalizations: pers, from, subject: n.subject, categories: ["wicked-of-the-week"], content: [{ type: "text/plain", value: n._text("-unsub-") }, { type: "text/html", value: n._body("-unsub-") }], tracking_settings: { click_tracking: { enable: false, enable_text: false } } }) });
     if (!res.ok) { const t = await res.text(); console.error("newsletter", res.status, t); return { ok: false, error: res.status === 403 ? "SendGrid refused the sender address. Verify hello@wackometer.com (or the wackometer.com domain) in SendGrid → Sender Authentication." : "SendGrid didn't accept the email. Try again in a minute." }; }
   }
   return { ok: true };

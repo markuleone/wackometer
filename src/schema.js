@@ -37,6 +37,14 @@ export const SCHEMA = [
 export const MIGRATIONS = [
   // staff added from the back office (owners live in ADMIN_EMAILS)
   "CREATE TABLE IF NOT EXISTS admins ( email TEXT PRIMARY KEY, added_by TEXT, created_at INTEGER NOT NULL )",
+  // back office: who did what
+  "CREATE TABLE IF NOT EXISTS admin_log ( id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, email TEXT, path TEXT NOT NULL, detail TEXT )",
+  // per-review counters (views, shares, listens...) per day, never tied to a person
+  "CREATE TABLE IF NOT EXISTS review_stats ( slug TEXT NOT NULL, day TEXT NOT NULL, t TEXT NOT NULL, count INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (slug, day, t) )",
+  // which page a visit started on and where it came from (content pages only)
+  "CREATE TABLE IF NOT EXISTS landing ( day TEXT NOT NULL, path TEXT NOT NULL, src TEXT NOT NULL, count INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, path, src) )",
+  // emails sent to the list
+  "CREATE TABLE IF NOT EXISTS email_log ( id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, kind TEXT NOT NULL, subject TEXT, recipients INTEGER NOT NULL DEFAULT 0, by_email TEXT )",
   "ALTER TABLE users ADD COLUMN email TEXT",
   "ALTER TABLE users ADD COLUMN username TEXT",
   "ALTER TABLE users ADD COLUMN display_name TEXT",
