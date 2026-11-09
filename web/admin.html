@@ -1,59 +1,432 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Admin · Wackometer</title><meta name="robots" content="noindex,nofollow"><link rel="icon" href="/favicon.svg" type="image/svg+xml">
-
+<title>Back office · Wackometer</title><meta name="robots" content="noindex,nofollow"><link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/css/site.css">
-<style>.tgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px}.tgrid h3{margin:4px 0 8px;font-size:16px}.bar{display:grid;grid-template-columns:110px 1fr 46px;gap:8px;align-items:center;font-size:14px;margin:4px 0}.bar i{display:block;height:10px;border-radius:6px;background:var(--bile)}.bar b{text-align:right;font-variant-numeric:tabular-nums}body{margin:0}[hidden]{display:none!important}.doc{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:14px}.doc h1{font-family:var(--display);font-size:40px;margin:0}.doc h2{font-family:var(--display);font-size:20px;margin:12px 0 0}.doc p,.doc li{max-width:65ch;line-height:1.65}.doc a{color:var(--bile-ink)}.back{font-family:var(--display);font-weight:600;text-decoration:none;color:var(--ink)}</style>
-</head><body><!--SITE_HEADER--><div class="wrap"><div class="doc" style="max-width:1000px">
-<h1>Admin</h1>
-<p><a class="btn bile" href="/admin-reviews">Write or edit lyric reviews →</a></p>
-<div id="err" class="hint"></div>
-<div class="stats" id="stats"></div>
-<h2>Traffic, last 30 days</h2>
-<p class="hint">Real browsers only (bots and crawlers are skipped). Counted once per visit. For recordings and heatmaps, open <a href="https://clarity.microsoft.com/" target="_blank" rel="noopener">Microsoft Clarity</a>.</p>
-<div class="stats" id="t30"></div>
-<div class="tgrid"><div><h3>Where visits come from</h3><div id="tSrc"></div></div><div><h3>Where they land</h3><div id="tLand"></div></div><div><h3>Tools opened</h3><div id="tTool"></div></div><div><h3>Funnel</h3><div id="tFunnel"></div></div></div>
-<h2>Clean up</h2>
-<div class="row"><button class="btn" id="cleanBtn">Remove empty visitor records</button><span class="hint" id="cleanNote">Deletes records older than an hour that never posted, voted, wrote or signed in.</span></div>
-<h2>Reset a profile</h2>
-<div class="row"><input type="text" id="resetUser" placeholder="username" style="max-width:240px"><button class="btn" id="resetBtn">Clear name, bio and links</button><span class="hint" id="resetNote"></span></div>
-<h2>DAW plugin waitlist</h2>
-<div id="waitlist"></div>
-<h2>Reported profiles</h2>
-<div class="cards" id="profiles"></div>
-<h2>Reported and hidden posts</h2>
-<div class="cards" id="flagged"></div>
-<h2>Shares and activity (by day)</h2>
-<div style="overflow-x:auto"><table id="events" style="border-collapse:collapse;font-variant-numeric:tabular-nums"></table></div>
+<style>
+body{margin:0}[hidden]{display:none!important}
+.adm{display:grid;grid-template-columns:210px minmax(0,1fr);gap:28px;margin-top:22px;align-items:start}
+.aside{position:sticky;top:16px;display:flex;flex-direction:column;flex-wrap:nowrap;gap:2px;background:none;border:0;border-radius:0;padding:0;box-shadow:none}
+.aside a{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:12px;text-decoration:none;color:var(--muted);font-family:var(--display);font-weight:600;font-size:15px}
+.aside a:hover{background:#F6F7FC;color:var(--ink)}
+.aside a[aria-current]{background:var(--bile-wash);color:var(--ink)}
+.aside .ct{margin-left:auto;background:var(--orange);color:#fff;font-family:var(--body);font-size:12px;font-weight:700;border-radius:999px;padding:0 7px;line-height:20px}
+.aside hr{border:0;border-top:1px solid var(--line);margin:10px 0}
+.aside .who{font-size:12px;color:var(--muted);padding:4px 12px;overflow-wrap:anywhere}
+.amain{display:flex;flex-direction:column;gap:20px;min-width:0}
+.atop{display:flex;flex-wrap:wrap;gap:12px 16px;align-items:center;justify-content:space-between}
+.atop h1{font-family:var(--display);font-size:32px;margin:0;line-height:1.1}
+.atop p{margin:2px 0 0;color:var(--muted);font-size:14px}
+.range{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px;background:#fff}
+.seg button{border:0;background:none;border-radius:999px;padding:6px 12px;font-weight:600;font-size:13px;color:var(--muted);cursor:pointer;white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--ink);color:#fff}
+.range input[type=date]{font:inherit;font-size:13px;border:1px solid var(--line);border-radius:10px;padding:5px 8px}
+.asec{display:flex;flex-direction:column;gap:16px}
+.asec h2{font-family:var(--display);font-size:22px;margin:6px 0 0}
+.asec h3{font-family:var(--display);font-size:16px;margin:0}
+.panel2{border:2px solid var(--line);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:12px;min-width:0;background:#fff}
+.panel2 .ph{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
+.kpi{border:2px solid var(--line);border-radius:16px;padding:12px 14px 8px;display:flex;flex-direction:column;gap:2px;background:#fff;text-align:left;cursor:pointer;font:inherit;color:inherit}
+.kpi:hover{border-color:#CDD2EA}
+.kpi .l{font-size:13px;color:var(--muted)}
+.kpi .n{font-family:var(--display);font-weight:700;font-size:28px;line-height:1.1;font-variant-numeric:tabular-nums}
+.kpi .d{font-size:12px;font-weight:600;color:var(--muted)}
+.kpi .d.up{color:#13795F}.kpi .d.down{color:#B4401A}
+.kpi svg{width:100%;height:30px;margin-top:4px}
+.inbox{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.todo{display:flex;gap:12px;align-items:center;border:2px solid var(--line);border-radius:14px;padding:10px 14px;text-decoration:none;color:var(--ink)}
+.todo:hover{border-color:#CDD2EA}
+.todo b{font-family:var(--display);font-size:24px;min-width:1.4em;text-align:center}
+.todo.hot b{color:var(--orange-ink)}
+.todo span{font-size:14px;line-height:1.3}
+.todo small{display:block;color:var(--muted);font-size:12px}
+.filters{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center}
+.filters select{font:inherit;font-size:14px;border:1px solid var(--line);border-radius:10px;padding:6px 10px;background:#fff}
+.pick{position:relative}
+.pick>button{font:inherit;font-size:14px;border:1px solid var(--line);border-radius:10px;padding:6px 12px;background:#fff;cursor:pointer}
+.pickbox{position:absolute;z-index:30;top:calc(100% + 6px);left:0;width:min(360px,86vw);max-height:420px;overflow:auto;background:#fff;border:2px solid var(--line);border-radius:14px;padding:10px;box-shadow:0 14px 34px -18px rgba(31,35,64,.4)}
+.pickbox input[type=search]{width:100%;font:inherit;font-size:14px;border:1px solid var(--line);border-radius:10px;padding:7px 10px;margin-bottom:6px}
+.pickbox .g{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:10px 4px 2px}
+.pickbox label{display:flex;gap:8px;align-items:center;font-size:14px;padding:4px;border-radius:8px;cursor:pointer}
+.pickbox label:hover{background:#F6F7FC}
+.pickbox label em{margin-left:auto;font-style:normal;color:var(--muted);font-variant-numeric:tabular-nums;font-size:13px}
+.pickbox .cap{font-size:12px;color:var(--orange-ink);margin:4px}
+.legend{display:flex;flex-wrap:wrap;gap:6px}
+.legend button{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:4px 11px;font-size:13px;cursor:pointer;color:var(--ink)}
+.legend button i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.legend button[aria-pressed="false"]{opacity:.45}
+.legend button[aria-pressed="false"] span{text-decoration:line-through}
+.legend b{font-variant-numeric:tabular-nums;font-weight:600;color:var(--muted)}
+.chartbox{position:relative;width:100%}
+.chartbox svg{display:block;width:100%;overflow:visible}
+.chartbox .tip{position:absolute;pointer-events:none;background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px 11px;font-size:13px;box-shadow:0 10px 24px -14px rgba(31,35,64,.45);min-width:150px;z-index:5}
+.chartbox .tip .h{font-weight:700;margin-bottom:4px}
+.chartbox .tip div{display:flex;gap:8px;align-items:center;justify-content:space-between}
+.chartbox .tip i{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:6px}
+.chartbox .tip span{display:flex;align-items:center}
+.chartbox .tip b{font-variant-numeric:tabular-nums}
+.empty{color:var(--muted);font-size:14px;padding:30px 0;text-align:center}
+.tbl{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
+.tbl th,.tbl td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.tbl th:first-child,.tbl td:first-child{text-align:left}
+.tbl th{font-weight:600;color:var(--muted);font-size:13px}
+.tscroll{overflow-x:auto}
+.tgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.bar{display:grid;grid-template-columns:minmax(80px,120px) 1fr 46px;gap:8px;align-items:center;font-size:14px;margin:5px 0}
+.bar i{display:block;height:10px;border-radius:0 4px 4px 0;background:#2F7BEB}
+.bar b{text-align:right;font-variant-numeric:tabular-nums}
+.cards2{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.mini{border:2px solid var(--line);border-radius:14px;padding:10px 14px}
+.mini .n{font-family:var(--display);font-weight:700;font-size:24px;font-variant-numeric:tabular-nums}
+.mini .l{font-size:13px;color:var(--muted)}
+.rowx{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.rowx input[type=text],.rowx input[type=email],.rowx input[type=search]{font:inherit;border:2px solid var(--line);border-radius:12px;padding:8px 12px;min-width:0;flex:1;max-width:340px}
+.pill2{font-size:12px;font-weight:600;border-radius:999px;padding:2px 9px;background:#F0F1F8;color:var(--muted)}
+.pill2.pro{background:var(--bile-wash);color:var(--bile-ink)}
+.pill2.own{background:var(--orange-wash);color:var(--orange-ink)}
+.list{display:flex;flex-direction:column}
+.list .it{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
+.list .it .grow{flex:1;min-width:180px}
+.list .it small{color:var(--muted)}
+.btn.sm{padding:5px 11px;font-size:13px}
+@media (max-width:860px){
+  .adm{grid-template-columns:1fr;gap:14px}
+  .aside{position:static;flex-direction:row;overflow-x:auto;scrollbar-width:none;gap:4px;padding-bottom:4px}
+  .aside::-webkit-scrollbar{display:none}
+  .aside a{flex:none;padding:7px 12px;font-size:14px;border:1px solid var(--line);border-radius:999px}
+  .aside hr,.aside .who{display:none}
+  .atop h1{font-size:26px}
+  .range,#rangeSeg{max-width:100%}#rangeSeg{overflow-x:auto;scrollbar-width:none}#rangeSeg button{padding:6px 9px}
+  .kpis,.inbox,.cards2{grid-template-columns:1fr 1fr;gap:8px}
+  .kpi{padding:10px 11px 6px}.kpi .n{font-size:22px}.kpi .d{font-size:11px}
+  .todo{padding:8px 10px;gap:8px}.todo b{font-size:20px}.todo small{display:none}
+  .mini .n{font-size:20px}.panel2{padding:14px}
+}
+</style>
+</head><body><!--SITE_HEADER--><div class="wrap">
+<div class="adm">
+<nav class="aside" aria-label="Back office">
+  <a href="#overview" data-s="overview">📊 Overview</a>
+  <a href="#traffic" data-s="traffic">🧭 Traffic</a>
+  <a href="#reviews" data-s="reviews">🎧 Reviews &amp; money <span class="ct" id="ctRev" hidden></span></a>
+  <a href="#people" data-s="people">🙋 People</a>
+  <a href="#moderation" data-s="moderation">🚩 Moderation <span class="ct" id="ctMod" hidden></span></a>
+  <a href="#team" data-s="team">🔑 Team &amp; access</a>
+  <a href="#house" data-s="house">🧹 Housekeeping</a>
+  <hr><a href="/admin-reviews">✍️ Review desk →</a>
+  <div class="who" id="who"></div>
+</nav>
+<main class="amain">
+  <div class="atop">
+    <div><h1 id="secTitle">Overview</h1><p id="secSub">How Wackometer is doing.</p></div>
+    <div class="range" id="rangeBar">
+      <div class="seg" role="group" aria-label="Date range" id="rangeSeg">
+        <button data-r="7">7 days</button><button data-r="14">14 days</button><button data-r="30">30 days</button><button data-r="90">90 days</button><button data-r="365">1 year</button><button data-r="custom">Custom</button>
+      </div>
+      <span id="customBox" hidden><input type="date" id="dFrom" aria-label="From"> – <input type="date" id="dTo" aria-label="To"></span>
+    </div>
+  </div>
+  <div id="err" class="hint" role="alert"></div>
+
+  <!-- OVERVIEW -->
+  <section class="asec" id="s-overview">
+    <div class="inbox" id="inbox"></div>
+    <div class="kpis" id="kpis"></div>
+    <div class="panel2">
+      <div class="ph"><h3 id="chartTitle">Activity</h3>
+        <div class="filters">
+          <select id="preset" aria-label="What to chart"></select>
+          <div class="pick"><button type="button" id="pickBtn" aria-expanded="false">Choose events…</button>
+            <div class="pickbox" id="pickBox" hidden><input type="search" id="pickQ" placeholder="Search events"><div id="pickList"></div></div></div>
+          <div class="seg" role="group" aria-label="Group by"><button data-g="day">Daily</button><button data-g="week">Weekly</button></div>
+          <div class="seg" role="group" aria-label="Chart style"><button data-m="line">Lines</button><button data-m="stack">Stacked bars</button></div>
+        </div>
+      </div>
+      <div class="legend" id="legend"></div>
+      <div class="chartbox" id="chart"></div>
+      <div class="rowx"><button class="btn sm" type="button" id="tblBtn" aria-expanded="false">Show as table</button><button class="btn sm quiet" type="button" id="csvBtn">Download CSV (all events in range)</button><span class="hint">Your filters are saved on this device, so the chart opens the way you left it.</span></div>
+      <div class="tscroll" id="tblBox" hidden></div>
+    </div>
+    <div class="panel2"><h3>All-time totals</h3><div class="cards2" id="totals"></div></div>
+  </section>
+
+  <!-- TRAFFIC -->
+  <section class="asec" id="s-traffic" hidden>
+    <p class="hint">Real browsers only (bots and crawlers are skipped), counted once per visit, for the range above. For recordings and heatmaps, open <a href="https://clarity.microsoft.com/" target="_blank" rel="noopener">Microsoft Clarity</a>.</p>
+    <div class="tgrid">
+      <div class="panel2"><h3>Where visits come from</h3><div id="tSrc"></div></div>
+      <div class="panel2"><h3>Where they land</h3><div id="tLand"></div></div>
+      <div class="panel2"><h3>Tools opened</h3><div id="tTool"></div></div>
+      <div class="panel2"><h3>Funnel</h3><div id="tFunnel"></div></div>
+    </div>
+  </section>
+
+  <!-- REVIEWS & MONEY -->
+  <section class="asec" id="s-reviews" hidden>
+    <div class="cards2" id="bizCards"></div>
+    <div class="tgrid">
+      <div class="panel2"><div class="ph"><h3>Waiting for a review</h3><a class="btn sm bile" href="/admin-reviews#queueH">Open the queue →</a></div><div class="list" id="queue"></div></div>
+      <div class="panel2"><h3>Recent paid submissions</h3><div class="list" id="paidList"></div></div>
+    </div>
+    <div class="panel2"><h3>Shortcuts</h3><div class="rowx">
+      <a class="btn sm" href="/admin-reviews#ed">✍️ Write a review</a><a class="btn sm" href="/admin-reviews#critH">🎧 Critics</a><a class="btn sm" href="/admin-reviews#appH">📝 Applications</a><a class="btn sm" href="/admin-reviews#listH">💌 Email list</a><a class="btn sm" href="/admin-reviews#wlH">📅 Wicked lists</a><a class="btn sm" href="/admin-reviews#claimH">🎤 Artist claims</a><a class="btn sm" href="/admin-reviews#cmH">💬 Comments</a><a class="btn sm quiet" href="https://dashboard.stripe.com/payments" target="_blank" rel="noopener">Stripe payments ↗</a>
+    </div></div>
+  </section>
+
+  <!-- PEOPLE -->
+  <section class="asec" id="s-people" hidden>
+    <div class="panel2">
+      <form class="rowx" id="pplForm"><input type="search" id="pplQ" placeholder="Search by email or username"><button class="btn sm" type="submit">Search</button><span class="hint" id="pplNote" role="status"></span></form>
+      <div class="tscroll"><table class="tbl" id="pplTbl"></table></div>
+    </div>
+  </section>
+
+  <!-- MODERATION -->
+  <section class="asec" id="s-moderation" hidden>
+    <div class="panel2"><h3>Reported and hidden posts</h3><div class="cards" id="flagged"></div></div>
+    <div class="panel2"><h3>Reported profiles</h3><div class="cards" id="profiles"></div></div>
+    <div class="panel2"><h3>Reset a profile</h3>
+      <div class="rowx"><input type="text" id="resetUser" placeholder="username"><button class="btn sm" id="resetBtn">Clear name, bio and links</button><span class="hint" id="resetNote" role="status"></span></div></div>
+  </section>
+
+  <!-- TEAM -->
+  <section class="asec" id="s-team" hidden>
+    <div class="panel2"><h3>Who can open the back office</h3>
+      <p class="hint">Owners are set in the site's settings and can't be removed here. Admins can use everything except this list. Critics only get the review desk, for their own reviews. Everyone else sees a sign-in screen.</p>
+      <div class="list" id="teamList"></div>
+      <form class="rowx" id="teamForm" hidden><input type="email" id="teamEmail" placeholder="name@email.com" required><button class="btn sm bile" type="submit">Add admin</button><span class="hint" id="teamNote" role="status"></span></form>
+    </div>
+    <div class="panel2"><h3>Critics with review desk access</h3><div class="list" id="critList"></div><p class="hint">Add or remove a critic's email from <a href="/admin-reviews#critH">Critics</a> in the review desk.</p></div>
+  </section>
+
+  <!-- HOUSEKEEPING -->
+  <section class="asec" id="s-house" hidden>
+    <div class="panel2"><h3>Clean up</h3><div class="rowx"><button class="btn sm" id="cleanBtn">Remove empty visitor records</button><span class="hint" id="cleanNote">Deletes records older than an hour that never posted, voted, wrote or signed in.</span></div></div>
+    <div class="panel2"><h3>DAW plugin waitlist</h3><div id="waitlist"></div></div>
+  </section>
+</main>
+</div>
 </div>
 <script type="module">
 const $=id=>document.getElementById(id);
-const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const LABELS={users:"Visitor records",active:"Active writers",signedIn:"Signed in",pro:"Pro",posts:"Wall posts",postsWeek:"Posts this week",votes:"Votes",dailyToday:"Daily W today",pens:"Pass the Pen songs",penLines:"Pen lines",wingmanToday:"Wingman msgs today"};
-async function load(){
-  const r=await fetch("/api/admin/overview");const d=await r.json();
-  if(!r.ok){$("err").textContent=d.error+" Sign in from the main site with an admin email.";return}
-  $("stats").innerHTML=Object.entries(d.stats).map(([k,v])=>`<div class="stat"><div class="n">${v}</div><div class="l">${LABELS[k]||k}</div></div>`).join("");
-  const W=d.waitlist||{byDaw:[],recent:[]},DN={fl:"FL Studio",ableton:"Ableton Live",logic:"Logic Pro",other:"Other"},tot=W.byDaw.reduce((a,b)=>a+b.c,0);
-  const T={};(d.totals30||[]).forEach(x=>T[x.type]=x.c);const n=k=>T[k]||0;
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const api=async(p,b)=>{const r=await fetch(p,b?{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(b)}:{});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||"Something went wrong.");return d};
+const fmt=n=>Number(n||0).toLocaleString();
+const money=c=>"$"+(Number(c||0)/100).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:2});
+const ago=ms=>{const d=Math.round((Date.now()-ms)/864e5);return d<1?"today":d===1?"yesterday":d<45?d+" days ago":new Date(ms).toLocaleDateString()};
+const LS={get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+
+/* ---------- names for every counter ---------- */
+const NAMES={view:"Visits",weigh:"Weighed own lyrics",weigh_example:"Tried an example",signup_sent:"Sign-in emails sent",signup_done:"Signed in",wall_post:"Wall posts",daily_submit:"Daily W entries",roast:"Roasts",wingman_msg:"Wingman messages",ai_locked:"Hit the Pro lock",pro_click:"Clicked Pro",pro_paid:"Bought Pro",
+share_card:"Shared score card",save_card:"Saved score card",save_video:"Saved video",copy_caption:"Copied caption",copy_daily:"Copied Daily W",copy_roast:"Copied roast",pen_share:"Shared Pass the Pen",pen_start:"Started Pass the Pen",swap_used:"Swapped a cliché",emoji_starter:"Emoji starter",best_line:"Best line",storm_start:"Started Wordstorm",storm_done:"Finished Wordstorm",wash:"Wash",humanize:"Humanize",lesson_pass:"Passed a lesson",install:"Installed app",waitlist:"Joined plugin waitlist",
+review_vote:"Voted on a review",review_share:"Shared a review",review_card:"Saved review card",review_badge:"Copied review badge",review_submit:"Started a submission",submit_checkout:"Opened submission checkout",submit_paid:"Paid for a review",critic_apply:"Critic applications",subscribe:"Joined email list",review_video:"Saved review video",review_react:"Reacted to a review",review_comment:"Commented on a review",artist_claim:"Artist claims",list_share:"Shared a Wicked list",artist_badge:"Copied artist badge",
+hub_reviews:"Home → Wreviews",hub_write:"Home → Write",hub_plugin:"Home → Plugin",
+"db:accounts":"New accounts","db:subscribers":"New email subscribers","db:paid_reviews":"Paid submissions","db:revenue":"Review revenue ($)"};
+const PREFIX={"src:":"From ","land:":"Landed on ","tool:":"Opened "};
+const nameOf=t=>NAMES[t]||(Object.keys(PREFIX).find(p=>t.startsWith(p))?PREFIX[Object.keys(PREFIX).find(p=>t.startsWith(p))]+t.split(":")[1]:t);
+const groupOf=t=>t.startsWith("src:")?"Where visits come from":t.startsWith("land:")?"Landing pages":t.startsWith("tool:")?"Tools opened":t.startsWith("db:")?"From the database":/review|submit|critic|artist|list_share|subscribe/.test(t)?"Reviews & email":/share|save|copy/.test(t)?"Shares":/pro|ai_locked|signup/.test(t)?"Accounts & Pro":t.startsWith("hub_")?"Home page":"Writing tools";
+const PRESETS=[
+ ["basics","The basics",["view","weigh","db:accounts","share_card"],"line"],
+ ["writing","Writing tools",["weigh","weigh_example","wall_post","daily_submit","storm_start","wingman_msg","roast","lesson_pass"],"line"],
+ ["shares","Shares",["share_card","save_card","save_video","copy_caption","review_share","review_card","list_share","pen_share"],"stack"],
+ ["reviews","Reviews",["hub_reviews","review_vote","review_react","review_comment","review_submit","submit_paid"],"line"],
+ ["money","Sign-ups & money",["signup_sent","signup_done","pro_click","ai_locked","pro_paid","submit_checkout","submit_paid","subscribe"],"line"],
+ ["revenue","Review revenue ($)",["db:revenue"],"stack"],
+ ["src","Where visits come from",["src:*"],"stack"],
+ ["land","Landing pages",["land:*"],"stack"],
+ ["tool","Tools opened",["tool:*"],"stack"],
+];
+// Validated categorical order (8 slots, colorblind-checked). Colors stick to an event, never to its rank.
+const PAL=["#2F7BEB","#E5702A","#14A383","#7A6FD0","#D9488F","#6E8A0F","#4F5BA8","#B8860B"];
+
+/* ---------- state ---------- */
+const st=LS.get("wk-admin",{});
+const S={range:st.range||"30",from:st.from||"",to:st.to||"",preset:st.preset||"basics",sel:st.sel||null,group:st.group||"day",mode:st.mode||"line",hidden:st.hidden||[],colors:st.colors||{}};
+const save=()=>LS.set("wk-admin",{range:S.range,from:S.from,to:S.to,preset:S.preset,sel:S.sel,group:S.group,mode:S.mode,hidden:S.hidden,colors:S.colors});
+let SERIES=null,OV=null,BIZ=null,TEAM=null,fetchedDays=0;
+
+/* ---------- dates ---------- */
+const iso=d=>d.toISOString().slice(0,10);
+const addD=(s,n)=>{const d=new Date(s+"T00:00:00Z");d.setUTCDate(d.getUTCDate()+n);return iso(d)};
+const span=(a,b)=>Math.round((new Date(b+"T00:00:00Z")-new Date(a+"T00:00:00Z"))/864e5)+1;
+function window_(){const today=SERIES?SERIES.today:iso(new Date());
+  if(S.range==="custom"&&S.from&&S.to){const a=S.from<=S.to?S.from:S.to,b=S.from<=S.to?S.to:S.from;return {from:a,to:b}}
+  const n=+S.range||30;return {from:addD(today,-(n-1)),to:today}}
+const daysIn=(a,b)=>{const out=[];for(let d=a;d<=b;d=addD(d,1))out.push(d);return out};
+// Sum of a counter (or prefix group "src:*") per day in a window.
+function byDay(type,a,b){const m={};for(const r of SERIES.rows){if(r.day<a||r.day>b)continue;if(type.endsWith("*")?r.type.startsWith(type.slice(0,-1)):r.type===type)m[r.day]=(m[r.day]||0)+r.count}return m}
+const total=(type,a,b)=>Object.values(byDay(type,a,b)).reduce((x,y)=>x+y,0);
+const allTypes=()=>[...new Set(SERIES.rows.map(r=>r.type))].sort((a,b)=>nameOf(a).localeCompare(nameOf(b)));
+
+async function loadSeries(){const w=window_();const need=Math.min(800,span(w.from,SERIES?SERIES.today:iso(new Date()))*2+2);
+  if(SERIES&&fetchedDays>=need)return;SERIES=await api("/api/admin/series?days="+need);fetchedDays=need}
+
+/* ---------- section routing ---------- */
+const SECS={overview:["Overview","How Wackometer is doing."],traffic:["Traffic","Where people come from and where they go."],reviews:["Reviews & money","The review queue, paid submissions and Pro."],people:["People","Look someone up, gift Pro or credits."],moderation:["Moderation","Reports from the Wall and profiles."],team:["Team & access","Who can open the back office."],house:["Housekeeping","Tidy-up jobs and the plugin waitlist."]};
+function show(){const k=(location.hash.slice(1)||"overview");const s=SECS[k]?k:"overview";
+  Object.keys(SECS).forEach(x=>$("s-"+x).hidden=x!==s);
+  document.querySelectorAll(".aside a[data-s]").forEach(a=>a.toggleAttribute("aria-current",a.dataset.s===s));
+  $("secTitle").textContent=SECS[s][0];$("secSub").textContent=SECS[s][1];
+  $("rangeBar").hidden=!(s==="overview"||s==="traffic");
+  if(s==="people"&&!$("pplTbl").innerHTML)people("");
+  if(s==="team")team();
+  if(s==="overview")drawAll()}
+addEventListener("hashchange",show);
+
+/* ---------- range control ---------- */
+function syncRange(){document.querySelectorAll("#rangeSeg button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.r===S.range));$("customBox").hidden=S.range!=="custom";
+  const w=window_();$("dFrom").value=w.from;$("dTo").value=w.to}
+document.querySelectorAll("#rangeSeg button").forEach(b=>b.onclick=async()=>{S.range=b.dataset.r;if(S.range==="custom"){const w=window_();S.from=S.from||w.from;S.to=S.to||w.to}save();syncRange();await loadSeries();renderData()});
+$("dFrom").onchange=$("dTo").onchange=async()=>{S.from=$("dFrom").value;S.to=$("dTo").value;save();await loadSeries();renderData()};
+
+/* ---------- KPI tiles ---------- */
+const KPIS=[["view","Visits"],["weigh","Weighed own lyrics"],["db:accounts","New accounts"],["shares","Shares"],["review_submit","Review submissions started"],["db:paid_reviews","Paid reviews"],["db:revenue","Review revenue","$"],["db:subscribers","New email subscribers"],["pro_paid","Bought Pro"]];
+const SHARE_T=["share_card","save_card","save_video","copy_caption","copy_daily","copy_roast","review_share","review_card","list_share","pen_share","review_video"];
+const kTotal=(k,a,b)=>k==="shares"?SHARE_T.reduce((s,t)=>s+total(t,a,b),0):total(k,a,b);
+const kDays=(k,a,b)=>{if(k!=="shares")return byDay(k,a,b);const m={};SHARE_T.forEach(t=>{const d=byDay(t,a,b);for(const x in d)m[x]=(m[x]||0)+d[x]});return m};
+function spark(vals,color){const w=180,h=30,max=Math.max(1,...vals),n=vals.length;if(n<2)return"";const pts=vals.map((v,i)=>`${(i/(n-1)*w).toFixed(1)},${(h-2-v/max*(h-4)).toFixed(1)}`).join(" ");
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>`}
+function kpis(){const w=window_(),n=span(w.from,w.to),pa=addD(w.from,-n),pb=addD(w.from,-1),days=daysIn(w.from,w.to);
+  $("kpis").innerHTML=KPIS.map(([k,l,unit])=>{const cur=kTotal(k,w.from,w.to),prev=kTotal(k,pa,pb),dm=kDays(k,w.from,w.to);
+    const ch=prev?Math.round((cur-prev)/prev*100):null;const cls=ch==null||ch===0?"":ch>0?"up":"down";
+    const d=ch==null?(cur?"new this period":"no activity yet"):`${ch>0?"▲":ch<0?"▼":"■"} ${Math.abs(ch)}% vs previous ${n} days`;
+    return `<button class="kpi" type="button" data-k="${k}" title="Chart this"><span class="l">${esc(l)}</span><span class="n">${unit?"$":""}${fmt(cur)}</span><span class="d ${cls}">${d}</span>${spark(days.map(x=>dm[x]||0),"#2F7BEB")}</button>`}).join("");
+  document.querySelectorAll(".kpi").forEach(b=>b.onclick=()=>{const k=b.dataset.k;S.preset="custom";S.sel=k==="shares"?SHARE_T.slice(0,8):[k];S.mode=k==="shares"?"stack":"line";S.hidden=[];save();syncChartCtl();chart();$("chart").scrollIntoView({behavior:"smooth",block:"center"})})}
+
+/* ---------- inbox ---------- */
+function inbox(){if(!BIZ||!OV)return;const waiting=(BIZ.requests||[]).filter(r=>r.status==="new"||r.status==="pending"),paidWaiting=waiting.filter(r=>r.paid).reduce((s,r)=>s+r.c,0),allWaiting=waiting.reduce((s,r)=>s+r.c,0);
+  const reports=(OV.flagged||[]).filter(p=>!p.hidden).length+(OV.profiles||[]).length;
+  const items=[[paidWaiting,"Paid reviews waiting","They paid, so these come first","/admin-reviews#queueH",paidWaiting>0],[allWaiting-paidWaiting,"Free submissions in the queue","","/admin-reviews#queueH"],[BIZ.assist,"Starting drafts to finish","Listen, then edit and publish","/admin-reviews#allH"],[BIZ.applications,"Critic applications","","/admin-reviews#appH",BIZ.applications>0],[BIZ.claims,"Artist claims","","/admin-reviews#claimH",BIZ.claims>0],[reports,"Reports to look at","Wall posts and profiles","#moderation",reports>0]];
+  $("inbox").innerHTML=items.map(([n,t,s,h,hot])=>`<a class="todo${hot?" hot":""}" href="${h}"><b>${n||0}</b><span>${t}${s?`<small>${s}</small>`:""}</span></a>`).join("");
+  const r=$("ctRev");r.textContent=paidWaiting+BIZ.applications+BIZ.claims;r.hidden=!(paidWaiting+BIZ.applications+BIZ.claims);
+  const m=$("ctMod");m.textContent=reports;m.hidden=!reports}
+
+/* ---------- activity chart ---------- */
+function presetTypes(p){const P=PRESETS.find(x=>x[0]===p);if(!P)return S.sel||[];const types=allTypes();
+  return P[2].flatMap(t=>t.endsWith("*")?types.filter(x=>x.startsWith(t.slice(0,-1))).sort((a,b)=>total(b,"0","9")-total(a,"0","9")):[t])}
+function selected(){return (S.preset==="custom"?(S.sel||[]):presetTypes(S.preset))}
+function colorFor(t){if(S.colors[t]!=null)return PAL[S.colors[t]];const used=new Set(selected().filter(x=>x!==t&&S.colors[x]!=null).map(x=>S.colors[x]));let i=0;while(used.has(i)&&i<7)i++;S.colors[t]=i;save();return PAL[i]}
+function syncChartCtl(){$("preset").innerHTML=PRESETS.map(p=>`<option value="${p[0]}">${p[1]}</option>`).join("")+`<option value="custom">My own picks</option>`;$("preset").value=S.preset;
+  document.querySelectorAll("[data-g]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.g===S.group));
+  document.querySelectorAll("[data-m]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.m===S.mode))}
+$("preset").onchange=()=>{S.preset=$("preset").value;const P=PRESETS.find(x=>x[0]===S.preset);if(P)S.mode=P[3];else S.sel=S.sel||["view"];S.hidden=[];save();syncChartCtl();chart()};
+document.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{S.group=b.dataset.g;save();syncChartCtl();chart()});
+document.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{S.mode=b.dataset.m;save();syncChartCtl();chart()});
+// event picker
+function pickList(){const q=$("pickQ").value.toLowerCase(),w=window_(),sel=new Set(selected()),groups={};
+  allTypes().filter(t=>t!=="db:revenue"||sel.has(t)).filter(t=>!q||nameOf(t).toLowerCase().includes(q)||t.includes(q)).forEach(t=>(groups[groupOf(t)]||=[]).push(t));
+  $("pickList").innerHTML=(sel.size>=8?`<p class="cap">8 at a time keeps the chart readable. Untick one to add another.</p>`:"")+Object.entries(groups).sort().map(([g,ts])=>`<p class="g">${esc(g)}</p>`+ts.map(t=>`<label><input type="checkbox" value="${esc(t)}"${sel.has(t)?" checked":""}${!sel.has(t)&&sel.size>=8?" disabled":""}> ${esc(nameOf(t))}<em>${fmt(total(t,w.from,w.to))}</em></label>`).join("")).join("")||`<p class="hint">Nothing matches.</p>`;
+  $("pickList").querySelectorAll("input").forEach(i=>i.onchange=()=>{let s=selected().slice();if(i.checked)s.push(i.value);else s=s.filter(x=>x!==i.value);
+    // money and counts don't share one axis
+    if(i.checked&&i.value==="db:revenue")s=["db:revenue"];else if(i.checked)s=s.filter(x=>x!=="db:revenue");
+    S.preset="custom";S.sel=s;save();syncChartCtl();pickList();chart()})}
+$("pickBtn").onclick=()=>{const o=$("pickBox").hidden;$("pickBox").hidden=!o;$("pickBtn").setAttribute("aria-expanded",o);if(o){pickList();$("pickQ").focus()}};
+$("pickQ").oninput=pickList;
+document.addEventListener("click",e=>{if(!e.target.closest(".pick"))$("pickBox").hidden=true,$("pickBtn").setAttribute("aria-expanded","false")});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("pickBox").hidden){$("pickBox").hidden=true;$("pickBtn").focus()}});
+
+function buckets(){const w=window_(),days=daysIn(w.from,w.to);if(S.group==="day")return days.map(d=>({key:d,days:[d],label:d}));
+  const out=[];days.forEach(d=>{const dt=new Date(d+"T00:00:00Z"),mon=addD(d,-((dt.getUTCDay()+6)%7));let b=out[out.length-1];if(!b||b.key!==mon)out.push(b={key:mon,days:[],label:mon});b.days.push(d)});return out}
+const shortDate=s=>{const d=new Date(s+"T00:00:00Z");return d.toLocaleDateString(undefined,{month:"short",day:"numeric",timeZone:"UTC"})};
+function chartData(){const w=window_(),B=buckets();const types=selected().slice(0,8);
+  return {B,series:types.map(t=>{const m=byDay(t,w.from,w.to);return {t,name:nameOf(t),color:colorFor(t),on:!S.hidden.includes(t),vals:B.map(b=>b.days.reduce((s,d)=>s+(m[d]||0),0))}})}}
+function niceMax(v){if(v<=4)return 4;const p=Math.pow(10,Math.floor(Math.log10(v))),f=v/p;return (f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p}
+function chart(){if(!SERIES)return;const {B,series}=chartData(),box=$("chart"),money=series.some(s=>s.t==="db:revenue");
+  $("chartTitle").textContent=S.preset==="custom"?"Activity":PRESETS.find(p=>p[0]===S.preset)[1];
+  $("legend").innerHTML=series.map(s=>`<button type="button" aria-pressed="${s.on}" data-t="${esc(s.t)}"><i style="background:${s.color}"></i><span>${esc(s.name)}</span><b>${money?"$":""}${fmt(s.vals.reduce((a,b)=>a+b,0))}</b></button>`).join("");
+  $("legend").querySelectorAll("button").forEach(b=>b.onclick=()=>{const t=b.dataset.t;S.hidden=S.hidden.includes(t)?S.hidden.filter(x=>x!==t):[...S.hidden,t];save();chart()});
+  const vis=series.filter(s=>s.on);
+  if(!series.length){box.innerHTML=`<p class="empty">Pick something to chart from the menu above.</p>`;table(B,series);return}
+  if(!vis.some(s=>s.vals.some(v=>v))){box.innerHTML=`<p class="empty">No activity for these in this date range yet.</p>`;table(B,series);return}
+  const W=Math.max(300,box.clientWidth),H=W<560?240:300,direct=S.mode==="line"&&vis.length<=4&&W>=560;
+  const L=44,R=direct?130:12,T=12,Bm=28,iw=W-L-R,ih=H-T-Bm,n=B.length;
+  const stackTot=B.map((_,i)=>vis.reduce((s,x)=>s+x.vals[i],0));
+  const max=niceMax(S.mode==="stack"?Math.max(...stackTot):Math.max(...vis.flatMap(s=>s.vals)));
+  const y=v=>T+ih-v/max*ih,band=iw/n,xc=i=>L+band*i+band/2,xl=i=>n===1?L+iw/2:L+i*(iw/(n-1));
+  const X=S.mode==="stack"?xc:xl;
+  let g=`<g>`;for(let k=0;k<=4;k++){const v=max*k/4,yy=y(v).toFixed(1);g+=`<line x1="${L}" x2="${L+iw}" y1="${yy}" y2="${yy}" stroke="${k?"#EEF0F7":"#C9CDE0"}" stroke-width="1"/><text x="${L-8}" y="${+yy+4}" text-anchor="end" font-size="11" fill="#646A8C">${money?"$":""}${fmt(Math.round(v*10)/10)}</text>`}g+=`</g>`;
+  const every=Math.max(1,Math.ceil(n/(W<560?4:7)));let xt="";B.forEach((b,i)=>{if(i%every===0||i===n-1&&n<=10)xt+=`<text x="${X(i).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="11" fill="#646A8C">${S.group==="week"?"wk of "+shortDate(b.label):shortDate(b.label)}</text>`});
+  let marks="";
+  if(S.mode==="stack"){const bw=Math.max(2,Math.min(28,band*0.68));
+    B.forEach((b,i)=>{let base=0;const top=vis.map((s,j)=>s.vals[i]?j:-1).filter(j=>j>=0).pop();
+      vis.forEach((s,j)=>{const v=s.vals[i];if(!v)return;const y1=y(base+v),y0=y(base);base+=v;const x0=X(i)-bw/2,h=Math.max(1,y0-y1);const r=j===top?Math.min(4,bw/2,h):0;
+        marks+=`<path d="M${x0},${y0} V${y1+r} Q${x0},${y1} ${x0+r},${y1} H${x0+bw-r} Q${x0+bw},${y1} ${x0+bw},${y1+r} V${y0} Z" fill="${s.color}" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>`})})}
+  else{vis.forEach(s=>{const pts=s.vals.map((v,i)=>`${X(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");marks+=`<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+      if(n<=16)s.vals.forEach((v,i)=>marks+=`<circle cx="${X(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3" fill="${s.color}" stroke="#fff" stroke-width="2"/>`)});
+    if(direct){const lab=vis.map(s=>({s,yy:y(s.vals[n-1])})).sort((a,b)=>a.yy-b.yy);for(let i=1;i<lab.length;i++)if(lab[i].yy-lab[i-1].yy<15)lab[i].yy=lab[i-1].yy+15;
+      lab.forEach(({s,yy})=>marks+=`<text x="${L+iw+8}" y="${(yy+4).toFixed(1)}" font-size="12" fill="#1F2340">${esc(s.name.length>16?s.name.slice(0,15)+"…":s.name)}</text>`)}}
+  box.innerHTML=`<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="${esc(series.map(s=>s.name).join(", "))} by ${S.group}">${g}${xt}${marks}<line id="xh" x1="0" x2="0" y1="${T}" y2="${T+ih}" stroke="#1F2340" stroke-width="1" stroke-dasharray="3 3" visibility="hidden"/><g id="hdots"></g><rect x="${L}" y="${T}" width="${iw}" height="${ih}" fill="transparent" id="hit"/></svg><div class="tip" hidden></div>`;
+  const svg=box.querySelector("svg"),tip=box.querySelector(".tip"),xh=box.querySelector("#xh"),hd=box.querySelector("#hdots");
+  const move=e=>{const r=svg.getBoundingClientRect(),px=(e.clientX-r.left)*(W/r.width);let i=S.mode==="stack"?Math.floor((px-L)/band):Math.round((px-L)/(n===1?1:iw/(n-1)));i=Math.max(0,Math.min(n-1,i));
+    const xx=X(i);xh.setAttribute("x1",xx);xh.setAttribute("x2",xx);xh.setAttribute("visibility","visible");
+    hd.innerHTML=S.mode==="line"?vis.map(s=>`<circle cx="${xx}" cy="${y(s.vals[i])}" r="5" fill="${s.color}" stroke="#fff" stroke-width="2"/>`).join(""):"";
+    const b=B[i],rows=vis.map(s=>`<div><span><i style="background:${s.color}"></i>${esc(s.name)}</span><b>${money?"$":""}${fmt(s.vals[i])}</b></div>`).join("");
+    tip.innerHTML=`<p class="h" style="margin:0 0 4px">${S.group==="week"?"Week of "+shortDate(b.label):new Date(b.label+"T00:00:00Z").toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric",timeZone:"UTC"})}</p>${rows}${S.mode==="stack"&&vis.length>1?`<div style="border-top:1px solid #E4E7F4;margin-top:4px;padding-top:4px"><span>Total</span><b>${money?"$":""}${fmt(stackTot[i])}</b></div>`:""}`;
+    tip.hidden=false;const bx=xx*(r.width/W),tw=tip.offsetWidth;tip.style.left=Math.max(0,Math.min(r.width-tw,bx+14>r.width-tw?bx-tw-14:bx+14))+"px";tip.style.top="8px"};
+  const leave=()=>{tip.hidden=true;xh.setAttribute("visibility","hidden");hd.innerHTML=""};
+  box.querySelector("#hit").addEventListener("pointermove",move);box.querySelector("#hit").addEventListener("pointerdown",move);box.querySelector("#hit").addEventListener("pointerleave",leave);
+  table(B,series)}
+function table(B,series){if($("tblBox").hidden)return;const money=series.some(s=>s.t==="db:revenue");
+  $("tblBox").innerHTML=`<table class="tbl"><thead><tr><th>${S.group==="week"?"Week of":"Day"}</th>${series.map(s=>`<th>${esc(s.name)}</th>`).join("")}</tr></thead><tbody>${B.map((b,i)=>({b,i})).reverse().map(({b,i})=>`<tr><td>${shortDate(b.label)}</td>${series.map(s=>`<td>${s.vals[i]?(money?"$":"")+fmt(s.vals[i]):"·"}</td>`).join("")}</tr>`).join("")}</tbody></table>`}
+$("tblBtn").onclick=()=>{const o=$("tblBox").hidden;$("tblBox").hidden=!o;$("tblBtn").setAttribute("aria-expanded",o);$("tblBtn").textContent=o?"Hide table":"Show as table";chart()};
+$("csvBtn").onclick=()=>{const w=window_(),types=allTypes(),days=daysIn(w.from,w.to);const m={};SERIES.rows.forEach(r=>{(m[r.day]||={})[r.type]=r.count});
+  const csv=[["day",...types.map(nameOf)].join(","),...days.map(d=>[d,...types.map(t=>(m[d]||{})[t]||0)].join(","))].join("\n");
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download=`wackometer-activity-${w.from}-to-${w.to}.csv`;a.click()};
+let rz;new ResizeObserver(()=>{clearTimeout(rz);rz=setTimeout(()=>{if(!$("s-overview").hidden)chart()},120)}).observe($("chart"));
+
+/* ---------- traffic ---------- */
+function bars(rows,max){return rows.length?rows.map(([k,c])=>`<div class="bar"><span>${esc(k)}</span><i style="width:${Math.max(3,Math.round(c/(max||rows[0][1]||1)*100))}%"></i><b>${fmt(c)}</b></div>`).join(""):`<p class="hint">No data for this range.</p>`}
+function traffic(){const w=window_(),T={};SERIES.rows.forEach(r=>{if(r.day>=w.from&&r.day<=w.to)T[r.type]=(T[r.type]||0)+r.count});const n=k=>T[k]||0;
   const group=pre=>Object.entries(T).filter(([k])=>k.startsWith(pre)).map(([k,c])=>[k.slice(pre.length),c]).sort((a,b)=>b[1]-a[1]);
-  const bars=(rows,max)=>rows.length?rows.map(([k,c])=>`<div class="bar"><span>${esc(k)}</span><i style="width:${Math.max(4,Math.round(c/(max||rows[0][1]||1)*100))}%"></i><b>${c}</b></div>`).join(""):`<p class="hint">No data yet.</p>`;
-  const views=n("view"),own=n("weigh");
-  $("t30").innerHTML=[["Visits",views],["Weighed their own lyrics",own],["Tried an example",n("weigh_example")],["Sign-in emails sent",n("signup_sent")],["Wall posts",n("wall_post")],["Daily W entries",n("daily_submit")],["Shares",n("share_card")+n("save_card")+n("save_video")+n("copy_caption")+n("copy_daily")]].map(([l,v])=>`<div class="stat"><div class="n">${v}</div><div class="l">${l}</div></div>`).join("");
-  $("tSrc").innerHTML=bars(group("src:")); $("tLand").innerHTML=bars(group("land:")); $("tTool").innerHTML=bars(group("tool:"));
-  const pct=(a,b)=>b?Math.round(a/b*100)+"%":"–";
-  $("tFunnel").innerHTML=bars([["Visited",views],["Weighed own",own],["Signed in",n("signup_sent")],["Posted",n("wall_post")+n("daily_submit")]],views)+`<p class="hint">${pct(own,views)} of visits weigh their own lyrics · ${pct(n("signup_sent"),views)} sign in</p>`;
-  $("waitlist").innerHTML=tot?`<p><b>${tot}</b> on the list · ${W.byDaw.map(x=>`${DN[x.daw]||x.daw}: ${x.c}`).join(" · ")}</p><pre>${W.recent.map(r=>`${new Date(r.created_at).toLocaleDateString()}  ${esc(r.email)}  (${DN[r.daw]||r.daw})`).join("\n")}</pre>`:`<p class="hint">Nobody yet. The signup is on the Pro page.</p>`;
-  $("profiles").innerHTML=(d.profiles||[]).length?d.profiles.map(p=>`<article class="card"><div class="ch"><span class="ttl">@${esc(p.username||"?")}${p.display_name?" · "+esc(p.display_name):""}</span><span class="pill">${p.reports} report${p.reports>1?"s":""}</span></div><pre>${esc(p.bio||"(no bio)")}</pre><p class="hint">Reasons: ${esc(p.reasons||"none given")}</p><div class="row"><a class="btn" href="/u/${encodeURIComponent(p.username||"")}" target="_blank" rel="noopener">View profile</a><button class="btn" data-reset="${esc(p.username||"")}">Reset this profile</button></div></article>`).join(""):`<p class="hint">No reported profiles.</p>`;
-  document.querySelectorAll("[data-reset]").forEach(b=>b.onclick=()=>{const i=$("resetUser");if(i){i.value=b.dataset.reset;i.scrollIntoView({block:"center"});i.focus()}});
-  $("flagged").innerHTML=d.flagged.length?d.flagged.map(p=>`<article class="card"><div class="ch"><span class="ttl">${esc(p.title||"Untitled")}</span><span class="pill">${p.hidden?"Hidden":"Visible"} · ${p.reports} reports</span></div><pre>${esc(p.excerpt)}</pre><div class="row">${p.hidden?`<button class="btn" data-a="unhide" data-id="${p.id}">Restore</button>`:`<button class="btn" data-a="hide" data-id="${p.id}">Hide</button>`}<button class="btn" data-a="delete" data-id="${p.id}">Delete for good</button></div></article>`).join(""):`<p class="hint">Nothing reported. 🎉</p>`;
-  document.querySelectorAll("[data-a]").forEach(b=>b.onclick=async()=>{if(b.dataset.a==="delete"&&!b.dataset.sure){b.dataset.sure=1;b.textContent="Tap again to delete";return}
-    b.disabled=true;await fetch("/api/admin/post",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({id:b.dataset.id,action:b.dataset.a})});load()});
-  const days=[...new Set(d.events.map(e=>e.day))].slice(0,14),types=[...new Set(d.events.map(e=>e.type))].sort();
-  const cell=(day,t)=>(d.events.find(e=>e.day===day&&e.type===t)||{}).count||"";
-  $("events").innerHTML=types.length?`<tr><th style="text-align:left;padding:4px 10px">Event</th>${days.map(x=>`<th style="padding:4px 10px">${x.slice(5)}</th>`).join("")}</tr>`+types.map(t=>`<tr><td style="padding:4px 10px">${t}</td>${days.map(x=>`<td style="padding:4px 10px;text-align:right">${cell(x,t)}</td>`).join("")}</tr>`).join(""):`<tr><td class="hint">No events yet.</td></tr>`;
-}
-load();
-$("cleanBtn").onclick=async()=>{const b=$("cleanBtn");if(!b.dataset.sure){b.dataset.sure=1;b.textContent="Tap again to remove them";return}b.disabled=true;const r=await fetch("/api/admin/cleanup",{method:"POST",headers:{"content-type":"application/json"},body:"{}"});const d=await r.json();$("cleanNote").textContent=r.ok?`Removed ${d.removed} empty records.`:d.error;b.textContent="Remove empty visitor records";delete b.dataset.sure;b.disabled=false;load()};
-$("resetBtn").onclick=async()=>{const r=await fetch("/api/admin/user",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({username:$("resetUser").value,action:"reset"})});const d=await r.json();$("resetNote").textContent=r.ok?"Profile cleared.":d.error};
-</script><footer><!--SITE_FOOTER--><a class="dbv" href="https://donebyverde.com" target="_blank" rel="noopener noreferrer" aria-label="Website by donebyverde (opens in a new tab)" title="Website by donebyverde"><svg viewBox="0 0 200 200" aria-hidden="true"><path d="M75 0H125L123 61L174 28L200 72L146 100L200 128L174 172L123 139L125 200H75L77 139L26 172L0 128L54 100L0 72L26 28L77 61Z"/></svg></a></footer></div></body></html>
+  $("tSrc").innerHTML=bars(group("src:"));$("tLand").innerHTML=bars(group("land:"));$("tTool").innerHTML=bars(group("tool:"));
+  const views=n("view"),own=n("weigh"),pct=(a,b)=>b?Math.round(a/b*100)+"%":"–";
+  $("tFunnel").innerHTML=bars([["Visited",views],["Weighed own",own],["Sign-in sent",n("signup_sent")],["Signed in",n("signup_done")],["Posted",n("wall_post")+n("daily_submit")]],views)+`<p class="hint">${pct(own,views)} of visits weigh their own lyrics · ${pct(n("signup_done"),views)} sign in</p>`}
+
+/* ---------- totals, reviews & money ---------- */
+const LABELS={users:"Visitor records",active:"Active writers",signedIn:"Signed in",pro:"Pro now",posts:"Wall posts",postsWeek:"Posts this week",votes:"Votes",dailyToday:"Daily W today",wingmanToday:"Wingman msgs today"};
+function totals(){if(!OV)return;$("totals").innerHTML=Object.entries(OV.stats).map(([k,v])=>`<div class="mini"><div class="n">${fmt(v)}</div><div class="l">${LABELS[k]||k}</div></div>`).join("")}
+function reviews(){if(!BIZ)return;const R={};(BIZ.reviews||[]).forEach(r=>R[r.status]=r.c);
+  $("bizCards").innerHTML=[[R.live||0,"Live reviews"],[R.draft||0,"Drafts"],[money(BIZ.revenue.month.c),`Review revenue, last 30 days (${BIZ.revenue.month.n||0})`],[money(BIZ.revenue.all.c),`Review revenue, all time (${BIZ.revenue.all.n||0})`],[BIZ.pro,"Pro members now"],[BIZ.subscribers,"Email list"],[BIZ.critics,"Active critics"],[BIZ.comments,"Comments, last 30 days"]].map(([v,l])=>`<div class="mini"><div class="n">${typeof v==="number"?fmt(v):v}</div><div class="l">${l}</div></div>`).join("");
+  $("queue").innerHTML=(BIZ.toReview||[]).length?BIZ.toReview.map(r=>`<div class="it"><span class="grow"><b>${esc(r.artist)}</b>${r.title?` · ${esc(r.title)}`:""}<br><small>${ago(r.created_at)}</small></span>${r.paid?`<span class="pill2 pro">Paid</span>`:`<span class="pill2">Free</span>`}</div>`).join(""):`<p class="hint">Queue's empty. 🎉</p>`;
+  $("paidList").innerHTML=(BIZ.recentPaid||[]).length?BIZ.recentPaid.map(r=>`<div class="it"><span class="grow"><b>${esc(r.artist)}</b>${r.title?` · ${esc(r.title)}`:""}<br><small>${ago(r.created_at)} · ${esc(r.status)}</small></span><b>${money(r.amount)}</b></div>`).join(""):`<p class="hint">No paid submissions yet.</p>`}
+
+/* ---------- people ---------- */
+async function people(q){$("pplNote").textContent="Looking…";try{const d=await api("/api/admin/people?q="+encodeURIComponent(q));$("pplNote").textContent=q?`${d.people.length} match${d.people.length===1?"":"es"}`:"Newest signed-in people";
+  $("pplTbl").innerHTML=d.people.length?`<thead><tr><th>Person</th><th>Joined</th><th>Posts</th><th>Plan</th><th>Credits</th><th></th></tr></thead><tbody>${d.people.map(p=>{const pro=p.pro_until>Date.now();return `<tr><td>${p.username?`<a href="/u/${encodeURIComponent(p.username)}" target="_blank" rel="noopener">@${esc(p.username)}</a><br>`:""}<small class="hint">${esc(p.email||"no email")}</small></td><td>${new Date(p.created_at).toLocaleDateString()}</td><td>${fmt(p.posts)}</td><td>${pro?`<span class="pill2 pro">Pro to ${new Date(p.pro_until).toLocaleDateString()}</span>`:`<span class="pill2">Free</span>`}${p.paying?` <span class="pill2">Stripe</span>`:""}</td><td>${fmt(p.credits)}</td><td><button class="btn sm" data-gift="${p.id}">Gift 30 days Pro</button> <button class="btn sm quiet" data-cred="${p.id}">+10 credits</button></td></tr>`}).join("")}</tbody>`:`<tbody><tr><td class="hint">Nobody found.</td></tr></tbody>`;
+  $("pplTbl").querySelectorAll("[data-gift],[data-cred]").forEach(b=>b.onclick=async()=>{if(!b.dataset.sure){b.dataset.sure=1;b.textContent="Tap again to confirm";return}b.disabled=true;
+    try{await api("/api/admin/people",b.dataset.gift?{id:b.dataset.gift,action:"gift_pro",days:30}:{id:b.dataset.cred,action:"credits",n:10});people($("pplQ").value)}catch(e){$("pplNote").textContent=e.message;b.disabled=false}})}
+  catch(e){$("pplNote").textContent=e.message}}
+$("pplForm").onsubmit=e=>{e.preventDefault();people($("pplQ").value.trim())};
+
+/* ---------- moderation ---------- */
+function moderation(){if(!OV)return;
+  $("profiles").innerHTML=(OV.profiles||[]).length?OV.profiles.map(p=>`<article class="card"><div class="ch"><span class="ttl">@${esc(p.username||"?")}${p.display_name?" · "+esc(p.display_name):""}</span><span class="pill">${p.reports} report${p.reports>1?"s":""}</span></div><pre>${esc(p.bio||"(no bio)")}</pre><p class="hint">Reasons: ${esc(p.reasons||"none given")}</p><div class="row"><a class="btn" href="/u/${encodeURIComponent(p.username||"")}" target="_blank" rel="noopener">View profile</a><button class="btn" data-reset="${esc(p.username||"")}">Reset this profile</button></div></article>`).join(""):`<p class="hint">No reported profiles.</p>`;
+  document.querySelectorAll("[data-reset]").forEach(b=>b.onclick=()=>{$("resetUser").value=b.dataset.reset;$("resetUser").scrollIntoView({block:"center"});$("resetUser").focus()});
+  $("flagged").innerHTML=OV.flagged.length?OV.flagged.map(p=>`<article class="card"><div class="ch"><span class="ttl">${esc(p.title||"Untitled")}</span><span class="pill">${p.hidden?"Hidden":"Visible"} · ${p.reports} reports</span></div><pre>${esc(p.excerpt)}</pre><div class="row">${p.hidden?`<button class="btn" data-a="unhide" data-id="${p.id}">Restore</button>`:`<button class="btn" data-a="hide" data-id="${p.id}">Hide</button>`}<button class="btn" data-a="delete" data-id="${p.id}">Delete for good</button></div></article>`).join(""):`<p class="hint">Nothing reported. 🎉</p>`;
+  document.querySelectorAll("[data-a]").forEach(b=>b.onclick=async()=>{if(b.dataset.a==="delete"&&!b.dataset.sure){b.dataset.sure=1;b.textContent="Tap again to delete";return}b.disabled=true;await api("/api/admin/post",{id:b.dataset.id,action:b.dataset.a});await loadOV();moderation();inbox()});
+  $("waitlist").innerHTML=(()=>{const W=OV.waitlist||{byDaw:[],recent:[]},DN={fl:"FL Studio",ableton:"Ableton Live",logic:"Logic Pro",other:"Other"},tot=W.byDaw.reduce((a,b)=>a+b.c,0);
+    return tot?`<p><b>${tot}</b> on the list · ${W.byDaw.map(x=>`${DN[x.daw]||x.daw}: ${x.c}`).join(" · ")}</p><div class="list">${W.recent.map(r=>`<div class="it"><span class="grow">${esc(r.email)}</span><small>${DN[r.daw]||esc(r.daw)} · ${new Date(r.created_at).toLocaleDateString()}</small></div>`).join("")}</div>`:`<p class="hint">Nobody yet. The signup is on the Pro page.</p>`})()}
+$("resetBtn").onclick=async()=>{try{await api("/api/admin/user",{username:$("resetUser").value,action:"reset"});$("resetNote").textContent="Profile cleared."}catch(e){$("resetNote").textContent=e.message}};
+$("cleanBtn").onclick=async()=>{const b=$("cleanBtn");if(!b.dataset.sure){b.dataset.sure=1;b.textContent="Tap again to remove them";return}b.disabled=true;try{const d=await api("/api/admin/cleanup",{});$("cleanNote").textContent=`Removed ${d.removed} empty records.`}catch(e){$("cleanNote").textContent=e.message}b.textContent="Remove empty visitor records";delete b.dataset.sure;b.disabled=false;await loadOV();totals()};
+
+/* ---------- team ---------- */
+async function team(){try{TEAM=await api("/api/admin/team")}catch(e){$("teamList").innerHTML=`<p class="hint">${esc(e.message)}</p>`;return}const owner=TEAM.role==="owner";
+  $("teamList").innerHTML=TEAM.owners.map(e=>`<div class="it"><span class="grow">${esc(e)}${e===TEAM.me?" <small>(you)</small>":""}</span><span class="pill2 own">Owner</span></div>`).join("")+TEAM.admins.map(a=>`<div class="it"><span class="grow">${esc(a.email)}${a.email===TEAM.me?" <small>(you)</small>":""}<br><small>Added ${a.added_by?"by "+esc(a.added_by)+" ":""}${ago(a.created_at)}</small></span><span class="pill2">Admin</span>${owner?`<button class="btn sm quiet" data-rm="${esc(a.email)}">Remove</button>`:""}</div>`).join("");
+  $("teamForm").hidden=!owner;
+  $("teamList").querySelectorAll("[data-rm]").forEach(b=>b.onclick=async()=>{if(!b.dataset.sure){b.dataset.sure=1;b.textContent="Tap again to remove";return}try{await api("/api/admin/team",{email:b.dataset.rm,action:"remove"});team()}catch(e){$("teamNote").textContent=e.message}});
+  $("critList").innerHTML=TEAM.critics.length?TEAM.critics.map(c=>`<div class="it"><span class="grow">${esc(c.name)}<br><small>${esc(c.email)}</small></span><span class="pill2">${c.active?"Critic":"Inactive"}</span></div>`).join(""):`<p class="hint">No critic emails yet.</p>`}
+$("teamForm").onsubmit=async e=>{e.preventDefault();try{await api("/api/admin/team",{email:$("teamEmail").value,action:"add"});$("teamEmail").value="";$("teamNote").textContent="Added. They can sign in at /admin with that email.";team()}catch(e){$("teamNote").textContent=e.message}};
+
+/* ---------- boot ---------- */
+async function loadOV(){OV=await api("/api/admin/overview")}
+function renderData(){if(!SERIES)return;syncRange();kpis();traffic();chart()}
+function drawAll(){if(SERIES)chart()}
+(async()=>{syncChartCtl();syncRange();show();
+  try{const me=await api("/api/me").catch(()=>null);if(me&&(me.me||me).email)$("who").textContent="Signed in as "+(me.me||me).email;
+    await Promise.all([loadSeries(),loadOV(),api("/api/admin/business").then(d=>BIZ=d)]);
+    renderData();totals();reviews();moderation();inbox()}
+  catch(e){$("err").textContent=e.message}})();
+</script>
+<footer><!--SITE_FOOTER--><a class="dbv" href="https://donebyverde.com" target="_blank" rel="noopener noreferrer" aria-label="Website by donebyverde (opens in a new tab)" title="Website by donebyverde"><svg viewBox="0 0 200 200" aria-hidden="true"><path d="M75 0H125L123 61L174 28L200 72L146 100L200 128L174 172L123 139L125 200H75L77 139L26 172L0 128L54 100L0 72L26 28L77 61Z"/></svg></a></footer>
+</body></html>

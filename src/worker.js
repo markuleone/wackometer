@@ -5,6 +5,7 @@ import { handleSocial, profileMeta } from "./social.js";
 import { cleanLyrics, cleanIdentity } from "./moderation.js";
 import SEO_URLS from "./seo-urls.js";
 import { checkUnsubscribe } from "./notify.js";
+import { roleOf, isCriticEmail, gatePage, adminDashApi } from "./admin.js";
 import { listsPage, artistBadge, hubApi, hubUrls, thankSubmitter, genresIndex } from "./hub.js";
 import { reviewsPage, badgeSVG, reviewApi, reviewUrls, frontPage, artistsPage, artistTable, getReviewedPage, criticsPage, activeCritics, subscribe, imageResponse, listUnsubscribe } from "./reviews.js";
 import { analyze, tierOf, clamp, MID, TIERS, METRICS, words, dailyKey, dailyPrompt } from "../web/js/score.js";
@@ -97,7 +98,8 @@ function liveStreak(u) {
   return u.last_daily === today || u.last_daily === yday ? u.streak || 0 : 0;
 }
 const adminEmails = (env) => String(env.ADMIN_EMAILS || "").toLowerCase().split(",").map((s) => s.trim()).filter(Boolean);
-const isAdmin = (u, env) => !!(u.email && adminEmails(env).includes(u.email.toLowerCase()));
+// Owner or admin. The role is looked up once per request (see roleOf in admin.js) and kept on the user object.
+const isAdmin = (u, env) => !!(u && (u._role || (u.email && adminEmails(env).includes(u.email.toLowerCase()))));
 function me(u, used, env) {
   return { id: u.id, email: u.email || null, username: u.username || null, ageOk: !!u.age_ok, humanCheck: !!env.TURNSTILE_SECRET && !(u.human_until > now()), turnstileKey: env.TURNSTILE_SITE_KEY || "", admin: isAdmin(u, env), canEmail: !!env.SENDGRID_API_KEY, pro: !!isPro(u), proUntil: u.pro_until || null, credits: u.credits, usedToday: used,
     ai: canUseAI(u), handle: u.handle || null, streak: liveStreak(u), lastDaily: u.last_daily || null,
@@ -183,6 +185,17 @@ export default {
     if (path === "/lists" || path.startsWith("/lists/")) { try { return await listsPage(req, env, path, ensureSchema); } catch (e) { console.error(e); return new Response("Something broke on our side. Try again in a moment.", { status: 500 }); } }
     if (path.startsWith("/badge/artist/") && path.endsWith(".svg")) return artistBadge(env, path.slice(14, -4).toLowerCase(), ensureSchema);
     if (path.startsWith("/badge/") && path.endsWith(".svg")) return badgeSVG(env, path.slice(7, -4).toLowerCase(), ensureSchema);
+    // Back office pages: only staff get the page; everyone else gets a sign-in gate.
+    if ((path === "/admin" || path === "/admin-reviews" || path === "/admin.html" || path === "/admin-reviews.html") && (method === "GET" || method === "HEAD")) {
+      await ensureSchema(env);
+      const s0 = await session(req, env, false), u0 = s0.user;
+      const role = await roleOf(u0, env);
+      const reviews = path.startsWith("/admin-reviews");
+      if (!role && !(reviews && await isCriticEmail(u0, env))) return gatePage(u0, reviews ? "reviews" : "admin");
+      const page = await env.ASSETS.fetch(new Request(new URL(reviews ? "/admin-reviews" : "/admin", req.url), req));
+      const h = new Headers(page.headers); h.set("cache-control", "no-store"); h.set("x-robots-tag", "noindex, nofollow");
+      return new Response(page.body, { status: page.status, headers: h });
+    }
     if (!path.startsWith("/api/")) {
       // Unknown page: the tools app shows its "page not found" view (with a real 404 status for search engines).
       if (req.method !== "GET" && req.method !== "HEAD") return new Response("Not found", { status: 404 });
@@ -200,6 +213,7 @@ export default {
     const needUser = method !== "GET" && path !== "/api/event";
     try { await ensureSchema(env); s = await session(req, env, needUser); } catch (e) { return bad("Database isn't set up yet. Run the schema (see README).", 500); }
     const u = s.user;
+    if (u.email) { try { u._role = await roleOf(u, env); } catch (e) {} }
     const body = method === "POST" ? await req.json().catch(() => ({})) : {};
     // Bot check: the first time someone writes anything public, Turnstile confirms they're human (good for 30 days).
     if (method === "POST" && env.TURNSTILE_SECRET && HUMAN_PATHS.some((re) => re.test(path)) && !(u.human_until > now())) {
@@ -519,6 +533,8 @@ async function route(path, method, url, body, u, env, req) {
   /* ----- Admin ----- */
   if (path.startsWith("/api/admin/")) {
     if (!isAdmin(u, env)) return bad("Admins only. Sign in with an admin email.", 403);
+    const dash = await adminDashApi(path, method, url, body, u, env, u._role || "owner");
+    if (dash) return dash;
     if (path === "/api/admin/overview" && method === "GET") {
       const c = async (q, ...b) => (await DB.prepare(q).bind(...b).first()).c;
       const day = dailyKey(), weekAgo = now() - 7 * 86400000;

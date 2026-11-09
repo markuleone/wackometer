@@ -122,8 +122,7 @@ export async function handleSocial(path, method, url, body, u, env) {
 
   /* ----- admin: reset a profile ----- */
   if (path === "/api/admin/user" && method === "POST") {
-    const admins = String(env.ADMIN_EMAILS || "").toLowerCase().split(",").map((s) => s.trim());
-    if (!(u.email && admins.includes(u.email.toLowerCase()))) return bad("Admins only.", 403);
+    if (!u._role) return bad("Admins only.", 403);
     const p = await userByName(DB, body.username);
     if (!p) return bad("No writer with that username.", 404);
     await DB.prepare("UPDATE users SET username=NULL, display_name=NULL, bio=NULL, pinned=NULL, links=NULL WHERE id=?").bind(p.id).run();

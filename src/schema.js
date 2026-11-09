@@ -35,6 +35,8 @@ export const SCHEMA = [
 
 // Changes for databases created before these existed. Each runs on its own; 'duplicate column' errors are expected and ignored.
 export const MIGRATIONS = [
+  // staff added from the back office (owners live in ADMIN_EMAILS)
+  "CREATE TABLE IF NOT EXISTS admins ( email TEXT PRIMARY KEY, added_by TEXT, created_at INTEGER NOT NULL )",
   "ALTER TABLE users ADD COLUMN email TEXT",
   "ALTER TABLE users ADD COLUMN username TEXT",
   "ALTER TABLE users ADD COLUMN display_name TEXT",
