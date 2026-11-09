@@ -266,3 +266,16 @@ CREATE TABLE IF NOT EXISTS critics (
   created_at  INTEGER NOT NULL
 );
 -- review_requests.critic: slug of the critic the artist picked (migration)
+
+-- people applying to review for Wackometer
+CREATE TABLE IF NOT EXISTS critic_applications (
+  id          TEXT PRIMARY KEY,
+  name        TEXT NOT NULL,
+  email       TEXT NOT NULL,
+  link        TEXT,
+  genres      TEXT,
+  why         TEXT,
+  user_id     TEXT,
+  status      TEXT NOT NULL DEFAULT 'new',     -- new | accepted | passed
+  created_at  INTEGER NOT NULL
+);

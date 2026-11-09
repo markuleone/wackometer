@@ -1020,3 +1020,6 @@ a.rchip:hover{border-color:var(--ink)}
 @media (max-width:760px){.paycard .pay-top .price{font-size:84px}}
 /* every page fills the same width as the header; only running text keeps a readable line length */
 .seoart>p,.seoart .lead,.rv .lead,.gr .lead,.fintro p{max-width:72ch}
+.gr-who{display:flex;gap:14px;align-items:flex-start;background:var(--surface);border:2px solid var(--line);border-radius:20px;padding:16px 18px}.gr-who p{margin:0;max-width:80ch;line-height:1.6}
+.rv-submit.apply .sub-grid{grid-template-columns:1fr 1fr}
+@media (max-width:760px){.rv-submit.apply .sub-grid{grid-template-columns:1fr}}

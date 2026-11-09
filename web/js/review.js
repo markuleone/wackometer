@@ -198,3 +198,13 @@ document.querySelectorAll("[data-critic]").forEach((a) => a.addEventListener("cl
   e.preventDefault(); sel.value = a.dataset.critic;
   $("submit").scrollIntoView({ behavior: "smooth", block: "start" }); setTimeout(() => sel.focus({ preventScroll: true }), 400);
 }));
+
+// "Review for Wackometer" applications.
+const applyForm = $("applyForm");
+if (applyForm) applyForm.onsubmit = async (e) => {
+  e.preventDefault();
+  const note = $("applyNote"), btn = applyForm.querySelector("button"); btn.disabled = true; note.textContent = "Sending…";
+  try { await api("/api/critics/apply", { body: Object.fromEntries(new FormData(applyForm)) }); applyForm.reset(); note.textContent = "Got it. We read every application and reply by email."; track("critic_apply"); }
+  catch (err) { note.textContent = err.message; }
+  btn.disabled = false;
+};

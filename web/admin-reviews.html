@@ -81,6 +81,8 @@ body{margin:0}[hidden]{display:none!important}
   <div class="row full"><button class="btn bile" type="submit">Save critic</button><button class="btn" type="button" id="cNew">New critic</button><button class="btn quiet" type="button" id="cDel" hidden>Remove</button><span class="hint" id="cNote" role="status"></span></div>
 </form></details>
 <div class="list" id="crList"></div>
+<h2>Critic applications <span class="hint" id="appCount"></span></h2>
+<div class="list" id="apps"></div>
 <h2>All reviews</h2>
 <div class="list" id="list"></div>
 </div>
@@ -123,8 +125,21 @@ function renderCritics() {
   $("crList").innerHTML = cs.length ? cs.map((c, i) => `<div class="it">${c.photo_url ? `<img src="${esc(c.photo_url)}" alt="">` : '<span class="ph"></span>'}<span><b>${esc(c.name)}</b>${c.tagline ? " · " + esc(c.tagline) : ""}<br><span class="hint">${c.active ? "Taking submissions" : "Hidden"} · <a href="/critics/${esc(c.slug)}" target="_blank">/critics/${esc(c.slug)}</a></span></span><span class="row"><button class="btn" data-cedit="${i}">Edit</button></span></div>`).join("") : '<p class="hint">No critics yet. Add yourself first, then anyone whose taste you trust. Until then the Get reviewed page shows “The Wackometer team”.</p>';
   $("crList").querySelectorAll("[data-cedit]").forEach((b) => (b.onclick = () => { fillCritic(cs[Number(b.dataset.cedit)]); $("crBox").open = true; $("crBox").scrollIntoView({ behavior: "smooth" }); }));
 }
+function renderApps() {
+  const as = DATA.applications || [], open = as.filter((a) => a.status === "new").length;
+  $("appCount").textContent = open ? `(${open} new)` : "";
+  $("apps").innerHTML = as.length ? as.map((a) => `<div class="req ${a.status !== "new" ? "done" : ""}"><b>${esc(a.name)}</b> <span class="hint">${esc(a.email)}${a.genres ? " · " + esc(a.genres) : ""} · ${new Date(a.created_at).toLocaleDateString()}${a.status !== "new" ? " · " + a.status : ""}</span>
+    ${a.link ? `<span>${/^https:\/\//.test(a.link) ? `<a href="${esc(a.link)}" target="_blank" rel="noopener">${esc(a.link)}</a>` : esc(a.link)}</span>` : ""}<span>${esc(a.why || "")}</span>
+    <span class="row"><button class="btn bile" data-accept="${esc(a.id)}">Make them a critic</button><button class="btn" data-pass="${esc(a.id)}">Pass</button><a class="btn" href="mailto:${esc(a.email)}?subject=Your%20Wackometer%20critic%20application">Email them</a></span></div>`).join("") : '<p class="hint">No applications yet. They come from the “Review for Wackometer” form on the Get reviewed page.</p>';
+  $("apps").querySelectorAll("[data-accept]").forEach((b) => (b.onclick = async () => {
+    const a = as.find((x) => x.id === b.dataset.accept);
+    try { await api("/api/reviews-admin/critic-save", { name: a.name, genres: a.genres || "", ig: /^@|^[A-Za-z0-9._]+$/.test(a.link || "") ? a.link : "", link: /^https:\/\//.test(a.link || "") ? a.link : "", active: true }); await api("/api/reviews-admin/application", { id: a.id, status: "accepted" }); load(); }
+    catch (err) { alert(err.message); }
+  }));
+  $("apps").querySelectorAll("[data-pass]").forEach((b) => (b.onclick = async () => { await api("/api/reviews-admin/application", { id: b.dataset.pass, status: "passed" }); load(); }));
+}
 function renderList() {
-  renderCritics();
+  renderCritics(); renderApps();
   $("list").innerHTML = DATA.reviews.length ? DATA.reviews.map((r, i) => `<div class="it">${r.cover_url ? `<img src="${esc(r.cover_url)}" alt="">` : '<span class="ph"></span>'}
     <span><b>${esc(r.title)}</b> · ${esc(r.artist)}<br><span class="hint">${r.score} ${TIERS[tierOf(r.score)]} · ${r.votes} crowd vote${r.votes === 1 ? "" : "s"} · </span><span class="tag2 ${r.status}">${r.status}</span>${r.featured ? ' <span class="tag2">★ featured</span>' : ""}</span>
     <span class="row"><a class="btn" href="/reviews/${esc(r.slug)}${r.status === "live" ? "" : "?preview=1"}" target="_blank">View</a><button class="btn" data-edit="${i}">Edit</button></span></div>`).join("") : '<p class="hint">No reviews yet. Write the first one above.</p>';
