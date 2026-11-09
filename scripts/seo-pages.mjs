@@ -7,7 +7,7 @@ import { adsenseTag } from "../src/ads-tag.js";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { CLICHES } from "../web/js/score.js";
 import { SWAPS } from "../web/js/swaps.js";
-import { siteHeader } from "../src/site-header.js";
+import { siteHeader, siteFooterLinks } from "../src/site-header.js";
 
 const BASE = "https://wackometer.com";
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -50,7 +50,7 @@ ${body}
 <div class="ad-slot" hidden></div>
 <div class="cta"><b>How wack are your lyrics?</b><p>Paste a verse into the Wackometer. It scores it from Wicked to Wack, circles the clichés and lazy rhymes, and shows you how to fix them.</p><a class="btn bile" href="/write#weigh">Weigh my lyrics, free</a></div>
 </main>
-<footer><p class="flinks">Wackometer · <a href="/reviews">Song reviews</a> · <a href="/rhymes/">Fresh rhymes</a> · <a href="/cliches/">Cliché fixer</a> · <a href="/syllable-counter">Syllable counter</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="https://instagram.com/wackometer" rel="me noopener" target="_blank">Instagram @wackometer</a></p>${DBV}</footer>
+<footer>${siteFooterLinks()}${DBV}</footer>
 </div>
 ${ADS ? `<script type="module" src="${ADS}"></script>` : ""}
 </body>

@@ -3,7 +3,7 @@
 // (site.<hash>.css, app.<hash>.js) so browsers can cache them for a year and still pick up every new deploy.
 // Hashed names, not ?v= tags: while a deploy rolls out, an old server answers "not found" for a new name
 // instead of serving the old file under the new tag, which the CDN would then cache for a year.
-import { siteHeader } from "../src/site-header.js";
+import { siteHeader, siteFooterLinks } from "../src/site-header.js";
 import { build } from "esbuild";
 import { createHash } from "node:crypto";
 import { gzipSync } from "node:zlib";
@@ -35,7 +35,7 @@ const preload = staticChunks.map((c) => `<link rel="modulepreload" href="/js/${c
 for (const f of readdirSync(OUT)) {
   if (!f.endsWith(".html")) continue;
   const p = join(OUT, f);
-  let h = readFileSync(p, "utf8").replaceAll('href="/css/site.css"', `href="${CSS}"`).replaceAll('src="/js/app.js"', `src="${JS}"`).replaceAll('src="/js/critic.js"', `src="/js/critic.${v.critic}.js"`).replace("<!--SITE_HEADER-->", siteHeader());
+  let h = readFileSync(p, "utf8").replaceAll('href="/css/site.css"', `href="${CSS}"`).replaceAll('src="/js/app.js"', `src="${JS}"`).replaceAll('src="/js/critic.js"', `src="/js/critic.${v.critic}.js"`).replace("<!--SITE_HEADER-->", siteHeader()).replace("<!--SITE_FOOTER-->", siteFooterLinks());
   h = h.replace(`<script type="module" src="${JS}"></script>`, (m) => preload + m);
   h = h.replace(/\n\s+/g, "\n"); // trim indentation
   writeFileSync(p, h);

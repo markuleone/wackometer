@@ -6,7 +6,7 @@ const lines = (t) => t.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
 const need = (t, n) => (lines(t).length < n ? `Write at least ${n} lines first.` : null);
 
 export const LESSONS = [
-  { id: "worn", metric: "worn", title: "Kill the cliché", sub: "Worn-out phrases", xp: 20,
+  { id: "worn", metric: "worn", title: "Spot the cliché", sub: "Worn-out phrases", xp: 20, showCliches: true,
     why: "A cliché is a phrase your listener has already finished in their head before you sing it. The moment they can predict you, they stop listening. Fresh writing says the same feeling with a picture only you would pick.",
     before: "You break my heart\nTears fall like rain", after: "You left me on read for a year\nMascara drew a map down to my chin",
     drill: "Write 4 lines about a breakup. Zero clichés. The meter knows 70+ of them.",

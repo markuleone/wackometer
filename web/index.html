@@ -32,17 +32,11 @@
   <a class="skip" href="#main">Skip to content</a>
   <header class="top">
     <a class="logo" href="/" aria-label="Wackometer home"><span class="w"><img src="/brand/wacky-w.svg" alt="" width="40" height="44"></span>ackometer</a>
-    <nav id="groupNav" aria-label="Sections">
-      <button data-g="write" aria-current="true"><span class="ni" aria-hidden="true">✍️</span> Write</button>
-      <button data-g="practice"><span class="ni" aria-hidden="true">🏋️</span> Workout</button>
-      <a href="/"><span class="ni" aria-hidden="true">🎧</span> Reviews</a>
-    </nav>
-    <nav id="mainNav" aria-label="Tools" data-group="write">
-      <button data-v="weigh" data-g="write" aria-current="page">⚖️ Weigh</button>
-      <button data-v="wingman" data-g="write">🪽 Wingman</button>
-      <button data-v="community" data-g="write">🧱 Wall</button>
-      <button data-v="workshop" data-g="practice">🏋️ Workshop</button>
-      <button data-v="storm" data-g="practice">🎤 Wordstorm</button>
+    <nav id="groupNav" aria-label="Main">
+      <a href="/" data-g="reviews"><span class="ni" aria-hidden="true">🎧</span> Wreviews</a>
+      <button data-v="weigh" data-g="write" aria-current="true"><span class="ni" aria-hidden="true">✍️</span> Write</button>
+      <button data-v="wingman" data-g="wingman"><span class="ni" aria-hidden="true">🪽</span> Wingman</button>
+      <button data-v="workout" data-g="workout"><span class="ni" aria-hidden="true">🏋️</span> Workout</button>
     </nav>
     <div class="util">
       <button class="ubtn pro" id="proBtn" data-v="pro" title="Wingman Pro">W+</button>
@@ -296,6 +290,18 @@
 
 
   <!-- WORDSTORM: freestyle words -->
+  <section id="v-workshop" class="shopv" hidden>
+    <h1 class="wo-h1">Workout <span class="tag">Lessons that fix the habit, then a freestyle drill on a beat.</span></h1>
+    <div class="toolhead"><span class="hc" data-ch="1"></span><div><h2>🏋️ Workshop</h2><p class="tag">Don't just fix this verse. Fix the habit. Short lessons, one drill each, and the meter checks your work.</p></div>
+      <div class="rank" id="wsRank"></div></div>
+    <div class="shopgrid">
+      <div class="lessons" id="wsList"></div>
+      <div class="panel lesson" id="wsLesson" data-clarity-mask="True"></div>
+    </div>
+    <div class="panel"><h3>Your progress</h3><div id="wsHist"></div><p class="hint">Every time you weigh your own lyrics, the score lands here. <a href="/write#why">How the meter scores</a></p></div>
+  </section>
+
+  <!-- WHY -->
   <section id="v-storm" class="stormv" hidden>
     <div class="toolhead"><span class="hc" data-ch="3"></span><div><h2>🎤 Wordstorm</h2><p class="tag">Freestyle training. A word drops on the beat. Work it into your bars before the next one lands.</p></div></div>
     <div class="stormgrid">
@@ -325,17 +331,6 @@
   </section>
 
   <!-- WORKSHOP: get better -->
-  <section id="v-workshop" class="shopv" hidden>
-    <div class="toolhead"><span class="hc" data-ch="1"></span><div><h2>🏋️ Workshop</h2><p class="tag">Don't just fix this verse. Fix the habit. Short lessons, one drill each, and the meter checks your work.</p></div>
-      <div class="rank" id="wsRank"></div></div>
-    <div class="shopgrid">
-      <div class="lessons" id="wsList"></div>
-      <div class="panel lesson" id="wsLesson" data-clarity-mask="True"></div>
-    </div>
-    <div class="panel"><h3>Your progress</h3><div id="wsHist"></div><p class="hint">Every time you weigh your own lyrics, the score lands here. <a href="/write#why">How the meter scores</a></p></div>
-  </section>
-
-  <!-- WHY -->
   <section id="v-why" class="whyv" hidden>
     <h2>Why it's wack</h2>
     <p>The meter reads six W-metrics from your words and blends them into one wack score from 0 to 100. Then the crowd on the Wall votes on posted lyrics. When the crowd keeps scoring higher or lower than the meter, that gap becomes the crowd tune and shifts every new score.</p>
@@ -399,7 +394,7 @@
   </section>
 
   </main>
-  <footer><p class="flinks">Wackometer · every word starts with W, or tries to · <a href="/write#why">How scoring works</a> · <a href="/reviews">Song reviews</a> · <a href="/rhymes/">Fresh rhymes</a> · <a href="/cliches/">Cliché fixer</a> · <a href="/syllable-counter">Syllable counter</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a></p>
+  <footer><!--SITE_FOOTER-->
     <a class="dbv" href="https://donebyverde.com" target="_blank" rel="noopener noreferrer" aria-label="Website by donebyverde (opens in a new tab)" title="Website by donebyverde"><svg viewBox="0 0 200 200" aria-hidden="true"><path d="M75 0H125L123 61L174 28L200 72L146 100L200 128L174 172L123 139L125 200H75L77 139L26 172L0 128L54 100L0 72L26 28L77 61Z"/></svg></a>
   </footer>
 

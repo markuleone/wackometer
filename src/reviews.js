@@ -7,7 +7,7 @@
 import { adsenseTag } from "./ads-tag.js";
 import { TIERS, tierOf, MID } from "../web/js/score.js";
 import META from "./build-meta.js";
-import { siteHeader } from "./site-header.js";
+import { siteHeader, siteFooterLinks } from "./site-header.js";
 import { GENRE_KEYS, genrePage, genreCounts, genreTilesHTML, reviewSocialHTML, artistProfile, artistLinksHTML, artistExtrasHTML, thankSubmitter } from "./hub.js";
 
 const BASE = "https://wackometer.com";
@@ -83,7 +83,7 @@ ${body}
 </main>
 <section class="wotw" aria-labelledby="wotwH"><span class="cm cm-side" data-tier="0" aria-hidden="true"></span><div><h2 id="wotwH">Wicked of the week</h2><p>One email on Fridays: the best song we weighed that week, plus the one that got wrecked. No spam, leave anytime.</p></div>
 <form id="wotwForm" class="wotw-f"><label class="sr" for="wotwEmail">Your email</label><input id="wotwEmail" name="email" type="email" required maxlength="200" placeholder="you@email.com" autocomplete="email"><input type="hidden" name="source" value="${esc(String(path || "").split("/")[1] || "home")}"><button class="btn bile" type="submit">Get it</button><span class="hint" id="wotwNote" role="status"></span></form></section>
-<footer><p class="flinks">Wackometer · <a href="/reviews">Song reviews</a> · <a href="/get-reviewed">Get reviewed</a> · <a href="/lists">Wicked lists</a> · <a href="/critics">Become a critic</a> · <a href="/rhymes/">Fresh rhymes</a> · <a href="/cliches/">Cliché fixer</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="https://instagram.com/wackometer" rel="me noopener" target="_blank">Instagram @wackometer</a></p>${DBV}</footer>
+<footer>${siteFooterLinks()}${DBV}</footer>
 </div>
 <div class="modal" id="humanModal" hidden role="dialog" aria-labelledby="humanH"><div class="mbox"><div class="mch" id="humanChar"></div><h3 id="humanH">Quick check: are you a human?</h3><p class="tag">Keeps bots out of the votes. You only do this once a month.</p><div id="turnstileBox"></div><span class="hint" id="humanNote"></span></div></div>
 </body>

@@ -1167,3 +1167,25 @@ a.rchip:hover{border-color:var(--ink)}
 .front{gap:clamp(34px,6vh,64px)}
 .seoart{gap:14px}.seoart>section,.seoart>.fpromo,.seoart>.rv-grid,.seoart>.wl-list,.seoart>.gtiles{margin-top:10px}
 .rv>section,.rv>.rv-body,.rv>.fpromo{margin-top:22px}
+
+/* ===== One menu everywhere: Wreviews · Write · Wingman · Workout (Nov 2026) ===== */
+.wnav a{display:inline-flex;align-items:center;gap:6px;font-size:15.5px}
+.wnav .ni{font-size:16px}
+.rtop .wnav{flex:1}
+.rtop .rsearch{margin-left:auto}
+#groupNav{flex:1;justify-content:flex-start;background:none;border:0;box-shadow:none;padding:0;gap:4px}
+#groupNav a,#groupNav button{color:var(--muted)}
+#groupNav button[aria-current="true"]{background:var(--bile-wash);color:var(--ink)}
+@media (max-width:760px){.rtop .wnav{order:4;flex-basis:100%;justify-content:space-between;-webkit-mask-image:none;mask-image:none;padding-right:0}.wnav a{flex:1;flex-direction:column;gap:2px;font-size:13px;padding:6px 4px;justify-content:center}.wnav .ni{font-size:20px}.rtop .rsearch{display:none}}
+/* footer columns */
+footer{flex-direction:column;align-items:stretch}
+.fcols{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px 24px;text-align:left;padding:8px 0 4px}
+.fcols div{display:flex;flex-direction:column;gap:6px}.fcols b{font-family:var(--display);font-size:15px;color:var(--ink)}
+.fcols a{color:var(--muted);text-decoration:none;font-size:14px}.fcols a:hover{color:var(--ink);text-decoration:underline}
+@media (max-width:640px){.fcols{grid-template-columns:1fr 1fr}}
+/* Workout page: lessons, then the freestyle drill */
+#v-storm:not([hidden]){margin-top:28px}
+.clist{display:flex;flex-direction:column;gap:6px;margin:10px 0}.clist .rchips{background:none;border:0;padding:0}
+.wo-h1{margin:0 0 12px;font-family:var(--display);font-size:clamp(30px,4vw,44px);line-height:1.05;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px}.wo-h1 .tag{font-family:var(--body);font-weight:400;font-size:16px;color:var(--muted)}
+.fcols{background:none;border:0;border-top:2px solid var(--line);border-radius:0;box-shadow:none;padding:22px 0 6px;margin-top:10px;flex-wrap:nowrap}
+footer .dbv{align-self:center}
