@@ -18,6 +18,7 @@ function renderMeCard() {
     <span class="hint" id="mcNote"></span>
     ${!p.signedIn ? `<p class="hint">Tip: <a href="#" id="mcSignin">sign in with email</a> so your profile and streak follow you to any device.</p>` : ""}
     <details class="acct"><summary>Account settings</summary>
+      <div class="row acct-row"><button class="btn" type="button" id="mcLogin">${p.signedIn ? "Email, sign-out and admin" : "Sign in with email"}</button><a class="btn" href="/write#pro">Wingman Pro</a></div>
       <div class="danger"><b>Delete my account</b><p class="hint">Removes your profile, posts, Daily Ws and votes. This can't be undone.</p>
       <div class="row"><input type="text" id="mcDelConfirm" placeholder="Type DELETE" aria-label="Type DELETE to confirm" style="max-width:160px"><button class="btn" id="mcDel">Delete forever</button></div><span class="hint" id="mcDelNote"></span></div>
     </details>`;
@@ -30,6 +31,7 @@ function renderMeCard() {
   };
   if ($("mcView")) $("mcView").onclick = (e) => { e.preventDefault(); history.pushState(null, "", "/u/" + p.username); A.show("profile"); };
   if ($("mcShare")) $("mcShare").onclick = () => shareLink(`${location.origin}/u/${p.username}`, "My lyrics page on Wackometer 👉", $("mcNote"));
+  $("mcLogin").onclick = () => A.openLogin();
   if ($("mcSignin")) $("mcSignin").onclick = (e) => { e.preventDefault(); A.openLogin(); };
 }
 let pfAvatar = 5, pfColor = "#3D8BFF";

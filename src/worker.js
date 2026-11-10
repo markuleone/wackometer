@@ -8,6 +8,7 @@ import { checkUnsubscribe } from "./notify.js";
 import { roleOf, isCriticEmail, gatePage, adminDashApi, publicCounter, logAction } from "./admin.js";
 import { refreshSettings } from "./settings.js";
 import { listsPage, artistBadge, hubApi, hubUrls, thankSubmitter, genresIndex } from "./hub.js";
+import { faqPage, aboutPage, standardsPage } from "./info-pages.js";
 import { reviewsPage, badgeSVG, reviewApi, reviewUrls, frontPage, artistsPage, artistTable, getReviewedPage, criticsPage, activeCritics, subscribe, imageResponse, listUnsubscribe } from "./reviews.js";
 import { analyze, tierOf, clamp, MID, TIERS, METRICS, words, dailyKey, dailyPrompt } from "../web/js/score.js";
 
@@ -171,6 +172,8 @@ export default {
 
     // Stripe calls this directly; no session cookie.
     if (path === "/api/stripe/webhook" && method === "POST") { await ensureSchema(env); return stripeWebhook(req, env); }
+    if (path === "/me") { const r = await env.ASSETS.fetch(new Request(new URL("/write", req.url), req)), h = new Headers(r.headers); h.set("x-robots-tag", "noindex"); return new Response(r.body, { status: r.status, headers: h }); }
+    if (path === "/faq" || path === "/about" || path === "/editorial-standards") { await ensureSchema(env); return path === "/faq" ? faqPage() : path === "/about" ? aboutPage() : standardsPage(); }
     if (path.startsWith("/u/")) return profilePage(req, env, decodeURIComponent(path.slice(3)).toLowerCase());
     if (path === "/sitemap.xml") return sitemap(env);
     // ads.txt tells ad buyers which ad accounts may sell space on this site (Google requires it to pay out).
@@ -659,7 +662,7 @@ async function sitemap(env) {
   try { await ensureSchema(env); reviews = await reviewUrls(env.DB); artists = await artistTable(env.DB); critics = await activeCritics(env.DB); hubs = await hubUrls(env.DB); } catch (e) {}
   try { users = (await env.DB.prepare("SELECT username FROM users WHERE username IS NOT NULL ORDER BY created_at DESC LIMIT 45000").all()).results; } catch (e) {}
   const base = env.APP_URL || "https://wackometer.com";
-  const urls = [["/", "daily", "1.0"], ["/terms", "yearly", "0.2"], ["/privacy", "yearly", "0.2"]].map(([p, f, pr]) => `<url><loc>${base}${p}</loc><changefreq>${f}</changefreq><priority>${pr}</priority></url>`)
+  const urls = [["/", "daily", "1.0"], ["/about", "monthly", "0.6"], ["/faq", "monthly", "0.6"], ["/editorial-standards", "monthly", "0.5"], ["/terms", "yearly", "0.2"], ["/privacy", "yearly", "0.2"]].map(([p, f, pr]) => `<url><loc>${base}${p}</loc><changefreq>${f}</changefreq><priority>${pr}</priority></url>`)
     .concat(SEO_URLS.map((p) => `<url><loc>${base}${p}</loc><changefreq>monthly</changefreq><priority>${p.endsWith("/") || p === "/syllable-counter" ? "0.8" : "0.6"}</priority></url>`))
     .concat([`<url><loc>${base}/reviews</loc><changefreq>daily</changefreq><priority>0.9</priority></url>`, `<url><loc>${base}/write</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>`, `<url><loc>${base}/artists</loc><changefreq>daily</changefreq><priority>0.8</priority></url>`, `<url><loc>${base}/get-reviewed</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>`, `<url><loc>${base}/critics</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>`])
     .concat(hubs.map(([p, f, pr]) => `<url><loc>${base}${p}</loc><changefreq>${f}</changefreq><priority>${pr}</priority></url>`))

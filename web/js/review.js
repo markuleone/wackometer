@@ -35,6 +35,7 @@ if (acct && !IS_BOT) api("/api/me").then((me) => {
   try { if (label) localStorage.setItem("wk-acct", label); else localStorage.removeItem("wk-acct"); } catch (e) {}
   const show = label || "Sign in", el = acct.querySelector(".albl");
   if (el.textContent.trim() !== show) { el.textContent = " " + show; acct.setAttribute("aria-label", label ? "Account: " + label : "Sign in"); }
+  acct.href = label ? "/me" : "/write?account=1";
 }).catch(() => {});
 // Header buttons and front-page cards that lead to the writing tools or the plugin.
 document.querySelectorAll("[data-hub]").forEach((el) => el.addEventListener("click", () => track("hub_" + el.dataset.hub)));

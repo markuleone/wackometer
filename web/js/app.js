@@ -186,7 +186,6 @@ async function renderBridge(score) {
   } catch (e) { $("bridge").hidden = true; }
 }
 document.addEventListener("click", (e) => { const a = e.target.closest && e.target.closest("#bridge a"); if (a) track(a.id === "bridgeGet" ? "bridge_submit" : "bridge_review"); });
-$("tabsGet").addEventListener("click", () => track("hub_nav_submit"));
 function wipe() {
   $("lyrics").value = ""; try { localStorage.removeItem("wk-draft"); } catch (e) {}
   $("map").hidden = true; $("post").hidden = true; $("roast").hidden = true; $("bestPick").hidden = true; $("metrics").innerHTML = ""; $("score").textContent = "–";
@@ -212,8 +211,10 @@ function show(v) {
   const plugin = v === "plugin";
   v = ALIASES[v] || v;
   const tab = TAB[v] || v;
-  document.querySelectorAll("#writeTabs button").forEach((b) => (b.dataset.v === v ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current")));
-  $("wtabsBar").hidden = v === "lost";
+  // The Write menu marks the tool you're in; your profile and the 404 page aren't part of Write.
+  document.querySelectorAll("#writeDD .wdd-m a").forEach((a) => (a.dataset.v === v ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current")));
+  $("writeDD").querySelector("summary").classList.toggle("cur", !["me", "profile", "lost"].includes(v));
+  $("acctBtn").classList.toggle("on", v === "me");
   document.querySelectorAll("#proBtn").forEach((b) => (b.dataset.v === tab ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current")));
   if (v !== "workout" && stormOn) { stormOn = false; stormM().then((st) => st.onHide()); }
   const vis = SHOWS[v] || [v];
@@ -221,7 +222,7 @@ function show(v) {
   if (v !== "profile") document.title = v === "weigh" ? "Wackometer · How wack are your lyrics?" : `${TITLES[v] || "Wackometer"} · Wackometer`;
   if (v !== lastShown) { lastShown = v; track("tool:" + v); try { window.clarity && window.clarity("set", "tool", v); } catch (e) {} }
   if (v === "workout") { stormOn = true; stormM().then((st) => st.onShow()); shopM().then((mod) => mod.renderWorkshop()); }
-  if (v !== "profile" && v !== "lost") { const to = APP + "#" + v; if (location.pathname + location.hash !== to) history.replaceState(null, "", to); }
+  if (v !== "profile" && v !== "lost") { const to = v === "me" ? "/me" : APP + "#" + v; if (location.pathname + location.hash !== to) history.replaceState(null, "", to); }
   if (v === "weigh" && !tourShown && ls("wk-tour") !== "1") { tourShown = true; setTimeout(tourStep, 900); }
   if (v === "community") communityM().then((mod) => mod.loadCommunity());
   if (v === "pro") { loadMe(); if (plugin) setTimeout(() => $("dawBox").scrollIntoView({ behavior: "smooth", block: "center" }), 80); }
@@ -397,7 +398,7 @@ function applyUnlocks() {
   UNLOCKS.forEach((u) => (UNLOCK[u.k] = st >= u.d));
   if (JSON.stringify(UNLOCK) !== before) { renderCrew(S.last ? S.last.tier : null); if (S.last) $("mchar").innerHTML = charSVG(S.last.tier); }
 }
-window.addEventListener("popstate", () => { if (location.pathname.startsWith("/u/")) show("profile"); else { const h = location.hash.slice(1); show(known(h) ? h : "weigh"); } });
+window.addEventListener("popstate", () => { if (location.pathname.startsWith("/u/")) show("profile"); else if (location.pathname === "/me") show("me"); else { const h = location.hash.slice(1); show(known(h) ? h : "weigh"); } });
 
 /* ---------- theme ---------- */
 // Always light: dark mode was retired (Nov 2026).
@@ -460,7 +461,7 @@ function openLogin() {
   if (!inn) setTimeout(() => $("loginEmail").focus(), 50);
 }
 function closeLogin() { $("loginModal").hidden = true; }
-$("acctBtn").onclick = openLogin; $("loginX").onclick = closeLogin; $("loginX2").onclick = closeLogin;
+$("acctBtn").onclick = () => { const me = S.ME || {}; if (me.username || me.email) show("me"); else openLogin(); }; $("loginX").onclick = closeLogin; $("loginX2").onclick = closeLogin;
 $("myProfileLink").onclick = $("meNoEmail").onclick = () => { closeLogin(); show("me"); };
 $("loginModal").addEventListener("click", (e) => { if (e.target.id === "loginModal") closeLogin(); });
 $("loginGo").onclick = async () => {
@@ -499,7 +500,7 @@ $("wipeBtn").onclick = wipe;
 document.querySelectorAll("[data-ex]").forEach((b) => (b.onclick = () => loadExample(b.dataset.ex)));
 $("lyrics").addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") renderReading(); });
 $("lyrics").addEventListener("input", () => { padIsExample = false; ls("wk-draft", $("lyrics").value); $("draftBack").hidden = true; });
-document.querySelectorAll("#groupNav button,#writeTabs button,#proBtn,#wingLockGo").forEach((b) => (b.onclick = () => show(b.dataset.v)));
+document.querySelectorAll("#proBtn,#wingLockGo").forEach((b) => (b.onclick = () => show(b.dataset.v)));
 window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if (known(h)) show(h); else if (!h) show("weigh"); });
 $("toWing").onclick = () => { show("wingman"); if (!canAI()) { track("ai_locked"); return; } if (words($("lyrics").value).length >= 8) { if (!S.last) renderReading(); ask("Make my lyrics less wack"); } };
 $("whyList").innerHTML = METRICS.map((m) => `<dt>${m.n} <span class="hint">(${Math.round(m.w * 100)}%)</span></dt><dd>${m.d}</dd>`).join("");
@@ -543,12 +544,13 @@ function saveHistory() {
 }
 
 /* ---------- hooks the on-demand modules call back into ---------- */
+document.querySelectorAll("#writeDD .wdd-m a").forEach((a) => (a.onclick = (e) => { e.preventDefault(); $("writeDD").removeAttribute("open"); track("hub_nav_" + a.dataset.v); show(a.dataset.v); }));
 Object.assign(A, { show, ask, renderReading, loadMe, openLogin, renderQuota, addProLink, openLesson, notExample: () => (padIsExample = false) });
 
 /* ---------- first-visit tour ---------- */
 const TOUR = [
   ["weighBtn", 1, "Weigh your words", "Paste lyrics and hit Weigh it. The meter scores them from Wicked to Wack, circles what's wack, and checks if it sounds like a robot wrote it."],
-  ["writeTabs", 3, "Your writing room", "Weigh scores your lyrics. Wingman is your AI co-writer. Workout has lessons and freestyle drills on a beat. The Wall is where the crowd votes. Same meter we use on every song we review."],
+  ["writeDD", 3, "Your writing room", "Tap Write up top for the rest: Wingman, your AI co-writer; Workout, with lessons and freestyle drills; and the Wall, where the crowd votes."],
   ["heroDare", 4, "Start with a wack one", "Not ready to share your own? Load a wack example and watch me gag. Each tap brings a new one."],
 ];
 let tourI = 0;
@@ -598,6 +600,7 @@ try {
   const qs0 = new URLSearchParams(location.search); // read before show() rewrites the address
   const h = location.hash.slice(1), path = location.pathname.replace(/\/+$/, "") || "/";
   if (path.startsWith("/u/")) show("profile");
+  else if (path === "/me") show("me");
   else if (path.startsWith("/pen/")) show("community"); // old Pass the Pen links
   else if (path !== APP && path !== "/" && path !== "/index.html") { show("lost"); $("lostChar").innerHTML = charSVG(3); }
   else if (known(h) && h !== "lost") show(h);
