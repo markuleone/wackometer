@@ -211,9 +211,6 @@ function show(v) {
   const plugin = v === "plugin";
   v = ALIASES[v] || v;
   const tab = TAB[v] || v;
-  // The Write menu marks the tool you're in; your profile and the 404 page aren't part of Write.
-  document.querySelectorAll("#writeDD .wdd-m a").forEach((a) => (a.dataset.v === v ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current")));
-  $("writeDD").querySelector("summary").classList.toggle("cur", !["me", "profile", "lost"].includes(v));
   $("acctBtn").classList.toggle("on", v === "me");
   document.querySelectorAll("#proBtn").forEach((b) => (b.dataset.v === tab ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current")));
   if (v !== "workout" && stormOn) { stormOn = false; stormM().then((st) => st.onHide()); }
@@ -544,13 +541,11 @@ function saveHistory() {
 }
 
 /* ---------- hooks the on-demand modules call back into ---------- */
-document.querySelectorAll("#writeDD .wdd-m a").forEach((a) => (a.onclick = (e) => { e.preventDefault(); $("writeDD").removeAttribute("open"); track("hub_nav_" + a.dataset.v); show(a.dataset.v); }));
 Object.assign(A, { show, ask, renderReading, loadMe, openLogin, renderQuota, addProLink, openLesson, notExample: () => (padIsExample = false) });
 
 /* ---------- first-visit tour ---------- */
 const TOUR = [
   ["weighBtn", 1, "Weigh your words", "Paste lyrics and hit Weigh it. The meter scores them from Wicked to Wack, circles what's wack, and checks if it sounds like a robot wrote it."],
-  ["writeDD", 3, "Your writing room", "Tap Write up top for the rest: Wingman, your AI co-writer; Workout, with lessons and freestyle drills; and the Wall, where the crowd votes."],
   ["heroDare", 4, "Start with a wack one", "Not ready to share your own? Load a wack example and watch me gag. Each tap brings a new one."],
 ];
 let tourI = 0;

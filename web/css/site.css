@@ -1490,3 +1490,20 @@ header .wnav .wdd-m a:hover,header #groupNav .wdd-m a:hover,header .wnav .wdd-m 
 header .wdd-m .dd-i{font-size:22px}
 nav.info-toc{border:0;background:none;box-shadow:none;padding:0;border-radius:0}
 .mev .mehero{margin-bottom:24px}
+
+/* ===== reviews-first nav, tools hub, live page, founder (Nov 11) ===== */
+.tabhero .eyebrow a,.hero .eyebrow a{color:inherit;text-decoration:underline;text-underline-offset:3px}
+.tools-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+a.tool-card{text-decoration:none;color:var(--ink);transition:transform .12s}
+a.tool-card:hover{transform:translateY(-2px);border-color:var(--ink)}
+a.tool-card b{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tool-tag{font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--bile-wash);color:var(--bile-ink);font-family:var(--body,inherit)}
+.tool-tag.pro{background:#1D2013;color:#fff}
+.live-embed{position:relative;aspect-ratio:16/9;border:2px solid var(--ink);border-radius:24px;overflow:hidden;box-shadow:0 6px 0 var(--ink);background:#0b0b0b}
+.live-embed iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.live-steps{display:grid;gap:12px;padding-left:22px;margin:0 0 12px}.live-steps li{padding-left:4px}
+.founder{display:flex;gap:22px;align-items:flex-start}
+.founder .cm{flex:none;width:96px;height:96px}
+.founder p{margin:0 0 12px}
+.founder-links{display:flex;gap:16px;flex-wrap:wrap;font-weight:600}
+@media (max-width:600px){.founder{flex-direction:column}.founder .cm{width:72px;height:72px}}
