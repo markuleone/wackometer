@@ -1,0 +1,36 @@
+# Wackometer
+
+> Music reviews for underground and independent artists, plus free tools for songwriters. Critics weigh new songs on one scale from Wicked (best) to Wack (worst), charts are built only from new music, and anyone can check their own lyrics on the same scale before anyone else hears them. Founded by Marku Leone, an independent artist and producer from South Florida.
+
+The scale, best to worst: Wicked, Well put, Whatever, Weird, Wack. Scores run 0 to 100, where lower is better.
+
+## Reviews
+
+- [Reviews](https://wackometer.com/reviews): Critic reviews of new songs from underground and independent artists, each scored from Wicked to Wack
+- [Artists](https://wackometer.com/artists): Every reviewed artist and their average score
+- [Lists](https://wackometer.com/lists): Charts of the best new songs, built only from new music
+- [Genres](https://wackometer.com/genres): Reviews and lists by genre
+- [Critics](https://wackometer.com/critics): The people who review the songs
+- [Get your song reviewed](https://wackometer.com/get-reviewed): Send a song in for written critic feedback within 7 days; the best songs get a review page
+- [Live reviews](https://wackometer.com/live): New songs reviewed live on stream on Kick
+
+## Free songwriting tools
+
+- [All tools](https://wackometer.com/tools): The lyric meter, rhymes, cliché dictionary, syllable counter and Wingman
+- [Weigh](https://wackometer.com/write#weigh): Paste a verse and the meter scores it from Wicked to Wack, circling clichés, lazy rhymes and filler
+- [Fresh rhymes](https://wackometer.com/rhymes/): Rhymes past the obvious ones
+- [Cliché dictionary](https://wackometer.com/cliches/): The lines everybody has heard, and what to write instead
+- [Syllable counter](https://wackometer.com/syllable-counter): Count syllables line by line so the flow lands on the beat
+- [Workout](https://wackometer.com/write#workout): Short lessons that fix the habits the meter catches, then a freestyle drill on a beat
+- [The Wall](https://wackometer.com/write#community): The Daily W, one writing prompt a day where the crowd votes on the best lines
+- [Wingman](https://wackometer.com/write#wingman): An AI co-writer for verses and hooks (Wingman Pro)
+
+## About
+
+- [About Wackometer](https://wackometer.com/about): Who runs the site and why
+- [How we review](https://wackometer.com/editorial-standards): How songs are picked, how critics score them, how paid submissions are labeled, and how corrections work
+- [FAQ](https://wackometer.com/faq): Reviews, scores and getting a song weighed
+- [Privacy](https://wackometer.com/privacy)
+- [Terms](https://wackometer.com/terms)
+
+Contact: hello@wackometer.com

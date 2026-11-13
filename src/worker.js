@@ -11,6 +11,7 @@ import { listsPage, artistBadge, hubApi, hubUrls, thankSubmitter, genresIndex } 
 import { faqPage, aboutPage, standardsPage, toolsPage, livePage } from "./info-pages.js";
 import { reviewsPage, badgeSVG, reviewApi, reviewUrls, frontPage, artistsPage, artistTable, getReviewedPage, criticsPage, activeCritics, subscribe, imageResponse, listUnsubscribe } from "./reviews.js";
 import { analyze, tierOf, clamp, MID, TIERS, METRICS, words, dailyKey, dailyPrompt } from "../web/js/score.js";
+import { withSecurityHeaders } from "./security-headers.js";
 
 const json = (data, status = 200, headers = {}) =>
   new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...headers } });
@@ -163,7 +164,7 @@ async function verifyStripe(env, payload, header) {
 const periodEnd = (sub) => (sub.current_period_end || sub.items?.data?.[0]?.current_period_end || 0) * 1000;
 
 /* ---------------- router ---------------- */
-export default {
+const router = {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
     const path = url.pathname.replace(/\/+$/, "");
@@ -177,6 +178,10 @@ export default {
     if (INFO[path]) { await ensureSchema(env); return INFO[path](); }
     if (path.startsWith("/u/")) return profilePage(req, env, decodeURIComponent(path.slice(3)).toLowerCase());
     if (path === "/sitemap.xml") return sitemap(env);
+    // security.txt: who to tell about a security problem (RFC 9116).
+    if (path === "/.well-known/security.txt") {
+      return new Response(`Contact: mailto:hello@wackometer.com\nPreferred-Languages: en\nCanonical: https://wackometer.com/.well-known/security.txt\nExpires: 2027-11-13T00:00:00Z\n`, { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "public, max-age=86400" } });
+    }
     // ads.txt tells ad buyers which ad accounts may sell space on this site (Google requires it to pay out).
     if (path === "/ads.txt") {
       const pub = /^ca-pub-(\d{10,20})$/.exec(env.ADSENSE_CLIENT || "");
@@ -236,6 +241,13 @@ export default {
     // Back office changes go in the activity log.
     if (method === "POST" && res.status < 400 && /^\/api\/(admin|reviews-admin|hub-admin)\//.test(path) && u.email) ctx.waitUntil(logAction(env, u, path, body));
     return res;
+  },
+};
+
+// Every response the worker sends carries the security headers (src/security-headers.js).
+export default {
+  async fetch(req, env, ctx) {
+    return withSecurityHeaders(await router.fetch(req, env, ctx));
   },
 };
 

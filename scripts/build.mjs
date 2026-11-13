@@ -4,6 +4,7 @@
 // Hashed names, not ?v= tags: while a deploy rolls out, an old server answers "not found" for a new name
 // instead of serving the old file under the new tag, which the CDN would then cache for a year.
 import { siteHeader, siteFooterLinks } from "../src/site-header.js";
+import { headersFileBlock } from "../src/security-headers.js";
 import { build } from "esbuild";
 import { createHash } from "node:crypto";
 import { gzipSync } from "node:zlib";
@@ -14,6 +15,8 @@ import { buildSeoPages } from "./seo-pages.mjs";
 const SRC = "web", OUT = "public";
 rmSync(OUT, { recursive: true, force: true });
 cpSync(SRC, OUT, { recursive: true });
+// Static files get the same security headers as worker pages (one list in src/security-headers.js).
+writeFileSync(`${OUT}/_headers`, readFileSync(`${OUT}/_headers`, "utf8").trimEnd() + "\n" + headersFileBlock());
 
 // Code splitting: app.js holds Weigh + the shell; each other tool becomes its own hashed chunk
 // that loads the first time it's opened.
