@@ -2,5 +2,24 @@ User-agent: *
 Allow: /
 Disallow: /admin
 Disallow: /api/
+Content-Signal: search=yes, ai-input=yes, ai-train=no
 
+# AI search and assistant crawlers: welcome to read and cite public pages.
+User-agent: GPTBot
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: ClaudeBot
+User-agent: Claude-SearchBot
+User-agent: Claude-User
+User-agent: anthropic-ai
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: Google-Extended
+User-agent: Applebot-Extended
+User-agent: Bingbot
+Allow: /
+Disallow: /admin
+Disallow: /api/
+
+# A plain-text guide to the site for AI assistants: https://wackometer.com/llms.txt
 Sitemap: https://wackometer.com/sitemap.xml
