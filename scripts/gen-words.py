@@ -76,6 +76,35 @@ for w in sorted(LAZYSET | set("baby money crazy forever summer winter tomorrow y
     r = rhymes_for(w)
     if r: pages[w] = r
 
+# The big set: the most common song-worthy English words that have enough rhymes to be useful.
+# These are what people actually search ("words that rhyme with ..."), and they bring most of the organic traffic.
+STOP = set("""the and that have for not with you this but his from they say her she will one all would there their what out about who get which when make can like time just him know take people into year your good some could them see other than then now look only come its over think also back after use two how our work first well way even new want because any these give day most us is are was were been has had did does said got went made being am im youre dont cant isnt wasnt didnt doesnt wont thats theres hes shes its lets ive id ill youll youve weve theyre were where why here very much many more such each every own same both few while though through during before against between into onto upon within without about above below under again once just also too only really already still yet ever never always often sometimes maybe perhaps quite rather pretty enough almost each either neither nor whether""".split())
+SKIPW = set("suicide laura eric les san trans ion facebook google youtube twitter instagram tiktok amazon apple microsoft iphone android mike lee gen pre tho via etc vs ok okay usa uk eu dr mr mrs ms jr inc ltd org com www email online website internet html app apps".split()) | NAMES
+def inflected(w):
+  # "hearts", "played", "riding": the base word's page covers them, and they rhyme mostly with other inflections.
+  if w.endswith("ies") and (w[:-3] + "y") in rank: return True
+  if w.endswith("es") and w[:-2] in rank and not w.endswith("ses"): return True
+  if w.endswith("s") and not w.endswith("ss") and w[:-1] in rank: return True
+  if w.endswith("ed") and (w[:-2] in rank or w[:-1] in rank or (len(w) > 4 and w[-3] == w[-4] and w[:-3] in rank)): return True
+  if w.endswith("ing") and (w[:-3] in rank or (w[:-3] + "e") in rank or (len(w) > 5 and w[-4] == w[-5] and w[:-4] in rank)): return True
+  if w.endswith("ly") and w[:-2] in rank: return True
+  return False
+extra = 0
+for w in top[:20000]:
+  if len(pages) >= 2200: break
+  if w in pages or w in STOP or w in BAD or w in SKIPW or not w.isalpha() or len(w) < 3 or w.endswith("isation"): continue
+  if inflected(w): continue
+  r = rhymes_for(w)
+  if not r or len(r["perfect"]) < 8: continue
+  pages[w] = r; extra += 1
+print("frequency pages added", extra)
+
+# Rhyme family (the rhyming part, e.g. "AY1 T") so each page can link to its neighbours.
+for w, r in pages.items():
+  ph = phones(w)
+  if ph: r["rp"] = pronouncing.rhyming_part(ph)
+  r["stress"] = pronouncing.stresses(ph) if ph else ""
+
 json.dump({"themes": themes, "rhymes": client_rhymes}, open("web/data/words.json", "w"), separators=(",", ":"))
 json.dump({"pages": pages, "lazy": LAZY}, open("scripts/rhyme-pages.json", "w"), separators=(",", ":"))
 print("themes", {k: len(v) for k, v in themes.items()}, "client rhymes", len(client_rhymes), "pages", len(pages))

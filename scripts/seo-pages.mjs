@@ -71,21 +71,51 @@ export function buildSeoPages(OUT, cssHref, adsHref) {
   const { pages, lazy } = JSON.parse(readFileSync("scripts/rhyme-pages.json", "utf8"));
   const lazyOf = {}; lazy.forEach((g) => g.forEach((w) => (lazyOf[w] = g)));
   const words = Object.keys(pages).sort();
+  const FAMILY = {}; words.forEach((x) => { const rp = pages[x].rp; if (rp && (pages[x].perfect.length || pages[x].near.length)) (FAMILY[rp] ||= []).push(x); });
   for (const w of words) {
     const p = pages[w]; if (!p.perfect.length && !p.near.length) continue;
     const L = lazyOf[w];
     const bySyl = {}; p.perfect.forEach((r, i) => { const n = (p.psyl && p.psyl[i]) || 1; (bySyl[n] ||= []).push(r); });
     const chips = (list) => list.map((r) => { const lz = L && L.includes(r) ? " lazy" : ""; return pages[r] ? `<a class="rchip${lz}" href="/rhymes/${r}">${esc(r)}</a>` : `<span class="rchip${lz}"${lz ? ' title="Lazy rhyme"' : ""}>${esc(r)}</span>`; }).join("");
+    // Everything below is worked out from the word's sound, so every page says something specific about its word.
+    const syl = p.syl || 1, st = String(p.stress || "");
+    const stressAt = st.indexOf("1") >= 0 ? st.indexOf("1") + 1 : 1;
+    const ORD = ["", "first", "second", "third", "fourth", "fifth", "sixth"];
+    const nP = p.perfect.length, nN = p.near.length;
+    const level = nP < 10 ? ["Hard to rhyme", `Only ${nP} common perfect rhyme${nP === 1 ? "" : "s"}, so slant rhymes are your friend here. Listeners forgive a near rhyme far more than a forced one.`]
+      : nP < 30 ? ["Medium", `${nP} perfect rhymes to choose from: enough room to pick one that fits the meaning instead of one that just fits the sound.`]
+      : ["Easy to rhyme", `${nP}+ perfect rhymes, which is a trap: the obvious ones are in a thousand songs already. Reach past the first few, or go for a two-syllable rhyme.`];
+    const multi = p.perfect.filter((r, i) => ((p.psyl && p.psyl[i]) || 1) > Math.max(1, syl)).slice(0, 8);
+    const fresh = p.perfect.filter((r) => !(L && L.includes(r))).slice(Math.min(6, Math.floor(nP / 3)), Math.min(6, Math.floor(nP / 3)) + 6);
+    const family = (FAMILY[p.rp] || []).filter((x) => x !== w).slice(0, 14);
+    const famLabel = p.rp ? p.rp.replace(/\d/g, "").toLowerCase() : "";
+    const top8 = p.perfect.slice(0, 8), near5 = p.near.slice(0, 5);
+    const faq = [
+      [`What rhymes with ${w}?`, top8.length ? `The most common perfect rhymes for ${w} are ${top8.join(", ")}.${nN ? ` For something less expected, try a slant rhyme like ${near5.slice(0, 3).join(", ")}.` : ""}` : `${w} has almost no perfect rhymes in everyday English. Use a slant rhyme like ${near5.join(", ")}.`],
+      ...(nN ? [[`What is a slant rhyme for ${w}?`, `Slant rhymes share the vowel sound of ${w} without matching it exactly: ${near5.join(", ")}. They sound fresher than perfect rhymes because the listener doesn't see them coming.`]] : []),
+      [`How many syllables are in ${w}?`, `${w} has ${syl} syllable${syl > 1 ? "s" : ""}${syl > 1 ? `, with the stress on the ${ORD[stressAt] || stressAt + "th"}` : ""}. Rhymes land hardest when the stressed syllables line up.`],
+    ];
     const body = `<article class="seoart">
 <p class="eyebrow"><a href="/rhymes/">Rhymes</a></p>
 <h1>Words that rhyme with ${esc(w)}</h1>
-<p class="lead">${p.perfect.length} perfect rhymes and ${p.near.length} slant rhymes for “${esc(w)}”, picked from everyday words${L ? `. Heads up: ${esc(w)} is on the Wackometer's lazy-rhyme list` : ", sorted by how common they are"}.</p>
+<p class="lead">${nP} perfect rhymes and ${nN} slant rhymes for “${esc(w)}”, picked from everyday words${L ? `. Heads up: ${esc(w)} is on the Wackometer's lazy-rhyme list` : ", sorted by how common they are"}.</p>
+<div class="rfacts"><div><b>${syl}</b><span>syllable${syl > 1 ? "s" : ""}</span></div>${syl > 1 ? `<div><b>${ORD[stressAt] || stressAt}</b><span>stressed syllable</span></div>` : ""}<div><b>${nP}</b><span>perfect rhymes</span></div><div><b>${level[0]}</b><span>difficulty</span></div></div>
 ${L ? `<div class="warn"><b>🤢 Lazy rhyme alert</b><p>${L.map(esc).join(" / ")} is one of the most overused rhyme families in pop songs. The Wackometer flags it as a <em>wimpy rhyme</em>. Try a slant rhyme from the list below, or rhyme two syllables at once.</p></div>` : ""}
-${p.perfect.length ? `<h2>Perfect rhymes</h2>${Object.keys(bySyl).sort((a, b) => a - b).map((n) => `<h3>${n} syllable${n > 1 ? "s" : ""}</h3><div class="rchips">${chips(bySyl[n])}</div>`).join("")}` : ""}
-${p.near.length ? `<h2>Slant rhymes (fresher)</h2><p class="hint">Same vowel sounds, different consonants. Listeners hear the rhyme without seeing it coming.</p><div class="rchips">${chips(p.near)}</div>` : ""}
-<h2>Write with it</h2><p>Want a beat to practice on? <a href="/write#storm">Wordstorm</a> drops words like “${esc(w)}” on the beat with rhymes underneath, so you can freestyle with them.</p>
+${nP ? `<h2>Perfect rhymes</h2>${Object.keys(bySyl).sort((a, b) => a - b).map((n) => `<h3>${n} syllable${n > 1 ? "s" : ""}</h3><div class="rchips">${chips(bySyl[n])}</div>`).join("")}` : ""}
+${nN ? `<h2>Slant rhymes (fresher)</h2><p class="hint">Same vowel sounds, different consonants. Listeners hear the rhyme without seeing it coming.</p><div class="rchips">${chips(p.near)}</div>` : ""}
+<h2>How to rhyme “${esc(w)}” without sounding wack</h2>
+<p><b>${level[0]}.</b> ${level[1]}</p>
+${fresh.length ? `<p><b>Skip the first rhyme that comes to mind.</b> Everyone reaches for ${esc(p.perfect.slice(0, 2).join(" or "))}. Rhymes a little further down the list, like ${fresh.map(esc).join(", ")}, still land clean but feel like you picked them on purpose.</p>` : ""}
+${multi.length ? `<p><b>Go longer.</b> Ending a line on a word with more syllables, like ${multi.slice(0, 4).map(esc).join(", ")} gives the rhyme more weight, especially at the end of a hook.</p>` : ""}
+${nN ? `<p><b>Bend it.</b> A slant rhyme like ${near5.slice(0, 3).map(esc).join(", ")} keeps the vowel and changes the ending, the trick most rappers use to keep a run of rhymes going.</p>` : ""}
+<p><b>Check it.</b> Paste your verse into the <a href="/write#weigh">Wackometer</a> and it flags lazy rhymes, clichés and filler for you.</p>
+${family.length ? `<h2>Same rhyme family</h2><p class="hint">Words that end on the same sound as ${esc(w)}. Each one has its own page of rhymes.</p><div class="rchips">${family.map((x) => `<a class="rchip" href="/rhymes/${x}">${esc(x)}</a>`).join("")}</div>` : ""}
+<h2>Questions about rhyming ${esc(w)}</h2>
+${faq.map(([q, a2]) => `<details><summary>${esc(q)}</summary><p>${esc(a2)}</p></details>`).join("")}
+<h2>Write with it</h2><p>Want a beat to practice on? <a href="/write#storm">Wordstorm</a> drops words like “${esc(w)}” on the beat with rhymes underneath, so you can freestyle with them. More free tools on the <a href="/tools">writing tools</a> page.</p>
 </article>`;
-    write(`/rhymes/${w}`, page({ path: `/rhymes/${w}`, title: `Words that rhyme with ${w} (perfect + slant rhymes) · Wackometer`, desc: `Rhymes for ${w}: ${p.perfect.slice(0, 6).concat(p.near.slice(0, 4)).join(", ")} and more. Perfect and slant rhymes for songwriters, with lazy rhymes flagged.`, body, ld: crumbs([["Rhymes", "/rhymes/"], [w, `/rhymes/${w}`]]) }));
+    write(`/rhymes/${w}`, page({ path: `/rhymes/${w}`, title: `Words that rhyme with ${w} (perfect + slant rhymes) · Wackometer`, desc: `Rhymes for ${w}: ${p.perfect.slice(0, 6).concat(p.near.slice(0, 4)).join(", ")} and more. ${nP} perfect and ${nN} slant rhymes for songwriters, with lazy rhymes flagged.`, body,
+      ld: [crumbs([["Rhymes", "/rhymes/"], [w, `/rhymes/${w}`]]), { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: faq.map(([q, a2]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a2 } })) }] }));
   }
   const letters = {}; words.forEach((w) => (letters[w[0]] ||= []).push(w));
   write("/rhymes/", page({ path: "/rhymes/", title: "Rhyming dictionary for songwriters: fresh and slant rhymes · Wackometer", desc: "Find rhymes that aren't lazy. Perfect rhymes and slant rhymes for hundreds of words, with the overused ones (fire/desire, heart/apart) flagged.",

@@ -1507,3 +1507,9 @@ a.tool-card b{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .founder p{margin:0 0 12px}
 .founder-links{display:flex;gap:16px;flex-wrap:wrap;font-weight:600}
 @media (max-width:600px){.founder{flex-direction:column}.founder .cm{width:72px;height:72px}}
+
+/* rhyme page facts row (Nov 18) */
+.rfacts{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:6px 0 18px}
+.rfacts div{border:2px solid var(--line);border-radius:16px;padding:12px 14px;background:#fff;display:flex;flex-direction:column;gap:2px}
+.rfacts b{font-family:var(--display);font-size:20px;line-height:1.15;text-transform:capitalize}
+.rfacts span{font-size:13px;color:var(--muted)}

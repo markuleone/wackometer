@@ -19,7 +19,7 @@ File name: `YYYY-MM-DD.json`
       "genre": "hyperpop",
       "released": "Nov 2026",
       "verdict": "One sentence starting take (the critic rewrites it after listening).",
-      "body": "Two short lines of context: who they are, what the song is going for.",
+      "body": "500+ characters (aim 600-900), 2-3 short paragraphs split by a blank line: who the artist is, the release itself, where it sits. Sourced facts only. Under 450 characters stays off Google.",
       "spotify_url": "https://open.spotify.com/track/...",
       "apple_url": "", "youtube_url": "", "soundcloud_url": "", "bandcamp_url": "",
       "tidal_url": "", "amazon_url": "", "deezer_url": "",
