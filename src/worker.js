@@ -680,9 +680,9 @@ async function sitemap(env) {
     .concat([`<url><loc>${base}/reviews</loc><changefreq>daily</changefreq><priority>0.9</priority></url>`, `<url><loc>${base}/write</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>`, `<url><loc>${base}/artists</loc><changefreq>daily</changefreq><priority>0.8</priority></url>`, `<url><loc>${base}/get-reviewed</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>`, `<url><loc>${base}/critics</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>`])
     .concat(hubs.map(([p, f, pr]) => `<url><loc>${base}${p}</loc><changefreq>${f}</changefreq><priority>${pr}</priority></url>`))
     .concat(critics.map((c) => `<url><loc>${base}/critics/${c.slug}</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>`))
-    .concat(artists.map((a) => `<url><loc>${base}/artists/${a.slug}</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>`))
+    .concat(artists.filter((a) => a.songs.some((x) => x.blen >= 450)).map((a) => `<url><loc>${base}/artists/${a.slug}</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>`))
     .concat(reviews.map((r) => `<url><loc>${base}/reviews/${r.slug}</loc><lastmod>${new Date(r.updated_at).toISOString().slice(0, 10)}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>`))
-    .concat(users.map((u) => `<url><loc>${base}/u/${encodeURIComponent(u.username)}</loc><changefreq>weekly</changefreq><priority>0.5</priority></url>`));
+;
   return new Response(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.join("")}</urlset>`, { headers: { "content-type": "application/xml; charset=utf-8", "cache-control": "public, max-age=3600" } });
 }
 
@@ -691,14 +691,16 @@ async function profilePage(req, env, username) {
   const page = await env.ASSETS.fetch(new Request(new URL("/write", req.url), req));
   let meta = null;
   try { await ensureSchema(env); meta = await profileMeta(env, username.replace(/[^a-z0-9_.]/g, "")); } catch (e) {}
-  if (!meta) return page;
+  // Profiles are mostly the writing app's shell, so they stay out of Google (thin, near-duplicate pages).
+  const h = new Headers(page.headers); h.set("x-robots-tag", "noindex");
+  if (!meta) return new Response(page.body, { status: page.status, headers: h });
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   return new HTMLRewriter()
     .on("title", { element(e) { e.setInnerContent(meta.title); } })
     .on('meta[property="og:title"]', { element(e) { e.setAttribute("content", meta.title); } })
     .on('meta[property="og:description"]', { element(e) { e.setAttribute("content", meta.description); } })
     .on('meta[name="description"]', { element(e) { e.setAttribute("content", meta.description); } })
-    .transform(page);
+    .transform(new Response(page.body, { status: page.status, headers: h }));
   void esc;
 }
 

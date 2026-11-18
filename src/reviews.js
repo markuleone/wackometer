@@ -437,7 +437,7 @@ ${SUB}
     { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [{ "@type": "ListItem", position: 1, name: "Song reviews", item: `${BASE}/reviews` }, { "@type": "ListItem", position: 2, name: `${r.artist}: ${r.title}`, item: `${BASE}/reviews/${slug}` }] }];
   const title = `${r.title} by ${r.artist} review: ${tierName(r)} · Wackometer`;
   const desc = `${tierName(r)} (${r.score}/100). ${r.verdict} Read the review of ${r.artist}'s ${r.kind === "album" ? "album" : "song"} “${r.title}” and cast your vote.`.slice(0, 300);
-  return html(shell({ active: "reviews", path: `/reviews/${slug}`, title, desc, image: r.og_url || coverOf(r, BASE), wide: !!r.og_url, body, ld: draft ? null : ld, noindex: draft, data: JSON.stringify({ slug, artist: r.artist, title: r.title, kind: r.kind, score: r.score, tier: t, cert: certified(r), verdict: r.verdict, cover: !!r.cover_url, ig }) }), 200, draft ? "no-store" : "no-cache");
+  return html(shell({ active: "reviews", path: `/reviews/${slug}`, title, desc, image: r.og_url || coverOf(r, BASE), wide: !!r.og_url, body, ld: draft ? null : ld, noindex: draft || isThin(r), data: JSON.stringify({ slug, artist: r.artist, title: r.title, kind: r.kind, score: r.score, tier: t, cert: certified(r), verdict: r.verdict, cover: !!r.cover_url, ig }) }), 200, draft ? "no-store" : "no-cache");
 }
 
 /* ---------- front page (/) ---------- */
@@ -513,7 +513,7 @@ ${"" && split.length ? `<section class="fsplit" aria-labelledby="rSplit"><div cl
 // Every live review counts toward its artist. The artist's score is the plain average of their songs' scores,
 // so lower is better: 0 is as Wicked as it gets, 100 is all-out Wack.
 export async function artistTable(DB) {
-  const rows = (await DB.prepare("SELECT slug,artist,title,score,cover_url,genre,artist_ig,artist_url,published_at FROM reviews WHERE status='live' AND big=0 ORDER BY published_at DESC LIMIT 5000").all()).results;
+  const rows = (await DB.prepare("SELECT slug,artist,title,score,cover_url,genre,artist_ig,artist_url,published_at,length(coalesce(body,'')) AS blen FROM reviews WHERE status='live' AND big=0 ORDER BY published_at DESC LIMIT 5000").all()).results;
   const by = new Map();
   for (const r of rows) {
     const key = slugify(r.artist); if (!key) continue;
@@ -575,7 +575,7 @@ ${artistExtrasHTML(a, prof)}
 <p><a href="/artists">See the full leaderboard →</a></p>
 </article>`;
   const ld = { "@context": "https://schema.org", "@type": "MusicGroup", name: a.name, url: `${BASE}/artists/${a.slug}`, ...(ext ? { sameAs: [ext] } : {}), ...(a.cover ? { image: a.cover } : {}) };
-  return html(shell({ active: "artists", path: `/artists/${a.slug}`, title: `${a.name}: song reviews and score (${t === 0 ? "Wicked" : TIERS[t].n}, ${a.avg}/100) · Wackometer`, desc: `${a.name} averages ${a.avg}/100 on the Wackometer across ${a.n} reviewed song${a.n === 1 ? "" : "s"}, #${a.rank} on the artist leaderboard. Read every review.`, image: a.cover, body, ld, data: JSON.stringify({ artist: a.slug }) }));
+  return html(shell({ active: "artists", path: `/artists/${a.slug}`, title: `${a.name}: song reviews and score (${t === 0 ? "Wicked" : TIERS[t].n}, ${a.avg}/100) · Wackometer`, noindex: !a.songs.some((x) => x.blen >= FULL_REVIEW_CHARS), desc: `${a.name} averages ${a.avg}/100 on the Wackometer across ${a.n} reviewed song${a.n === 1 ? "" : "s"}, #${a.rank} on the artist leaderboard. Read every review.`, image: a.cover, body, ld, data: JSON.stringify({ artist: a.slug }) }));
 }
 
 /* ---------- critics (/critics, /critics/<slug>) and the Get reviewed page (/get-reviewed) ---------- */
@@ -1309,8 +1309,12 @@ export async function imageResponse(env, id) {
 }
 
 // Live reviews for the sitemap.
+// Short reviews (a quick weigh is a few lines) stay live for visitors but out of Google until they're written up properly.
+// Thin pages are what got AdSense to call the site "low value", so only full write-ups get indexed.
+export const FULL_REVIEW_CHARS = 450;
+export const isThin = (r) => String(r.body || "").trim().length < FULL_REVIEW_CHARS;
 export async function reviewUrls(DB) {
-  return (await DB.prepare("SELECT slug, updated_at FROM reviews WHERE status='live' ORDER BY published_at DESC LIMIT 20000").all()).results;
+  return (await DB.prepare("SELECT slug, updated_at FROM reviews WHERE status='live' AND length(coalesce(body,''))>=? ORDER BY published_at DESC LIMIT 20000").bind(FULL_REVIEW_CHARS).all()).results;
 }
 
 // Shared with src/hub.js (lists, genres, artist claims, comments).

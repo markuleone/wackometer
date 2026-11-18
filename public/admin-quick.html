@@ -75,7 +75,7 @@ kbd{font-family:var(--body);font-size:11px;border:1px solid var(--line);border-b
 <label class="f">Score <span class="hint">Your call on the whole song. 0 is Wicked, 100 is Wack. Move it after you listen.</span>
 <span class="scoreRow"><input id="score" type="range" min="0" max="100" value="50"><span id="sOut" class="unset">Not scored yet</span></span></label>
 <label class="f">One-line verdict <span class="hint">Claude's starting take, from what's public about the song. Make it what you heard.</span><input id="verdict" maxlength="220" required></label>
-<label class="f">Two-line take <span class="hint">Shows on the review page.</span><textarea id="body" maxlength="1200"></textarea></label>
+<label class="f">Two-line take <span class="hint">Shows on the review page.</span><textarea id="body" maxlength="2000"></textarea><span class="hint" id="bodyLen" role="status"></span></label>
 <div class="two">
 <label class="f">Genre<input id="genre" maxlength="60"></label>
 <label class="f">Artist Instagram<input id="ig" maxlength="80" placeholder="@handle"></label>
@@ -217,5 +217,9 @@ else $("reviewer").innerHTML = `<option value="">Wackometer</option>` + D.critic
 show(Q[0] || null);
 } catch (e) { $("err").innerHTML = esc(e.message) + ' <a href="/write?account=1">Sign in</a> with your admin or critic email, then come back.'; }
 })();
+</script>
+<script>
+// Reviews under 450 characters stay live but off Google (AdSense flagged thin pages). Show where this one stands.
+(function(){var b=document.getElementById("body"),o=document.getElementById("bodyLen");if(!b||!o)return;function u(){var n=b.value.trim().length;o.textContent=n>=450?"✓ "+n+" characters: full review, goes on Google":n+" / 450 characters. Shorter takes go live but stay off Google. Add a few lines to get it indexed."}b.addEventListener("input",u);new MutationObserver(u).observe(b,{attributes:true,childList:true});setInterval(u,1500);u()})();
 </script>
 </body></html>
